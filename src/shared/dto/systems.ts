@@ -1,5 +1,5 @@
 import { InputConfig, OutputConfig, System } from '../models/system'
-import { Schema } from '../models/schema'
+import { CustomDataType, Schema } from '../models/schema'
 import { Environment } from '../models/environment'
 import { Profile } from '../models/profile'
 import { Template, TemplateFolder } from '../models/template'
@@ -24,5 +24,6 @@ export interface ExportedSystem {
   environments: Environment[];
   profiles: Profile[];
   templates: Template[];
-  folders: TemplateFolder[];
+  templateFolders: TemplateFolder[];
+  customTypes: CustomDataType[];
 }

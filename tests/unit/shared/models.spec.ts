@@ -562,7 +562,8 @@ describe('shared dto — systems', () => {
       environments: [],
       profiles: [],
       templates: [],
-      folders: []
+      templateFolders: [],
+      customTypes: []
     }
     expectTypeOf(exported).toMatchTypeOf<ExportedSystem>()
   })
