@@ -3,18 +3,8 @@ import { v4 as uuidv4 } from 'uuid'
 import type { Api } from '../../shared/api'
 import { StorageService, StoragePaths } from '../services/storage'
 import { SettingsService } from '../services/settings.service'
-import type { Environment, EnvironmentVariable } from '../../shared/models'
-
-export interface CreateEnvInput {
-  systemId: string
-  name: string
-  variables: EnvironmentVariable[]
-}
-
-export interface UpdateEnvInput {
-  name?: string
-  variables?: EnvironmentVariable[]
-}
+import type { Environment } from '../../shared/models'
+import {CreateEnvInput, UpdateEnvInput} from "../../shared/dto";
 
 export class EnvironmentsApi implements Api {
   readonly api = 'environments'
