@@ -7,6 +7,8 @@ import { Template, TemplateFolder } from '../models/template'
 export interface CreateSystemInput {
   name: string;
   description?: string;
+  inputs: Omit<InputConfig, 'id'>[];
+  outputs: Omit<OutputConfig, 'id'>[];
 }
 
 export interface UpdateSystemInput {
