@@ -18,7 +18,7 @@ const apis = [
   new SchemasApi(storage),
   new EnvironmentsApi(storage, settings),
   new CustomTypesApi(storage, settings),
-  new TemplatesApi(storage, settings)
+  new TemplatesApi(storage, settings),
   new ProfilesApi(storage, settings)
 ]
 

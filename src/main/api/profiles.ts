@@ -3,9 +3,8 @@ import { v4 as uuidv4 } from 'uuid'
 import type { Api } from '../../shared/api'
 import { StorageService, StoragePaths } from '../services/storage'
 import { SettingsService } from '../services/settings.service'
-import type { Profile } from '../../shared/models/profile'
-import type { Template } from '../../shared/models/template'
-import type { CreateProfileInput, UpdateProfileInput } from '../../shared/dto/profiles'
+import type { Profile, Template } from '../../shared/models'
+import type { CreateProfileInput, UpdateProfileInput } from '../../shared/dto'
 
 export class ProfilesApi implements Api {
   readonly api = 'profiles'
