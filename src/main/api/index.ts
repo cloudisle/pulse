@@ -8,7 +8,7 @@ const storage = new StorageService()
 const settings = new SettingsService(storage)
 
 const apis = [
-  new AppApi(storage),
+  new AppApi(settings),
   new SystemsApi(storage, settings)
 ]
 
