@@ -1,13 +1,13 @@
 import { ApiRegistry } from './registry'
 import { AppApi } from './app'
-import {StorageService} from "../services/storage";
+import { EnvironmentsApi } from './environments'
+import { StorageService } from '../services/storage'
+import { SettingsService } from '../services/settings.service'
 
-const storage = new StorageService();
-
-const apis = [
-    new AppApi(storage),
-]
+const storage = new StorageService()
+const settings = new SettingsService(storage)
 
 export default new ApiRegistry(
-    ...apis,
-);
+  new AppApi(storage),
+  new EnvironmentsApi(storage, settings)
+)
