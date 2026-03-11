@@ -1,7 +1,7 @@
 import type { ListenerDataEvent, ListenerErrorEvent, ListenerLifecycleEvent } from '../models'
 import type { AppSettings, Environment, LogEntry } from '../models'
 import {System} from "../models";
-import {CreateEnvInput, CreateSystemInput, UpdateEnvInput} from "../dto";
+import {CreateEnvInput, CreateSchemaInput, CreateSystemInput, UpdateEnvInput, UpdateSchemaInput} from "../dto";
 
 export interface IElectronAPI {
   platform: string
@@ -18,6 +18,15 @@ export interface IElectronAPI {
     create(data: CreateSystemInput): Promise<System>
     update(data: UpdateSystemInput): Promise<System>
     delete(id: string): Promise<System>
+  }
+
+  schemas: {
+    list(systemId: string): Promise<Schema[]>
+    get(systemId: string, id: string): Promise<Schema>
+    create(data: CreateSchemaInput): Promise<Schema>
+    update(systemId: string, id: string, data: UpdateSchemaInput): Promise<Schema>
+    delete(systemId: string, id: string): Promise<void>
+    validate(systemId: string, id: string): Promise<void>
   }
 
   environments: {
