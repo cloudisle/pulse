@@ -23,6 +23,7 @@ import {EnvironmentsApi} from "../../main/api/environments";
 import {SchemasApi} from "../../main/api/schemas";
 import {SystemsApi} from "../../main/api/systems";
 import {AppApi} from "../../main/api/app";
+import {SessionsApi} from "../../main/api/sessions";
 
 export interface IElectronAPI {
   platform: string
@@ -34,6 +35,7 @@ export interface IElectronAPI {
   profiles: ProfilesApi
   templates: TemplatesApi
   customTypes: CustomTypesApi
+  sessions: SessionsApi
 
   listeners: {
     onLifecycle(callback: (event: ListenerLifecycleEvent) => void): () => void

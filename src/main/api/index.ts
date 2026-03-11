@@ -4,6 +4,7 @@ import { SystemsApi } from './systems'
 import { SchemasApi } from './schemas'
 import { EnvironmentsApi } from './environments'
 import { CustomTypesApi } from './custom-types'
+import { SessionsApi } from './sessions'
 import { TemplatesApi } from './templates'
 import { ProfilesApi } from './profiles'
 import { StorageService } from '../services/storage'
@@ -18,6 +19,7 @@ const apis = [
   new SchemasApi(storage),
   new EnvironmentsApi(storage, settings),
   new CustomTypesApi(storage, settings),
+  new SessionsApi(storage, settings),
   new TemplatesApi(storage, settings),
   new ProfilesApi(storage, settings)
 ]
