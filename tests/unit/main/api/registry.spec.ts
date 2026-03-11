@@ -5,11 +5,11 @@ import type { Api } from '../../../../src/shared/api'
 class SampleApi implements Api {
   readonly api = 'sample'
 
-  async getItem(_event: any, id: string) {
+  async getItem(id: string) {
     return { id }
   }
 
-  async createItem(_event: any, data: object) {
+  async createItem(data: object) {
     return data
   }
 }
