@@ -1,0 +1,24 @@
+name: Assign Copilot Coding Agent on tagged issues
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  assign_copilot:
+    if: startsWith(github.event.issue.title, '[assign-to-copilot]')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Assign issue to Copilot (via gh issue edit)
+        env:
+          GH_TOKEN: ${{ secrets.COPILOT_ASSIGN_PAT }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+        run: |
+          set -euo pipefail
+          gh issue edit "$ISSUE_URL" --add-assignee "@copilot"
+          echo "Assigned $ISSUE_URL to @copilot"
