@@ -1,6 +1,5 @@
 import type { Api } from '../../shared/api'
 import { SettingsService } from '../services/settings.service'
-import { StorageService } from '../services/storage'
 import type { AppSettings } from '../../shared/models'
 
 export class AppApi implements Api {
@@ -8,8 +7,8 @@ export class AppApi implements Api {
 
   private settings: SettingsService;
 
-  constructor(storage: StorageService) {
-    this.settings = new SettingsService(storage);
+  constructor(settings: SettingsService) {
+    this.settings = settings;
   }
 
   async getSettings(): Promise<AppSettings> {

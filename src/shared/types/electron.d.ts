@@ -1,6 +1,7 @@
-import type { AppSettings } from '../models/settings'
 import type { ListenerDataEvent, ListenerErrorEvent, ListenerLifecycleEvent } from '../models/listener'
-import type { LogEntry } from '../models/log'
+import type { AppSettings, LogEntry } from '../models'
+import {System} from "../models";
+import {CreateSystemInput} from "../dto";
 
 export interface IElectronAPI {
   platform: string
@@ -9,6 +10,14 @@ export interface IElectronAPI {
     getSettings(): Promise<AppSettings>
     updateSettings(data: Partial<AppSettings>): Promise<AppSettings>
     getDataPath(): Promise<string>
+  }
+
+  systems: {
+    list(): Promise<System[]>
+    get(id: string): Promise<System>
+    create(data: CreateSystemInput): Promise<System>
+    update(data: UpdateSystemInput): Promise<System>
+    delete(id: string): Promise<System>
   }
 
   listeners: {
