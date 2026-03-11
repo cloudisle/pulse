@@ -4,5 +4,9 @@ export default defineConfig({
   testDir: './tests/e2e',
   timeout: 30000,
   retries: 0,
-  reporter: 'list'
+  reporter: 'list',
+  outputDir: 'test-results/playwright',
+  use: {
+    screenshot: 'only-on-failure'
+  }
 })
