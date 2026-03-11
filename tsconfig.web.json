@@ -1,0 +1,8 @@
+{
+  "extends": "@electron-toolkit/tsconfig/tsconfig.web.json",
+  "include": ["src/renderer/src/**/*", "src/renderer/src/**/*.vue"],
+  "compilerOptions": {
+    "composite": true,
+    "strict": true
+  }
+}
