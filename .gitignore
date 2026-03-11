@@ -52,5 +52,5 @@ pids/
 ehthumbs.db
 Thumbs.db
 
-# Vite
-.vite/
+test-results/
+playwright-report/
