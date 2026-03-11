@@ -5,6 +5,7 @@ import { SchemasApi } from './schemas'
 import { EnvironmentsApi } from './environments'
 import { CustomTypesApi } from './custom-types'
 import { TemplatesApi } from './templates'
+import { ProfilesApi } from './profiles'
 import { StorageService } from '../services/storage'
 import { SettingsService } from '../services/settings.service'
 
@@ -18,6 +19,7 @@ const apis = [
   new EnvironmentsApi(storage, settings),
   new CustomTypesApi(storage, settings),
   new TemplatesApi(storage, settings)
+  new ProfilesApi(storage, settings)
 ]
 
 export default new ApiRegistry(
