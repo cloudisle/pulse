@@ -1,4 +1,4 @@
-import { EnvironmentVariable } from '../models/environment'
+import { EnvironmentVariable } from '../models'
 
 export interface CreateEnvInput {
   systemId: string;
