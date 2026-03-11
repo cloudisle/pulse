@@ -22,7 +22,7 @@ export class ApiRegistry {
         .filter((key) => typeof api[key] === 'function' && key !== 'constructor')
         .forEach((method) => {
           main.handle(`${name}.${method}`, (event, ...args) => {
-            return api[method](event, ...args)
+            return api[method](...args, event)
           })
         })
     }

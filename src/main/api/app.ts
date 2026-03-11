@@ -1,37 +1,26 @@
-import type { IpcMainInvokeEvent } from 'electron'
 import type { Api } from '../../shared/api'
 import { SettingsService } from '../services/settings.service'
 import { StorageService } from '../services/storage'
-import type { AppSettings } from '../../shared/models/settings'
+import type { AppSettings } from '../../shared/models'
 
 export class AppApi implements Api {
   readonly api: string = 'app'
 
-  private _settingsService: SettingsService | null
+  private settings: SettingsService;
 
-  constructor(settingsService?: SettingsService) {
-    this._settingsService = settingsService ?? null
+  constructor(storage: StorageService) {
+    this.settings = new SettingsService(storage);
   }
 
-  private get service(): SettingsService {
-    if (!this._settingsService) {
-      this._settingsService = new SettingsService(new StorageService())
-    }
-    return this._settingsService
+  async getSettings(): Promise<AppSettings> {
+    return this.settings.getSettings()
   }
 
-  async getSettings(_event: IpcMainInvokeEvent): Promise<AppSettings> {
-    return this.service.getSettings()
+  async updateSettings(partial: Partial<AppSettings>): Promise<AppSettings> {
+    return this.settings.updateSettings(partial)
   }
 
-  async updateSettings(
-    _event: IpcMainInvokeEvent,
-    partial: Partial<AppSettings>
-  ): Promise<AppSettings> {
-    return this.service.updateSettings(partial)
-  }
-
-  async getDataPath(_event: IpcMainInvokeEvent): Promise<string> {
-    return this.service.getDataPath()
+  async getDataPath(): Promise<string> {
+    return this.settings.getDataPath()
   }
 }

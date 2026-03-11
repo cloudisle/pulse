@@ -1,6 +1,13 @@
 import { ApiRegistry } from './registry'
 import { AppApi } from './app'
+import {StorageService} from "../services/storage";
 
-const Api = new ApiRegistry(new AppApi())
+const storage = new StorageService();
 
-export default Api
+const apis = [
+    new AppApi(storage),
+]
+
+export default new ApiRegistry(
+    ...apis,
+);

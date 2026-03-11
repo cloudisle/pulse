@@ -57,7 +57,7 @@ describe('ApiRegistry — initialize', () => {
     const mockEvent = { sender: {} }
     await handler(mockEvent, '123')
 
-    expect(spy).toHaveBeenCalledWith(mockEvent, '123')
+    expect(spy).toHaveBeenCalledWith('123', mockEvent)
   })
 
   it('registers handles for multiple api namespaces', () => {
