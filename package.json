@@ -12,7 +12,10 @@
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
-    "test": "echo \"No tests yet\" && exit 0"
+    "test:unit": "vitest run --config vitest.config.unit.ts",
+    "test:component": "vitest run --config vitest.config.component.ts",
+    "test:e2e": "npm run build && playwright test",
+    "test": "npm run test:unit && npm run test:component && npm run test:e2e"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
@@ -26,12 +29,16 @@
     "@electron-toolkit/eslint-config-prettier": "^2.0.0",
     "@electron-toolkit/eslint-config-ts": "^2.0.0",
     "@electron-toolkit/tsconfig": "^1.0.1",
+    "@playwright/test": "^1.58.2",
     "@vitejs/plugin-vue": "^5.2.3",
+    "@vue/test-utils": "^2.4.6",
     "electron": "^41.0.0",
     "electron-builder": "^26.8.1",
     "electron-vite": "^3.1.0",
+    "jsdom": "^28.1.0",
     "typescript": "^5.7.3",
     "vite": "^6.0.11",
+    "vitest": "^4.0.18",
     "vue-tsc": "^2.2.0"
   }
 }
