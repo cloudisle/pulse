@@ -1,6 +1,7 @@
-import { app, shell, BrowserWindow } from 'electron'
+import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
+import Api from './api'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -36,6 +37,8 @@ app.whenReady().then(() => {
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
   })
+
+  Api.initialize(ipcMain)
 
   createWindow()
 
