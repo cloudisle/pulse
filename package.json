@@ -18,6 +18,10 @@
     "test": "npm run test:unit && npm run test:component && npm run test:e2e"
   },
   "dependencies": {
+    "@aws-sdk/client-eventbridge": "^3.1007.0",
+    "@aws-sdk/client-kinesis": "^3.1007.0",
+    "@aws-sdk/client-sqs": "^3.1007.0",
+    "@aws-sdk/credential-providers": "^3.1007.0",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "electron-updater": "^6.3.9",
