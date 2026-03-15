@@ -1,26 +1,22 @@
-import { randomUUID } from 'crypto'
-import type { PushService } from '../push.service'
 import type { VariableReplacementService } from '../variable-replacement.service'
 import type {
   ListenerConfig,
   ListenerStatus,
-  ListenerStartResult
+  ListenerStartResult,
 } from '../../../shared/models'
-import type { OutputConfig, KinesisConfig } from '../../../shared/models'
+import type { OutputConfig } from '../../../shared/models'
 import type { Environment } from '../../../shared/models'
-import { KinesisListener } from './kinesis-listener'
+import {ListenerLifecycleFactory} from "./factory";
+import {ListenerLifecycle} from "./listener";
 
-type AnyListener = KinesisListener
+export type ListenerEntry = { listener: ListenerLifecycle, status: ListenerStatus };
 
 export class ListenerManagerService {
-  private readonly listeners = new Map<
-    string,
-    { listener: AnyListener; status: ListenerStatus }
-  >()
+  private readonly listeners = new Map<string, ListenerEntry>();
 
   constructor(
-    private readonly pushService: PushService,
-    private readonly variableReplacement: VariableReplacementService
+    private readonly factory: ListenerLifecycleFactory,
+    private readonly variables: VariableReplacementService
   ) {}
 
   /**
@@ -29,71 +25,35 @@ export class ListenerManagerService {
    * lifecycle event, and returns a `ListenerStartResult`.
    */
   async startListener(
-    config: ListenerConfig,
+    listenerConfig: ListenerConfig,
     outputConfig: OutputConfig,
-    awsProfile: string,
     environment?: Environment
   ): Promise<ListenerStartResult> {
-    const listenerId = randomUUID()
-    const now = new Date().toISOString()
-
     const variables = this.buildVariables(environment)
-    const resolvedConfig = this.variableReplacement.replaceVariablesInObject(
+    const resolvedConfig = this.variables.replaceVariablesInObject(
       outputConfig.config,
       variables
-    ) as KinesisConfig
+    ) as OutputConfig['config'];
 
-    const status: ListenerStatus = {
-      listenerId,
-      outputId: config.outputId,
-      sessionId: config.sessionId,
-      status: 'starting',
-      startedAt: now,
-      eventsReceived: 0
+    const lifecycle = await this.factory.create({
+      listenerConfig,
+      outputConfig: {
+        ...outputConfig,
+        config: resolvedConfig,
+      }
+    });
+
+    const listenerId = lifecycle.listener.id;
+    const postStart = () => {
+      const entry = this.listeners.get(listenerId)
+      if (entry) entry.status.status = entry.listener.state
     }
 
-    this.pushService.sendListenerLifecycle({
-      listenerId,
-      outputId: config.outputId,
-      sessionId: config.sessionId,
-      state: 'starting',
-      timestamp: now
-    })
+    lifecycle.start()
+        .then(postStart)
+        .catch(postStart);
 
-    const listener = this.createListener(
-      listenerId,
-      config,
-      outputConfig.type,
-      resolvedConfig,
-      awsProfile
-    )
-
-    this.listeners.set(listenerId, { listener, status })
-
-    listener
-      .start()
-      .then(() => {
-        const entry = this.listeners.get(listenerId)
-        if (entry) entry.status.status = 'running'
-      })
-      .catch((err: unknown) => {
-        const entry = this.listeners.get(listenerId)
-        if (entry) {
-          entry.status.status = 'error'
-          entry.status.lastError = err instanceof Error ? err.message : String(err)
-        }
-        this.pushService.sendListenerLifecycle({
-          listenerId,
-          outputId: config.outputId,
-          sessionId: config.sessionId,
-          previousState: 'starting',
-          state: 'error',
-          timestamp: new Date().toISOString(),
-          error: err instanceof Error ? err.message : String(err)
-        })
-      })
-
-    return { listenerId, status: 'starting' }
+    return { listenerId, status: this.listeners.get(listenerId)?.listener.state || 'error' }
   }
 
   /**
@@ -103,32 +63,9 @@ export class ListenerManagerService {
     const entry = this.listeners.get(listenerId)
     if (!entry) return
 
-    const previousState = entry.status.status
-    const stoppingTs = new Date().toISOString()
+    const lifecycle = entry.listener;
 
-    entry.status.status = 'stopping'
-    this.pushService.sendListenerLifecycle({
-      listenerId,
-      outputId: entry.status.outputId,
-      sessionId: entry.status.sessionId,
-      previousState,
-      state: 'stopping',
-      timestamp: stoppingTs
-    })
-
-    await entry.listener.stop()
-
-    const stoppedTs = new Date().toISOString()
-    entry.status.status = 'stopped'
-    entry.status.stoppedAt = stoppedTs
-    this.pushService.sendListenerLifecycle({
-      listenerId,
-      outputId: entry.status.outputId,
-      sessionId: entry.status.sessionId,
-      previousState: 'stopping',
-      state: 'stopped',
-      timestamp: stoppedTs
-    })
+    await lifecycle.stop();
   }
 
   /** Returns the current status of all tracked listeners. */
@@ -140,22 +77,6 @@ export class ListenerManagerService {
   async stopAll(): Promise<void> {
     const ids = Array.from(this.listeners.keys())
     await Promise.all(ids.map((id) => this.stopListener(id)))
-  }
-
-  private createListener(
-    listenerId: string,
-    config: ListenerConfig,
-    type: OutputConfig['type'],
-    resolvedConfig: KinesisConfig,
-    awsProfile: string
-  ): AnyListener {
-    if (type === 'kinesis') {
-      return new KinesisListener(
-        { listenerId, listenerConfig: config, kinesisConfig: resolvedConfig, awsProfile },
-        this.pushService
-      )
-    }
-    throw new Error(`Unsupported listener type: ${type}`)
   }
 
   private buildVariables(environment?: Environment): Record<string, string> {
