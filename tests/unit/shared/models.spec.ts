@@ -48,7 +48,6 @@ import type {
   ListenerConfig,
   ListenerLifecycleState,
   ListenerFilterMode,
-  ListenerCorrelationConfig,
   ListenerFilter,
   ListenerFilterType,
   JsonPathFilterConfig,
@@ -369,16 +368,6 @@ describe('shared models — Listener', () => {
       eventsReceived: 3
     }
     expectTypeOf(status).toMatchTypeOf<ListenerStatus>()
-  })
-
-  it('ListenerCorrelationConfig satisfies interface shape', () => {
-    const corr: ListenerCorrelationConfig = {
-      strategy: 'fromSentEvent',
-      receivedPath: '$.orderId',
-      sentEventId: 'sevt-1',
-      sentPath: '$.orderId'
-    }
-    expectTypeOf(corr).toMatchTypeOf<ListenerCorrelationConfig>()
   })
 
   it('ListenerLifecycleEvent satisfies interface shape', () => {
