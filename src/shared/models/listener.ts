@@ -5,15 +5,6 @@ export type ListenerFilterMode = 'all' | 'any';
 export type ListenerFilterType = 'jsonpath' | 'regex';
 export type ListenerStopReason = 'user-request' | 'session-ended' | 'app-shutdown' | 'fatal-error';
 
-export interface ListenerCorrelationConfig {
-  strategy: 'fromSentEvent' | 'static';
-  receivedPath: string; // JSONPath used on incoming events
-  sentEventId?: string; // required when strategy = 'fromSentEvent'
-  sentPath?: string; // required when strategy = 'fromSentEvent'
-  value?: string | number | boolean; // required when strategy = 'static'
-  caseSensitive?: boolean; // default: true
-}
-
 export interface JsonPathFilterConfig {
   path: string; // e.g. "$.header.eventType"
   operator: 'equals' | 'notEquals' | 'contains' | 'exists';
@@ -36,7 +27,6 @@ export interface ListenerFilter {
 export interface ListenerConfig {
   outputId: string; // FK → OutputConfig
   sessionId: string; // FK → Session (used for filter context)
-  correlation?: ListenerCorrelationConfig;
   filters?: ListenerFilter[];
   filterMode?: ListenerFilterMode; // default: 'all'
   includeUnmatched?: boolean; // default: false
