@@ -1,9 +1,11 @@
+export type ContentType = 'string' | 'json';
 export type InputType = 'kinesis' | 'sqs' | 'eventbridge';
 export type OutputType = 'kinesis' | 'sqs';
 
 export interface KinesisConfig {
   streamName: string; // supports {{ variable }} replacement
-  region: string; // supports {{ variable }} replacement
+  region?: string; // supports {{ variable }} replacement
+  pollInterval?: number;
 }
 
 export interface SqsConfig {
@@ -30,6 +32,7 @@ export interface OutputConfig {
   name: string;
   type: OutputType;
   config: KinesisConfig | SqsConfig;
+  contentType: ContentType;
 }
 
 export interface System {

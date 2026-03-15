@@ -1,0 +1,173 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { KinesisListener } from '../../../../src/main/cloud/kinesis/kinesis-listener'
+import type { MessageHandler } from '../../../../src/main/services/listeners/listener'
+
+const mockSend = vi.hoisted(() => vi.fn())
+const mockFromIni = vi.hoisted(() => vi.fn().mockReturnValue({ provider: 'ini' }))
+const mockRandomUUID = vi.hoisted(() => vi.fn(() => 'listener-fixed-id'))
+
+vi.mock('@aws-sdk/client-kinesis', () => ({
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  KinesisClient: vi.fn(function (this: any) {
+    this.send = mockSend
+  }),
+  DescribeStreamCommand: vi.fn(function (this: any, input: unknown) {
+    this.input = input
+  }),
+  GetShardIteratorCommand: vi.fn(function (this: any, input: unknown) {
+    this.input = input
+  }),
+  GetRecordsCommand: vi.fn(function (this: any, input: unknown) {
+    this.input = input
+  })
+  /* eslint-enable @typescript-eslint/no-explicit-any */
+}))
+
+vi.mock('@aws-sdk/credential-providers', () => ({
+  fromIni: mockFromIni
+}))
+
+vi.mock('crypto', () => ({
+  randomUUID: mockRandomUUID
+}))
+
+function createHandler(): MessageHandler {
+  return {
+    handle: vi.fn(),
+    onError: vi.fn()
+  }
+}
+
+function createListener() {
+  return new KinesisListener({
+    config: {
+      streamName: 'orders-stream',
+      region: 'us-east-1',
+      pollInterval: 0
+    },
+    awsProfile: 'dev-profile'
+  })
+}
+
+describe('KinesisListener', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('builds the client with region and fromIni profile credentials', () => {
+    createListener()
+
+    expect(mockFromIni).toHaveBeenCalledWith({ profile: 'dev-profile' })
+  })
+
+  it('polls records and forwards decoded message payloads to handler.handle', async () => {
+    mockSend
+      .mockResolvedValueOnce({
+        StreamDescription: { Shards: [{ ShardId: 'shard-000' }] }
+      })
+      .mockResolvedValueOnce({ ShardIterator: 'iter-1' })
+      .mockResolvedValueOnce({
+        Records: [
+          {
+            Data: Buffer.from('{"kind":"created"}', 'utf-8'),
+            SequenceNumber: 'seq-1',
+            PartitionKey: 'pk-1'
+          }
+        ],
+        NextShardIterator: 'iter-2'
+      })
+      .mockResolvedValue({ Records: [], NextShardIterator: 'iter-3' })
+
+    const listener = createListener()
+    const handler = createHandler()
+
+    await listener.start(handler)
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    await listener.stop()
+
+    expect(handler.handle).toHaveBeenCalledWith('listener-fixed-id', {
+      data: '{"kind":"created"}',
+      metadata: {
+        sequenceNumber: 'seq-1',
+        partitionKey: 'pk-1'
+      }
+    })
+  })
+
+  it('ignores records without Data', async () => {
+    mockSend
+      .mockResolvedValueOnce({ StreamDescription: { Shards: [{ ShardId: 'shard-001' }] } })
+      .mockResolvedValueOnce({ ShardIterator: 'iter-1' })
+      .mockResolvedValueOnce({
+        Records: [{ SequenceNumber: 'seq-1' }],
+        NextShardIterator: 'iter-2'
+      })
+      .mockResolvedValue({ Records: [], NextShardIterator: 'iter-3' })
+
+    const listener = createListener()
+    const handler = createHandler()
+
+    await listener.start(handler)
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    await listener.stop()
+
+    expect(handler.handle).not.toHaveBeenCalled()
+  })
+
+  it('reports recoverable ExpiredIteratorException and re-acquires iterator', async () => {
+    const expired = Object.assign(new Error('expired'), { name: 'ExpiredIteratorException' })
+
+    mockSend
+      .mockResolvedValueOnce({ StreamDescription: { Shards: [{ ShardId: 'shard-002' }] } })
+      .mockResolvedValueOnce({ ShardIterator: 'iter-1' })
+      .mockRejectedValueOnce(expired)
+      .mockResolvedValueOnce({ ShardIterator: 'iter-fresh' })
+      .mockResolvedValue({ Records: [], NextShardIterator: 'iter-next' })
+
+    const listener = createListener()
+    const handler = createHandler()
+
+    await listener.start(handler)
+    await new Promise((resolve) => setTimeout(resolve, 15))
+    await listener.stop()
+
+    expect(handler.onError).toHaveBeenCalledWith(
+      'listener-fixed-id',
+      expect.objectContaining({
+        name: 'ExpiredIteratorException',
+        recoverable: true,
+        metadata: { shardId: 'shard-002' }
+      })
+    )
+
+    const iteratorCalls = mockSend.mock.calls.filter((args) => {
+      const cmd = args[0] as { input?: { ShardIteratorType?: string } }
+      return cmd.input?.ShardIteratorType === 'LATEST'
+    })
+    expect(iteratorCalls.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('reports non-recoverable polling errors through handler.onError', async () => {
+    const fatal = Object.assign(new Error('InternalFailure'), { name: 'InternalFailure' })
+
+    mockSend
+      .mockResolvedValueOnce({ StreamDescription: { Shards: [{ ShardId: 'shard-003' }] } })
+      .mockResolvedValueOnce({ ShardIterator: 'iter-1' })
+      .mockRejectedValueOnce(fatal)
+
+    const listener = createListener()
+    const handler = createHandler()
+
+    await listener.start(handler)
+    await new Promise((resolve) => setTimeout(resolve, 10))
+
+    expect(handler.onError).toHaveBeenCalledWith(
+      'listener-fixed-id',
+      expect.objectContaining({
+        name: 'InternalFailure',
+        recoverable: false,
+        metadata: { shardId: 'shard-003' }
+      })
+    )
+  })
+})
