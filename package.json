@@ -24,8 +24,10 @@
     "@aws-sdk/credential-providers": "^3.1007.0",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
+    "@faker-js/faker": "^10.3.0",
     "electron-updater": "^6.3.9",
     "pinia": "^3.0.4",
+    "randexp": "^0.5.3",
     "uuid": "^11.1.0",
     "vue": "^3.5.13"
   },
