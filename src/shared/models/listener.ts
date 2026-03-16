@@ -25,6 +25,7 @@ export interface ListenerFilter {
 }
 
 export interface ListenerConfig {
+  systemId: string; // FK → System
   outputId: string; // FK → OutputConfig
   sessionId: string; // FK → Session (used for filter context)
   filters?: ListenerFilter[];

@@ -7,11 +7,14 @@ import { CustomTypesApi } from './custom-types'
 import { SessionsApi } from './sessions'
 import { TemplatesApi } from './templates'
 import { ProfilesApi } from './profiles'
+import { ListenersApi } from './listeners'
 import { StorageService } from '../services/storage'
 import { SettingsService } from '../services/settings.service'
 
 const storage = new StorageService()
 const settings = new SettingsService(storage)
+
+export const listenersApi = new ListenersApi(storage, settings)
 
 const apis = [
   new AppApi(settings),
@@ -21,7 +24,8 @@ const apis = [
   new CustomTypesApi(storage, settings),
   new SessionsApi(storage, settings),
   new TemplatesApi(storage, settings),
-  new ProfilesApi(storage, settings)
+  new ProfilesApi(storage, settings),
+  listenersApi
 ]
 
 export default new ApiRegistry(

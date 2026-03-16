@@ -5,6 +5,7 @@ import type { ListenerLifecycle } from '../../../../src/main/services/listeners/
 
 function makeListenerConfig(overrides: Partial<ListenerConfig> = {}): ListenerConfig {
   return {
+    systemId: 'sys-1',
     outputId: 'output-1',
     sessionId: 'session-1',
     ...overrides
