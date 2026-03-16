@@ -5,6 +5,7 @@ import {PushService} from "../push.service";
 import {ConverterFactory} from "./converter";
 import {AggregateFilter, FilterFactory} from "./filter";
 import {DefaultListenerLifecycle, DefaultMessageHandler, Listener, ListenerLifecycle} from "./listener";
+import type { LogService } from "../log.service";
 
 export class ListenerFactory {
 
@@ -39,6 +40,7 @@ export class ListenerLifecycleFactory {
         private readonly listenerFactory: ListenerFactory,
         private readonly converterFactory: ConverterFactory,
         private readonly filterFactory: FilterFactory,
+        private readonly logger?: LogService,
     ) {}
 
     async create(config: ListenerLifecycleConfig): Promise<ListenerLifecycle> {
@@ -48,9 +50,9 @@ export class ListenerLifecycleFactory {
         const filter = this.createAggregateFilter(listenerConfig);
         const listener = this.listenerFactory.create(outputConfig);
 
-        const handler = new DefaultMessageHandler(listenerConfig, this.channel, filter, converter);
+        const handler = new DefaultMessageHandler(listenerConfig, this.channel, filter, converter, this.logger);
 
-        return new DefaultListenerLifecycle(listener, listenerConfig, handler, this.channel);
+        return new DefaultListenerLifecycle(listener, listenerConfig, handler, this.channel, this.logger);
     }
 
     private createAggregateFilter(config: ListenerConfig) {

@@ -1,6 +1,7 @@
 import type { AppSettings } from '../../shared/models'
 import { SettingsService } from './settings.service'
 import { StoragePaths, StorageService } from './storage'
+import type { LogService } from './log.service'
 
 export enum PutMode {
   MERGE,
@@ -16,7 +17,8 @@ type CloudBackedAppSettings = AppSettings & {
 export class CloudService {
   constructor(
     private readonly storage: StorageService,
-    private readonly settings: SettingsService
+    private readonly settings: SettingsService,
+    private readonly logger?: LogService,
   ) {}
 
   async get(platform: string, key?: string): Promise<any> {
@@ -62,6 +64,7 @@ export class CloudService {
       }
     }
 
+    await this.logger?.info('aws', `Updating ${platform} cloud settings`)
     await this.storage.write(StoragePaths.settings(current.dataDirectory), nextSettings)
   }
 

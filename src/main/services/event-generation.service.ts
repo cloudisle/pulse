@@ -14,6 +14,7 @@ import {
   ConstantConfig,
   TemplateConfig
 } from '../../shared/models/generation'
+import type { LogService } from './log.service'
 
 export interface GenerateEventProps {
   environment?: Environment
@@ -24,7 +25,7 @@ export interface GenerateEventProps {
 export class EventGenerationService {
   private readonly varReplacement: VariableReplacementService
 
-  constructor() {
+  constructor(private readonly logger?: LogService) {
     this.varReplacement = new VariableReplacementService()
   }
 
@@ -33,6 +34,13 @@ export class EventGenerationService {
     schema: Schema,
     props: GenerateEventProps
   ): Promise<GeneratedEvent> {
+    await this.logger?.info(
+      'events',
+      input.profileIds?.length
+        ? `Generating event from schema ${schema.id} with profiles [${input.profileIds.join(', ')}]`
+        : `Generating event from schema ${schema.id}`
+    )
+
     const profileOverrides = this.resolveProfiles(
       input.profileIds ?? [],
       props.profiles ?? []

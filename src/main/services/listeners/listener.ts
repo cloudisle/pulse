@@ -1,6 +1,7 @@
 import {ListenerConfig, ListenerLifecycleState, SessionEvent} from "../../../shared/models";
 import {PushService} from "../push.service";
 import {randomUUID} from "crypto";
+import type { LogService } from "../log.service";
 
 export interface RawMessage {
     data: string;
@@ -55,6 +56,7 @@ export class DefaultMessageHandler implements MessageHandler {
         private readonly channel: PushService,
         private readonly filter: MessageFilter,
         private readonly converter: MessageConverter,
+        private readonly logger?: LogService,
     ) {
     }
 
@@ -64,6 +66,12 @@ export class DefaultMessageHandler implements MessageHandler {
         if (!this.filter.matches(message)) {
             return;
         }
+
+        void this.logger?.debug(
+            'listeners',
+            `Listener ${listenerId} data received`,
+            { sessionId: this.config.sessionId }
+        )
 
         const sessionEvent: SessionEvent = {
             id: randomUUID(),
@@ -88,6 +96,15 @@ export class DefaultMessageHandler implements MessageHandler {
     }
 
     onError(listenerId: string, error: any): void {
+        void this.logger?.error(
+            'listeners',
+            `Listener ${listenerId} error: ${error.message}`,
+            {
+                sessionId: this.config.sessionId,
+                metadata: { recoverable: error.recoverable ?? false }
+            }
+        )
+
         this.channel.sendListenerError({
             listenerId,
             error: error.message,
@@ -106,7 +123,8 @@ export class DefaultListenerLifecycle implements ListenerLifecycle {
         readonly listener: Listener,
         readonly config: ListenerConfig,
         private readonly handler: MessageHandler,
-        private readonly channel: PushService
+        private readonly channel: PushService,
+        private readonly logger?: LogService,
     ) {
         this._state = 'stopped';
     }
@@ -147,6 +165,26 @@ export class DefaultListenerLifecycle implements ListenerLifecycle {
             state: s,
             timestamp: new Date().toISOString()
         });
+
+        if (s === 'running') {
+            void this.logger?.info(
+                'listeners',
+                `Listener ${this.listener.id} started`,
+                { sessionId: this.config.sessionId }
+            )
+        } else if (s === 'stopped') {
+            void this.logger?.info(
+                'listeners',
+                `Listener ${this.listener.id} stopped`,
+                { sessionId: this.config.sessionId }
+            )
+        } else if (s === 'error') {
+            void this.logger?.error(
+                'listeners',
+                `Listener ${this.listener.id} failed to start`,
+                { sessionId: this.config.sessionId }
+            )
+        }
 
         this._state = s;
     }
