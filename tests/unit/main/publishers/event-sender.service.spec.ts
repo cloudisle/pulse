@@ -1,27 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { EventSenderService } from '../../../src/main/services/event-sender.service'
-import { StorageService, StoragePaths } from '../../../src/main/services/storage'
-import { SettingsService } from '../../../src/main/services/settings.service'
-import { VariableReplacementService } from '../../../src/main/services/variable-replacement.service'
-import { AwsClientFactory } from '../../../src/main/services/aws-client.factory'
-import type { InputConfig, Environment } from '../../../src/shared/models'
-import type { SendEventInput, GeneratedEvent } from '../../../src/shared/models'
-import {
-  PutRecordCommand,
-  KinesisClient
-} from '@aws-sdk/client-kinesis'
-import {
-  SendMessageCommand,
-  SQSClient
-} from '@aws-sdk/client-sqs'
-import {
-  PutEventsCommand,
-  EventBridgeClient
-} from '@aws-sdk/client-eventbridge'
-
-vi.mock('@aws-sdk/credential-providers', () => ({
-  fromIni: vi.fn().mockReturnValue({})
-}))
+import { GeneratedEvent, InputConfig, Environment, SendEventInput } from '../../../../src/shared/models'
+import { StoragePaths, StorageService } from '../../../../src/main/services/storage'
+import { SettingsService } from '../../../../src/main/services/settings.service'
+import { VariableReplacementService } from '../../../../src/main/services/variable-replacement.service'
+import { EventSenderService } from '../../../../src/main/services/publishers/event-sender.service'
 
 const DATA_DIR = '/test/data'
 const SYSTEM_ID = 'system-1'
@@ -105,16 +87,16 @@ describe('EventSenderService', () => {
   let storage: StorageService
   let settings: SettingsService
   let variableReplacement: VariableReplacementService
-  let awsClientFactory: AwsClientFactory
   let service: EventSenderService
-  let mockKinesisSend: ReturnType<typeof vi.fn>
-  let mockSqsSend: ReturnType<typeof vi.fn>
-  let mockEventBridgeSend: ReturnType<typeof vi.fn>
+  let factory: { create: ReturnType<typeof vi.fn> }
+  let mockKinesisPublish: ReturnType<typeof vi.fn>
+  let mockSqsPublish: ReturnType<typeof vi.fn>
+  let mockEventBridgePublish: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
-    mockKinesisSend = vi.fn()
-    mockSqsSend = vi.fn()
-    mockEventBridgeSend = vi.fn()
+    mockKinesisPublish = vi.fn()
+    mockSqsPublish = vi.fn()
+    mockEventBridgePublish = vi.fn()
 
     storage = {
       write: vi.fn().mockResolvedValue(undefined),
@@ -131,68 +113,74 @@ describe('EventSenderService', () => {
 
     variableReplacement = new VariableReplacementService()
 
-    awsClientFactory = {
-      createKinesisClient: vi.fn().mockReturnValue({ send: mockKinesisSend } as unknown as KinesisClient),
-      createSqsClient: vi.fn().mockReturnValue({ send: mockSqsSend } as unknown as SQSClient),
-      createEventBridgeClient: vi.fn().mockReturnValue({ send: mockEventBridgeSend } as unknown as EventBridgeClient)
-    } as unknown as AwsClientFactory
+    factory = {
+      create: vi.fn((config: InputConfig) => {
+        if (config.type === 'kinesis') return { id: 'kinesis-publisher', publish: mockKinesisPublish }
+        if (config.type === 'sqs') return { id: 'sqs-publisher', publish: mockSqsPublish }
+        if (config.type === 'eventbridge') {
+          return { id: 'eventbridge-publisher', publish: mockEventBridgePublish }
+        }
+        throw new Error(`Unsupported input type: ${String((config as { type?: string }).type)}`)
+      })
+    }
 
-    service = new EventSenderService(storage, settings, variableReplacement, awsClientFactory)
+    service = new EventSenderService(storage, settings, factory as any, variableReplacement)
   })
 
   describe('Kinesis', () => {
-    it('calls PutRecord with the resolved stream name and a partition key', async () => {
-      mockKinesisSend.mockResolvedValueOnce({ SequenceNumber: 'seq-1', ShardId: 'shard-0' })
+    it('creates a kinesis publisher with the resolved stream name', async () => {
+      mockKinesisPublish.mockResolvedValueOnce({ id: 'evt-1', SequenceNumber: 'seq-1', ShardId: 'shard-0' })
       const input = makeSendEventInput()
       const inputConfig = makeKinesisInputConfig()
 
       const result = await service.sendEvent(SYSTEM_ID, input, inputConfig)
 
-      expect(awsClientFactory.createKinesisClient).toHaveBeenCalledWith(AWS_PROFILE, 'us-east-1')
-      const callArg = mockKinesisSend.mock.calls[0][0]
-      expect(callArg).toBeInstanceOf(PutRecordCommand)
-      expect(callArg.input.StreamName).toBe('orders-stream')
-      expect(callArg.input.Data).toBeInstanceOf(Buffer)
-      expect(callArg.input.PartitionKey).toBeDefined()
-      expect(typeof callArg.input.PartitionKey).toBe('string')
+      expect(factory.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'kinesis',
+          config: expect.objectContaining({ streamName: 'orders-stream', region: 'us-east-1' })
+        })
+      )
       expect(result.success).toBe(true)
-      expect(result.metadata).toEqual({ SequenceNumber: 'seq-1', ShardId: 'shard-0' })
+      expect(result.metadata).toEqual({ id: 'evt-1', SequenceNumber: 'seq-1', ShardId: 'shard-0' })
     })
 
     it('applies variable replacement to the stream name', async () => {
-      mockKinesisSend.mockResolvedValueOnce({ SequenceNumber: 'seq-1', ShardId: 'shard-0' })
+      mockKinesisPublish.mockResolvedValueOnce({ id: 'evt-1', SequenceNumber: 'seq-1', ShardId: 'shard-0' })
       const inputConfig = makeKinesisInputConfig({ streamName: '{{ env }}-orders-stream' })
       const environment = makeEnvironment({ env: 'dev' })
 
       await service.sendEvent(SYSTEM_ID, makeSendEventInput(), inputConfig, environment)
 
-      const callArg = mockKinesisSend.mock.calls[0][0]
-      expect(callArg.input.StreamName).toBe('dev-orders-stream')
+      expect(factory.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          config: expect.objectContaining({ streamName: 'dev-orders-stream' })
+        })
+      )
     })
 
-    it('serializes the event payload as JSON in the Data field', async () => {
-      mockKinesisSend.mockResolvedValueOnce({ SequenceNumber: 'seq-1', ShardId: 'shard-0' })
+    it('serializes the event payload as JSON before publish', async () => {
+      mockKinesisPublish.mockResolvedValueOnce({ id: 'evt-1', SequenceNumber: 'seq-1', ShardId: 'shard-0' })
       const event = makeGeneratedEvent({ payload: { orderId: 'abc', amount: 42 } })
       const input = makeSendEventInput({ event })
 
       await service.sendEvent(SYSTEM_ID, input, makeKinesisInputConfig())
 
-      const callArg = mockKinesisSend.mock.calls[0][0]
-      expect(callArg.input.Data.toString()).toBe(JSON.stringify({ orderId: 'abc', amount: 42 }))
+      expect(mockKinesisPublish).toHaveBeenCalledWith(JSON.stringify({ orderId: 'abc', amount: 42 }))
     })
 
     it('returns success=true and sessionEventId on success', async () => {
-      mockKinesisSend.mockResolvedValueOnce({ SequenceNumber: 'seq-42', ShardId: 'shard-1' })
+      mockKinesisPublish.mockResolvedValueOnce({ id: 'evt-42', SequenceNumber: 'seq-42', ShardId: 'shard-1' })
 
       const result = await service.sendEvent(SYSTEM_ID, makeSendEventInput(), makeKinesisInputConfig())
 
       expect(result.success).toBe(true)
-      expect(typeof result.sessionEventId).toBe('string')
+      expect(result.sessionEventId).toBe('evt-42')
       expect(result.error).toBeUndefined()
     })
 
-    it('returns success=false with error message when PutRecord fails', async () => {
-      mockKinesisSend.mockRejectedValueOnce(new Error('ResourceNotFoundException'))
+    it('returns success=false with error message when publish fails', async () => {
+      mockKinesisPublish.mockRejectedValueOnce(new Error('ResourceNotFoundException'))
 
       const result = await service.sendEvent(SYSTEM_ID, makeSendEventInput(), makeKinesisInputConfig())
 
@@ -203,35 +191,45 @@ describe('EventSenderService', () => {
   })
 
   describe('SQS', () => {
-    it('calls SendMessage with the resolved queue URL and JSON-serialized body', async () => {
-      mockSqsSend.mockResolvedValueOnce({ MessageId: 'msg-1' })
+    it('creates an sqs publisher with the resolved queue URL and sends JSON payload', async () => {
+      mockSqsPublish.mockResolvedValueOnce({ id: 'evt-sqs-1', MessageId: 'msg-1' })
       const input = makeSendEventInput()
       const inputConfig = makeSqsInputConfig()
 
       const result = await service.sendEvent(SYSTEM_ID, input, inputConfig)
 
-      expect(awsClientFactory.createSqsClient).toHaveBeenCalledWith(AWS_PROFILE, 'us-east-1')
-      const callArg = mockSqsSend.mock.calls[0][0]
-      expect(callArg).toBeInstanceOf(SendMessageCommand)
-      expect(callArg.input.QueueUrl).toBe('https://sqs.us-east-1.amazonaws.com/123456789/my-queue')
-      expect(callArg.input.MessageBody).toBe(JSON.stringify(input.event.payload))
+      expect(factory.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'sqs',
+          config: expect.objectContaining({
+            queueUrl: 'https://sqs.us-east-1.amazonaws.com/123456789/my-queue',
+            region: 'us-east-1'
+          })
+        })
+      )
+      expect(mockSqsPublish).toHaveBeenCalledWith(JSON.stringify(input.event.payload))
       expect(result.success).toBe(true)
-      expect(result.metadata).toEqual({ MessageId: 'msg-1' })
+      expect(result.metadata).toEqual({ id: 'evt-sqs-1', MessageId: 'msg-1' })
     })
 
     it('applies variable replacement to the queue URL', async () => {
-      mockSqsSend.mockResolvedValueOnce({ MessageId: 'msg-1' })
+      mockSqsPublish.mockResolvedValueOnce({ id: 'evt-sqs-1', MessageId: 'msg-1' })
       const inputConfig = makeSqsInputConfig({ queueUrl: 'https://sqs.us-east-1.amazonaws.com/{{ accountId }}/my-queue' })
       const environment = makeEnvironment({ accountId: '999888777' })
 
       await service.sendEvent(SYSTEM_ID, makeSendEventInput(), inputConfig, environment)
 
-      const callArg = mockSqsSend.mock.calls[0][0]
-      expect(callArg.input.QueueUrl).toBe('https://sqs.us-east-1.amazonaws.com/999888777/my-queue')
+      expect(factory.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          config: expect.objectContaining({
+            queueUrl: 'https://sqs.us-east-1.amazonaws.com/999888777/my-queue'
+          })
+        })
+      )
     })
 
-    it('returns success=false with error message when SendMessage fails', async () => {
-      mockSqsSend.mockRejectedValueOnce(new Error('QueueDoesNotExist'))
+    it('returns success=false with error message when publish fails', async () => {
+      mockSqsPublish.mockRejectedValueOnce(new Error('QueueDoesNotExist'))
 
       const result = await service.sendEvent(SYSTEM_ID, makeSendEventInput(), makeSqsInputConfig())
 
@@ -241,29 +239,31 @@ describe('EventSenderService', () => {
   })
 
   describe('EventBridge', () => {
-    it('calls PutEvents with resolved bus name, source, detail type, and JSON detail', async () => {
-      mockEventBridgeSend.mockResolvedValueOnce({
-        Entries: [{ EventId: 'evt-1' }]
-      })
+    it('creates an eventbridge publisher with resolved config and sends JSON payload', async () => {
+      mockEventBridgePublish.mockResolvedValueOnce({ id: 'evt-eb-1', EventId: 'evt-1' })
       const input = makeSendEventInput()
       const inputConfig = makeEventBridgeInputConfig()
 
       const result = await service.sendEvent(SYSTEM_ID, input, inputConfig)
 
-      expect(awsClientFactory.createEventBridgeClient).toHaveBeenCalledWith(AWS_PROFILE, 'us-east-1')
-      const callArg = mockEventBridgeSend.mock.calls[0][0]
-      expect(callArg).toBeInstanceOf(PutEventsCommand)
-      const entry = callArg.input.Entries[0]
-      expect(entry.EventBusName).toBe('my-event-bus')
-      expect(entry.Source).toBe('com.myapp.orders')
-      expect(entry.DetailType).toBe('OrderCreated')
-      expect(entry.Detail).toBe(JSON.stringify(input.event.payload))
+      expect(factory.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'eventbridge',
+          config: expect.objectContaining({
+            eventBusName: 'my-event-bus',
+            source: 'com.myapp.orders',
+            detailType: 'OrderCreated',
+            region: 'us-east-1'
+          })
+        })
+      )
+      expect(mockEventBridgePublish).toHaveBeenCalledWith(JSON.stringify(input.event.payload))
       expect(result.success).toBe(true)
-      expect(result.metadata).toEqual({ EventId: 'evt-1' })
+      expect(result.metadata).toEqual({ id: 'evt-eb-1', EventId: 'evt-1' })
     })
 
     it('applies variable replacement to all EventBridge config fields', async () => {
-      mockEventBridgeSend.mockResolvedValueOnce({ Entries: [{ EventId: 'evt-1' }] })
+      mockEventBridgePublish.mockResolvedValueOnce({ id: 'evt-eb-1', EventId: 'evt-1' })
       const inputConfig = makeEventBridgeInputConfig({
         eventBusName: '{{ env }}-event-bus',
         source: '{{ appName }}.orders',
@@ -277,15 +277,19 @@ describe('EventSenderService', () => {
 
       await service.sendEvent(SYSTEM_ID, makeSendEventInput(), inputConfig, environment)
 
-      const callArg = mockEventBridgeSend.mock.calls[0][0]
-      const entry = callArg.input.Entries[0]
-      expect(entry.EventBusName).toBe('staging-event-bus')
-      expect(entry.Source).toBe('myapp.orders')
-      expect(entry.DetailType).toBe('OrderPlaced')
+      expect(factory.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          config: expect.objectContaining({
+            eventBusName: 'staging-event-bus',
+            source: 'myapp.orders',
+            detailType: 'OrderPlaced'
+          })
+        })
+      )
     })
 
-    it('returns success=false with error message when PutEvents fails', async () => {
-      mockEventBridgeSend.mockRejectedValueOnce(new Error('ResourceNotFoundException'))
+    it('returns success=false with error message when publish fails', async () => {
+      mockEventBridgePublish.mockRejectedValueOnce(new Error('ResourceNotFoundException'))
 
       const result = await service.sendEvent(SYSTEM_ID, makeSendEventInput(), makeEventBridgeInputConfig())
 
@@ -296,7 +300,7 @@ describe('EventSenderService', () => {
 
   describe('Session event recording', () => {
     it('persists a SessionEvent with direction sent and status success on success', async () => {
-      mockKinesisSend.mockResolvedValueOnce({ SequenceNumber: 'seq-1', ShardId: 'shard-0' })
+      mockKinesisPublish.mockResolvedValueOnce({ id: 'evt-1', SequenceNumber: 'seq-1', ShardId: 'shard-0' })
       const input = makeSendEventInput()
 
       const result = await service.sendEvent(SYSTEM_ID, input, makeKinesisInputConfig())
@@ -309,14 +313,14 @@ describe('EventSenderService', () => {
           direction: 'sent',
           inputId: input.inputId,
           schemaId: SCHEMA_ID,
-          payload: input.event.payload,
+          payload: JSON.stringify(input.event.payload),
           status: 'success'
         })
       )
     })
 
     it('persists a SessionEvent with status failed and error on failure', async () => {
-      mockKinesisSend.mockRejectedValueOnce(new Error('ProvisionedThroughputExceededException'))
+      mockKinesisPublish.mockRejectedValueOnce(new Error('ProvisionedThroughputExceededException'))
       const input = makeSendEventInput()
 
       const result = await service.sendEvent(SYSTEM_ID, input, makeKinesisInputConfig())
@@ -331,7 +335,7 @@ describe('EventSenderService', () => {
     })
 
     it('includes cloud metadata in the SessionEvent on success', async () => {
-      mockSqsSend.mockResolvedValueOnce({ MessageId: 'msg-99' })
+      mockSqsPublish.mockResolvedValueOnce({ id: 'evt-sqs-99', MessageId: 'msg-99' })
       const input = makeSendEventInput()
 
       const result = await service.sendEvent(SYSTEM_ID, input, makeSqsInputConfig())
@@ -339,13 +343,13 @@ describe('EventSenderService', () => {
       expect(storage.write).toHaveBeenCalledWith(
         StoragePaths.sessionEvent(DATA_DIR, SYSTEM_ID, SESSION_ID, result.sessionEventId),
         expect.objectContaining({
-          metadata: { MessageId: 'msg-99' }
+          metadata: expect.objectContaining({ MessageId: 'msg-99' })
         })
       )
     })
 
     it('persists a SessionEvent even when the send fails', async () => {
-      mockKinesisSend.mockRejectedValueOnce(new Error('Timeout'))
+      mockKinesisPublish.mockRejectedValueOnce(new Error('Timeout'))
 
       await service.sendEvent(SYSTEM_ID, makeSendEventInput(), makeKinesisInputConfig())
 
@@ -353,7 +357,7 @@ describe('EventSenderService', () => {
     })
 
     it('includes appliedProfiles in the SessionEvent', async () => {
-      mockKinesisSend.mockResolvedValueOnce({ SequenceNumber: 'seq-1', ShardId: 'shard-0' })
+      mockKinesisPublish.mockResolvedValueOnce({ id: 'evt-1', SequenceNumber: 'seq-1', ShardId: 'shard-0' })
       const event = makeGeneratedEvent({ appliedProfiles: ['profile-A', 'profile-B'] })
       const input = makeSendEventInput({ event })
 
@@ -368,23 +372,30 @@ describe('EventSenderService', () => {
 
   describe('Variable replacement', () => {
     it('does not apply variable replacement when no environment is provided', async () => {
-      mockKinesisSend.mockResolvedValueOnce({ SequenceNumber: 'seq-1', ShardId: 'shard-0' })
+      mockKinesisPublish.mockResolvedValueOnce({ id: 'evt-1', SequenceNumber: 'seq-1', ShardId: 'shard-0' })
       const inputConfig = makeKinesisInputConfig({ streamName: '{{ env }}-stream' })
 
       await service.sendEvent(SYSTEM_ID, makeSendEventInput(), inputConfig)
 
-      const callArg = mockKinesisSend.mock.calls[0][0]
-      expect(callArg.input.StreamName).toBe('{{ env }}-stream')
+      expect(factory.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          config: expect.objectContaining({ streamName: '{{ env }}-stream' })
+        })
+      )
     })
 
     it('applies variable replacement to the region field', async () => {
-      mockKinesisSend.mockResolvedValueOnce({ SequenceNumber: 'seq-1', ShardId: 'shard-0' })
+      mockKinesisPublish.mockResolvedValueOnce({ id: 'evt-1', SequenceNumber: 'seq-1', ShardId: 'shard-0' })
       const inputConfig = makeKinesisInputConfig({ streamName: 'orders', region: '{{ region }}' })
       const environment = makeEnvironment({ region: 'ap-southeast-2' })
 
       await service.sendEvent(SYSTEM_ID, makeSendEventInput(), inputConfig, environment)
 
-      expect(awsClientFactory.createKinesisClient).toHaveBeenCalledWith(AWS_PROFILE, 'ap-southeast-2')
+      expect(factory.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          config: expect.objectContaining({ region: 'ap-southeast-2' })
+        })
+      )
     })
   })
 })
