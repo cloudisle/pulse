@@ -1,7 +1,8 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import Api from './api'
+import Api, { eventsApi } from './api'
+import { PushService } from './services/push.service'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -17,6 +18,7 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
+    eventsApi.setPushService(new PushService(mainWindow))
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
