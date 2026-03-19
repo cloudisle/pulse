@@ -24,6 +24,7 @@ import {SchemasApi} from "../../main/api/schemas";
 import {SystemsApi} from "../../main/api/systems";
 import {AppApi} from "../../main/api/app";
 import {SessionsApi} from "../../main/api/sessions";
+import {AwsApi} from "../../main/api/aws";
 
 export interface IElectronAPI {
   platform: string
@@ -36,6 +37,7 @@ export interface IElectronAPI {
   templates: TemplatesApi
   customTypes: CustomTypesApi
   sessions: SessionsApi
+  aws: AwsApi
 
   listeners: {
     onLifecycle(callback: (event: ListenerLifecycleEvent) => void): () => void

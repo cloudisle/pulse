@@ -7,6 +7,7 @@ import { CustomTypesApi } from './custom-types'
 import { SessionsApi } from './sessions'
 import { TemplatesApi } from './templates'
 import { ProfilesApi } from './profiles'
+import { AwsApi } from './aws'
 import { StorageService } from '../services/storage'
 import { SettingsService } from '../services/settings.service'
 
@@ -21,7 +22,8 @@ const apis = [
   new CustomTypesApi(storage, settings),
   new SessionsApi(storage, settings),
   new TemplatesApi(storage, settings),
-  new ProfilesApi(storage, settings)
+  new ProfilesApi(storage, settings),
+  new AwsApi()
 ]
 
 export default new ApiRegistry(
