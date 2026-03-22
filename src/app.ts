@@ -17,6 +17,7 @@ import {BrowserWindow} from "electron";
 import {CloudService} from "./main/services/cloud.service";
 import {ConverterFactory} from "./main/services/listeners/converter";
 import {FilterFactory} from "./main/services/listeners/filter";
+import {AwsApi} from "./main/api/aws";
 
 const storage = new StorageService();
 const settings = new SettingsService(storage);
@@ -39,6 +40,7 @@ const lifecycleFactoryProvider = (window: BrowserWindow) => {
 export default app({
     apis: {
         app: api(new AppApi(settings)),
+        aws: api(new AwsApi()),
         systems: api(new SystemsApi(storage, settings)),
         schemas: api(new SchemasApi(storage, settings)),
         environments: api(new EnvironmentsApi(storage, settings)),
