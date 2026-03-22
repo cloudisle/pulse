@@ -1,6 +1,5 @@
 import { randomUUID } from 'crypto'
 import path from 'path'
-import type { Api } from '../../shared/api'
 import { StorageService, StoragePaths } from '../services/storage'
 import { SettingsService } from '../services/settings.service'
 import type {
@@ -12,8 +11,7 @@ import type {
 import type { Schema, SchemaElement } from '../../shared/models/schema'
 import type { CreateTemplateInput, UpdateTemplateInput } from '../../shared/dto/templates'
 
-export class TemplatesApi implements Api {
-  readonly api = 'templates'
+export class TemplatesApi {
 
   constructor(
     private readonly storage: StorageService,

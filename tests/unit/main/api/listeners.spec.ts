@@ -26,6 +26,7 @@ let storage: StorageService
 let settings: SettingsService
 let listenerManager: ListenerManagerService
 let api: ListenersApi
+let lifecycleFactoryProvider: ReturnType<typeof vi.fn>
 
 const SYS_ID = 'sys-1'
 const OUTPUT_ID = 'out-1'
@@ -86,8 +87,10 @@ beforeEach(async () => {
     stopAll: vi.fn().mockResolvedValue(undefined)
   } as unknown as ListenerManagerService
 
-  api = new ListenersApi(storage, settings)
-  api.setListenerManager(listenerManager)
+  lifecycleFactoryProvider = vi.fn().mockReturnValue({} as any)
+
+  api = new ListenersApi(storage, settings, lifecycleFactoryProvider)
+  ;(api as any).manager = listenerManager
 })
 
 afterEach(async () => {
@@ -134,7 +137,7 @@ describe('ListenersApi — start', () => {
   })
 
   it('throws when listenerManager is not initialized', async () => {
-    const uninitializedApi = new ListenersApi(storage, settings)
+    const uninitializedApi = new ListenersApi(storage, settings, lifecycleFactoryProvider)
 
     await expect(uninitializedApi.start(makeListenerConfig())).rejects.toThrow(
       'ListenerManagerService not initialized'
@@ -158,7 +161,7 @@ describe('ListenersApi — stop', () => {
   })
 
   it('throws when listenerManager is not initialized', async () => {
-    const uninitializedApi = new ListenersApi(storage, settings)
+    const uninitializedApi = new ListenersApi(storage, settings, lifecycleFactoryProvider)
 
     await expect(uninitializedApi.stop(LISTENER_ID)).rejects.toThrow(
       'ListenerManagerService not initialized'
@@ -192,7 +195,7 @@ describe('ListenersApi — status', () => {
   })
 
   it('throws when listenerManager is not initialized', async () => {
-    const uninitializedApi = new ListenersApi(storage, settings)
+    const uninitializedApi = new ListenersApi(storage, settings, lifecycleFactoryProvider)
 
     await expect(uninitializedApi.status()).rejects.toThrow(
       'ListenerManagerService not initialized'

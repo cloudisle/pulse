@@ -10,7 +10,7 @@ Pulse uses Electron's IPC (Inter-Process Communication) to bridge the **Main Pro
 |---|---|
 | **Main** | File system (read/write JSON configs), AWS SDK operations (Kinesis, SQS, EventBridge), listener lifecycle management, AWS profile discovery, session persistence, logging |
 | **Renderer** | Vue.js UI, Pinia state management, user interactions, displaying streamed listener data and logs |
-| **Preload** | Exposes a typed `window.api` object via `contextBridge`. All IPC calls are wrapped in typed functions — the renderer never imports `ipcRenderer` directly. |
+| **Preload** | Exposes a typed `window.app` object via `contextBridge`, split into `window.app.api` (request/response methods) and `window.app.channels` (push/listen channels). |
 
 #### Communication Patterns
 
@@ -22,7 +22,7 @@ Pulse uses Electron's IPC (Inter-Process Communication) to bridge the **Main Pro
 
 #### IPC Channels
 
-Channels are namespaced by domain using a colon-delimited convention: `domain:action`.
+Logical operations are still grouped by domain, but runtime identifiers are now generated as dotted paths: `api.<domain>.<method>` and `channels.<domain>.<event>`.
 
 ##### System Management — `systems:*`
 | Channel | Pattern | Description |
@@ -92,22 +92,21 @@ Channels are namespaced by domain using a colon-delimited convention: `domain:ac
 ##### Listener Management — `listeners:*`
 | Channel | Pattern | Description |
 |---|---|---|
-| `listeners:start` | invoke/handle | Start a listener (Kinesis/SQS) with correlation/filter config; returns start result |
-| `listeners:stop` | invoke/handle | Stop an active listener by ID |
-| `listeners:status` | invoke/handle | Get the status of all active listeners |
-| `listeners:lifecycle` | main→renderer push | Lifecycle transition event (`starting` / `running` / `stopping` / `stopped` / `error`) |
-| `listeners:data` | main→renderer push | Streamed data from an active listener (filtered by session context) |
-| `listeners:error` | main→renderer push | Listener error notification |
+| `api.listeners.start` | invoke/handle | Start a listener (Kinesis/SQS) with correlation/filter config; returns start result |
+| `api.listeners.stop` | invoke/handle | Stop an active listener by ID |
+| `api.listeners.status` | invoke/handle | Get the status of all active listeners |
+| `channels.listeners.lifecycle` | main→renderer push | Lifecycle transition event (`starting` / `running` / `stopping` / `stopped` / `error`) |
+| `channels.listeners.data` | main→renderer push | Streamed data from an active listener (filtered by session context) |
+| `channels.listeners.error` | main→renderer push | Listener error notification |
 
-###### Listener Start Contract (`listeners:start`)
+###### Listener Start Contract (`api.listeners.start`)
 
-`listeners:start` accepts `ListenerConfig` and returns `ListenerStartResult`.
+`api.listeners.start` accepts `ListenerConfig` and returns `ListenerStartResult`.
 
 ```typescript
 interface ListenerStartResult {
   listenerId: string;
-  status: ListenerLifecycleState; // always "starting" at creation time
-  startedAt: string;              // ISO 8601
+  status: ListenerLifecycleState;
 }
 ```
 
@@ -115,8 +114,8 @@ Filter/correlation behavior for each received record:
 1. Resolve correlation value from `ListenerConfig.correlation`.
 2. Compare with incoming payload at `correlation.receivedPath`.
 3. Evaluate enabled `filters` according to `filterMode` (`all`/`any`).
-4. For accepted records, persist a `SessionEvent(direction="received")` and emit `listeners:data`.
-5. Emit `listeners:lifecycle` on state changes and `listeners:error` on failures.
+4. For accepted records, persist a `SessionEvent(direction="received")` and emit `channels.listeners.data`.
+5. Emit `channels.listeners.lifecycle` on state changes and `channels.listeners.error` on failures.
 
 ##### AWS — `aws:*`
 | Channel | Pattern | Description |
@@ -138,305 +137,55 @@ Filter/correlation behavior for each received record:
 
 #### Preload API Shape
 
-The preload script exposes `window.api` with the following structure. Each method maps to an IPC channel above.
+The preload script now exposes `window.app`:
 
 ```typescript
-// preload/index.ts — exposed via contextBridge.exposeInMainWorld('api', api)
-
-export interface PulseAPI {
-  // System
-  systems: {
-    list(): Promise<System[]>;
-    get(id: string): Promise<System>;
-    create(data: CreateSystemInput): Promise<System>;
-    update(id: string, data: UpdateSystemInput): Promise<System>;
-    delete(id: string): Promise<void>;
-    export(id: string): Promise<ExportedSystem>;
-    import(data: ExportedSystem): Promise<System>;
-  };
-
-  // Schema
-  schemas: {
-    list(systemId: string): Promise<Schema[]>;
-    get(id: string): Promise<Schema>;
-    create(data: CreateSchemaInput): Promise<Schema>;
-    update(id: string, data: UpdateSchemaInput): Promise<Schema>;
-    delete(id: string): Promise<void>;
-    validate(id: string): Promise<ValidationResult>;
-  };
-
-  // Environment
-  environments: {
-    list(systemId: string): Promise<Environment[]>;
-    get(id: string): Promise<Environment>;
-    create(data: CreateEnvInput): Promise<Environment>;
-    update(id: string, data: UpdateEnvInput): Promise<Environment>;
-    delete(id: string): Promise<void>;
-  };
-
-  // Profile
-  profiles: {
-    list(systemId: string): Promise<Profile[]>;
-    get(id: string): Promise<Profile>;
-    create(data: CreateProfileInput): Promise<Profile>;
-    update(id: string, data: UpdateProfileInput): Promise<Profile>;
-    delete(id: string): Promise<void>;
-  };
-
-  // Template
-  templates: {
-    list(systemId: string): Promise<TemplateTree>;
-    get(id: string): Promise<Template>;
-    create(data: CreateTemplateInput): Promise<Template>;
-    update(id: string, data: UpdateTemplateInput): Promise<Template>;
-    delete(id: string): Promise<void>;
-    move(id: string, targetFolderId: string): Promise<Template>;
-  };
-
-  // Event
-  events: {
-    generate(input: GenerateEventInput): Promise<GeneratedEvent>;
-    send(input: SendEventInput): Promise<SendEventResult>;
-    validate(event: GeneratedEvent, schemaId: string): Promise<ValidationResult>;
-  };
-
-  // Session
-  sessions: {
-    create(systemId: string): Promise<Session>;
-    list(systemId: string): Promise<Session[]>;
-    get(id: string): Promise<SessionDetail>;
-    delete(id: string): Promise<void>;
-    addEvent(sessionId: string, event: SessionEvent): Promise<void>;
-  };
-
-  // Listener
-  listeners: {
-    start(config: ListenerConfig): Promise<ListenerStartResult>;
-    stop(listenerId: string): Promise<void>;
-    status(): Promise<ListenerStatus[]>;
-    onLifecycle(callback: (event: ListenerLifecycleEvent) => void): () => void; // returns unsubscribe fn
-    onData(callback: (data: ListenerDataEvent) => void): () => void;   // returns unsubscribe fn
-    onError(callback: (error: ListenerErrorEvent) => void): () => void; // returns unsubscribe fn
-  };
-
-  // AWS
-  aws: {
-    listProfiles(): Promise<AWSProfile[]>;
-    validateCredentials(profileName: string): Promise<CredentialValidation>;
-  };
-
-  // Logging
-  log: {
-    onEntry(callback: (entry: LogEntry) => void): () => void; // returns unsubscribe fn
-  };
-
-  // App
-  app: {
-    getSettings(): Promise<AppSettings>;
-    updateSettings(data: Partial<AppSettings>): Promise<AppSettings>;
-    getDataPath(): Promise<string>;
-  };
+// preload/index.ts
+window.app = {
+  platform: process.platform,
+  api: {
+    app: { ... },
+    systems: { ... },
+    schemas: { ... },
+    environments: { ... },
+    customTypes: { ... },
+    sessions: { ... },
+    templates: { ... },
+    profiles: { ... },
+    listeners: { ... }
+  },
+  channels: {
+    listeners: {
+      lifecycle: { send, listen },
+      data: { send, listen },
+      error: { send, listen }
+    },
+    log: {
+      entry: { send, listen }
+    }
+  }
 }
 ```
 
-#### IPC Handler Registration (Main Process)
+### Declarative Bridge Pattern
 
-Handlers are organized into domain-specific modules registered at app startup:
+IPC wiring is now configured in a single `app({ apis, channels })` object (`src/app.ts`) using two helpers:
 
-```
-src/
-  main/
-    ipc/
-      index.ts          # Registers all handlers
-      systems.ts
-      schemas.ts
-      environments.ts
-      profiles.ts
-      templates.ts
-      events.ts
-      sessions.ts
-      listeners.ts
-      aws.ts
-      app.ts
-```
+- `api(instance)` marks an API object for invoke/handle registration.
+- `channel<T>()` marks an event channel for push/listen wiring.
 
-Each handler module exports a `register(ipcMain, services)` function. The `services` parameter provides access to shared service classes (file storage, AWS clients, etc.), keeping handlers thin and testable.
+At startup:
+
+- In main, `App.initialize(ipcMain, window)` recursively walks the config and registers API handlers (`api.<path>.<method>`) plus main-side channel objects.
+- In preload, `App.expose(ipcRenderer)` walks the same config and exposes invoke proxies and renderer-side channel objects.
+
+This keeps API/channel registration in one place and avoids hand-written per-method IPC boilerplate.
 
 #### Security Considerations
 
 - **Context Isolation**: Enabled (`contextIsolation: true`). The renderer cannot access Node.js APIs directly.
 - **Node Integration**: Disabled (`nodeIntegration: false`).
 - **Preload-only bridge**: All IPC is mediated by the preload script. No `remote` module usage.
-- **Input Validation**: All IPC handlers validate incoming arguments before processing.
+- **Input Validation**: API methods should validate incoming arguments before processing.
 - **Sensitive Data Masking**: AWS credentials and other sensitive fields are masked in the renderer. The main process handles raw credentials but never sends them to the renderer unless explicitly unmasked by the user.
 
-### Dynamic Bridge Pattern
-
-#### Goal
-
-Provide a single, declarative registry of backend API classes that automatically wires up Electron IPC handlers (main process) and matching IPC invokers (renderer preload), so adding a new API surface requires only writing a class and registering it — no manual `ipcMain.handle` / `ipcRenderer.invoke` boilerplate.
-
-#### The `Api` interface
-
-```ts
-interface Api {
-  readonly api: string; // a unique namespace, e.g. "collections"
-}
-```
-
-#### The `ApiRegistry`
-
-```ts
-class ApiRegistry {
-
-    private readonly apis: Record<string, Api>
-
-    constructor(...apis: Api[]) {
-        this.apis = apis.reduce((acc, api) => {
-            acc[api.api] = api;
-            return acc;
-        }, {} as Record<string, Api>);
-    }
-
-    public initialize(main: IpcMain): void {
-        for (let name in this.apis) {
-            const api = this.apis[name] as any;
-
-            Object.getOwnPropertyNames(Object.getPrototypeOf(api))
-                .filter(key => typeof api[key] === 'function' && key !== 'constructor')
-                .forEach(method => {
-                    main.handle(`${name}.${method}`, (event, ...args) => {
-                        return api[method](event, ...args);
-                    })
-                });
-
-            console.debug("Initialized server-side api");
-        }
-    }
-
-    public expose(renderer: IpcRenderer, api: any): any {
-        for (let name in this.apis) {
-            api[name] = {};
-
-            const a = this.apis[name] as any;
-
-            Object.getOwnPropertyNames(Object.getPrototypeOf(a))
-                .filter(key => typeof a[key] === 'function' && key !== 'constructor')
-                .forEach(method => {
-                    api[name][method] = (...args: any[]) => renderer.invoke(`${name}.${method}`, ...args)
-                    console.debug(`Exposing ${name}.${method}`, api);
-                });
-        }
-
-        console.debug("Exposing API for frontend", api);
-
-        return api;
-    }
-
-}
-```
-
-#### Usage
-
-The `api/index.ts` script initializes the registry,
-```ts
-import { Environments } from './environments';
-
-const apis = [
-    new Environments(),
-];
-
-...
-
-export default ApiRegistry(...apis);
-
-```
-
-The `main/index.ts` script initilaizes the `ipcMain`,
-```ts
-import { app, BrowserWindow, ipcMain } from 'electron'
-import Api from './api'
-
-Api.initialize(ipcMain);
-```
-This registers the configured api method, via the generated handle, pointing it to the method from the exposed Api implementation.
-
-The `main/preload.ts` script exposes the Api on the renderer,
-```ts
-import { contextBridge, ipcRenderer } from 'electron';
-import Api from './api';
-
-// Expose protected methods that allow the renderer process to use
-// the ipcRenderer without exposing the entire object
-contextBridge.exposeInMainWorld('electronAPI', Api.expose(ipcRenderer, {
-  platform: process.platform,
-}));
-```
-
-#### Functionality
-
-This usage builds an object like the following:
-```ts
-{
-    platform: "darwin",
-    environments: {
-        load: (...args) => ipcRenderer.invoke("environments.load", ...args),
-        save: (...args) => ipcRenderer.invoke("environments.save", ...args),
-        delete: (...args) => ipcRenderer.invoke("environments.delete", ...args),
-    }
-}
-```
-and exposes it to the renderer as `window.electronAPI`.
-
-An example of the hypothetical Environments api:
-```ts
-export class Environments implements Api {
-
-    readonly api: string = 'environments'; // IPC channel namespace
-
-    async load() {
-        /* ... returns data .. */
-    }
-
-    async save(event: IpcMainInvokeEvent, environment: Environment) {
-        /* ... saves data ... */
-    }
-
-    async delete(event: IpcMainInvokeEvent, id: string) {
-        /* ... deletes data ... */
-    }
-
-}
-```
-
-#### Key Details
-- The `api` string property becomes the namespace prefix for all IPC channels.
-- Every public method on the class prototype (except `constructor`) is auto-registered.
-- On the **main side**, the first argument to each handler is the Electron `IpcMainInvokeEvent`, followed by the args the renderer sent.
-- On the **renderer side**, the proxy functions strip the event — callers just pass data args (e.g. `window.electronAPI.environments.save(environment)`). Electron injects the event automatically on the main side.
-
-The key insight is that both sides share the same registry instance and the same class definitions. The reflection over `Object.getPrototypeOf(api)` ensures that whenever you add a method to an API class, it is automatically available on both sides with zero additional wiring.
-
-#### Type Safety
-The renderer defines matching TypeScript interfaces so `window.electronAPI` is typed:
-```ts
-// api.ts
-interface ServiceApi {
-  environments: Environments
-}
-
-interface Environments {
-  load(): Promise<Environment[]>
-  save(environment: Environment): Promise<void>
-  delete(id: string): Promise<void>
-}
-
-// electron.d.ts
-interface IElectronAPI extends ServiceApi {
-  platform: string
-}
-declare global {
-  interface Window { electronAPI: IElectronAPI }
-}
-```
-These interfaces mirror the backend API classes but without the `IpcMainInvokeEvent` parameter (since the renderer never sees it).

@@ -1,21 +1,40 @@
-import type { Api } from '../../shared/api'
 import { StorageService, StoragePaths } from '../services/storage'
 import { SettingsService } from '../services/settings.service'
 import { ListenerManagerService } from '../services/listeners/listener-manager.service'
 import type { ListenerConfig, ListenerStartResult, ListenerStatus, System } from '../../shared/models'
+import {app, BrowserWindow} from "electron";
+import {ListenerLifecycleFactory} from "../services/listeners/factory";
 
-export class ListenersApi implements Api {
-  readonly api = 'listeners'
+let quitting = false;
 
-  private listenerManager: ListenerManagerService | null = null
+export class ListenersApi {
+
+  private manager: ListenerManagerService | null = null
 
   constructor(
     private readonly storage: StorageService,
-    private readonly settings: SettingsService
+    private readonly settings: SettingsService,
+    private readonly lifecycleFactoryProvider: (window: BrowserWindow) => ListenerLifecycleFactory
   ) {}
 
-  setListenerManager(manager: ListenerManagerService): void {
-    this.listenerManager = manager
+  setBrowserWindow(window: BrowserWindow) {
+    const lifecycleFactory = this.lifecycleFactoryProvider(window);
+    this.manager = new ListenerManagerService(lifecycleFactory)
+  }
+
+  initialize(): void {
+    app.on('before-quit', (event) => {
+      if (quitting) {
+        return;
+      }
+
+      event.preventDefault();
+      quitting = true;
+
+      this.manager?.stopAll()
+          .catch(console.error)
+          .finally(() => app.quit())
+    });
   }
 
   async start(config: ListenerConfig): Promise<ListenerStartResult> {
@@ -44,9 +63,9 @@ export class ListenersApi implements Api {
   }
 
   private requireListenerManager(): ListenerManagerService {
-    if (!this.listenerManager) {
+    if (!this.manager) {
       throw new Error('ListenerManagerService not initialized')
     }
-    return this.listenerManager
+    return this.manager
   }
 }

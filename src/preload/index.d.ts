@@ -5,6 +5,6 @@ declare global {
   interface Window {
     electron: ElectronAPI
     api: Record<string, never>
-    electronAPI: IElectronAPI
+    app: IElectronAPI
   }
 }

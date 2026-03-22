@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ListenerManagerService } from '../../../../src/main/services/listeners/listener-manager.service'
 import type { Environment, ListenerConfig, OutputConfig } from '../../../../src/shared/models'
 import type { ListenerLifecycle } from '../../../../src/main/services/listeners/listener'
+import { VariableReplacementService } from '../../../../src/main/services/variable-replacement.service'
 
 function makeListenerConfig(overrides: Partial<ListenerConfig> = {}): ListenerConfig {
   return {
@@ -46,11 +47,15 @@ function makeEnvironment(overrides: Partial<Environment> = {}): Environment {
 
 describe('ListenerManagerService', () => {
   let create: ReturnType<typeof vi.fn>
-  let replaceVariablesInObject: ReturnType<typeof vi.fn>
+  let replaceVariablesInObjectSpy: ReturnType<typeof vi.spyOn>
   let start: ReturnType<typeof vi.fn>
   let stop: ReturnType<typeof vi.fn>
   let lifecycle: ListenerLifecycle
   let service: ListenerManagerService
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
 
   beforeEach(() => {
     start = vi.fn().mockResolvedValue(undefined)
@@ -73,27 +78,26 @@ describe('ListenerManagerService', () => {
     }
 
     create = vi.fn().mockResolvedValue(lifecycle)
-    replaceVariablesInObject = vi.fn((obj: unknown) => obj)
+    replaceVariablesInObjectSpy = vi
+      .spyOn(VariableReplacementService.prototype, 'replaceVariablesInObject')
+      .mockImplementation((obj: unknown) => obj)
 
-    service = new ListenerManagerService(
-      { create } as any,
-      { replaceVariablesInObject } as any
-    )
+    service = new ListenerManagerService({ create } as any)
   })
 
   it('resolves output variables and passes transformed config into lifecycle factory', async () => {
     const output = makeOutputConfig({
-      config: { streamName: '${STREAM_NAME}', region: '${REGION}' }
+      config: { streamName: '{{STREAM_NAME}}', region: '{{REGION}}' }
     })
 
-    replaceVariablesInObject.mockReturnValue({
+    replaceVariablesInObjectSpy.mockReturnValue({
       streamName: 'resolved-stream',
       region: 'eu-west-1'
     })
 
     await service.startListener(makeListenerConfig(), output, makeEnvironment())
 
-    expect(replaceVariablesInObject).toHaveBeenCalledWith(output.config, { REGION: 'eu-west-1' })
+    expect(replaceVariablesInObjectSpy).toHaveBeenCalledWith(output.config, { REGION: 'eu-west-1' })
     expect(create).toHaveBeenCalledWith({
       listenerConfig: makeListenerConfig(),
       outputConfig: {
