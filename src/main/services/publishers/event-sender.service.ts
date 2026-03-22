@@ -10,12 +10,16 @@ import { PublisherFactory } from "./factory";
 import { PublishResult } from "./publisher";
 
 export class EventSenderService {
+
+  private readonly variables: VariableReplacementService;
+
   constructor(
     private readonly storage: StorageService,
     private readonly settings: SettingsService,
     private readonly factory: PublisherFactory,
-    private readonly variables: VariableReplacementService,
-  ) {}
+  ) {
+    this.variables = new VariableReplacementService();
+  }
 
   async sendEvent(
     systemId: string,

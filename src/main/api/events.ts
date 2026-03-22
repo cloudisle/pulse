@@ -1,6 +1,5 @@
 import { randomUUID } from 'crypto'
 import path from 'path'
-import type { Api } from '../../shared/api'
 import { StorageService, StoragePaths } from '../services/storage'
 import { SettingsService } from '../services/settings.service'
 import { EventGenerationService } from '../services/event-generation.service'
@@ -17,20 +16,21 @@ import type {
   SendEventResult,
   ValidationResult
 } from '../../shared/models/event'
+import {BrowserWindow} from "electron";
 
-export class EventsApi implements Api {
-  readonly api = 'events'
+export class EventsApi {
+
+  private pushService: PushService|null = null;
 
   constructor(
     private readonly storage: StorageService,
     private readonly settings: SettingsService,
     private readonly generationService: EventGenerationService,
-    private readonly senderService: EventSenderService,
-    private pushService: PushService | null = null
+    private readonly senderService: EventSenderService
   ) {}
 
-  setPushService(ps: PushService): void {
-    this.pushService = ps
+  setBrowserWindow(window: BrowserWindow) {
+    this.pushService = new PushService(window);
   }
 
   async generate(systemId: string, input: GenerateEventInput): Promise<GeneratedEvent> {

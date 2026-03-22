@@ -22,10 +22,10 @@ export interface GenerateEventProps {
 }
 
 export class EventGenerationService {
-  private readonly varReplacement: VariableReplacementService
+  private readonly variables: VariableReplacementService
 
   constructor() {
-    this.varReplacement = new VariableReplacementService()
+    this.variables = new VariableReplacementService()
   }
 
   async generateEvent(
@@ -63,7 +63,7 @@ export class EventGenerationService {
         envVariables[v.key] = v.value
       }
     }
-    const finalPayload = this.varReplacement.replaceVariablesInObject(
+    const finalPayload = this.variables.replaceVariablesInObject(
       payload,
       envVariables
     ) as Record<string, any>

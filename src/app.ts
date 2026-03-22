@@ -18,14 +18,22 @@ import {CloudService} from "./main/services/cloud.service";
 import {ConverterFactory} from "./main/services/listeners/converter";
 import {FilterFactory} from "./main/services/listeners/filter";
 import {AwsApi} from "./main/api/aws";
+import {EventsApi} from "./main/api/events";
+import {EventSenderService} from "./main/services/publishers/event-sender.service";
+import {EventGenerationService} from "./main/services/event-generation.service";
+import {PublisherFactory} from "./main/services/publishers/factory";
 
 const storage = new StorageService();
 const settings = new SettingsService(storage);
 const cloud = new CloudService(storage, settings);
+const generation = new EventGenerationService();
 
 const listenerFactory = new ListenerFactory(cloud);
 const converterFactory = new ConverterFactory();
 const filterFactory = new FilterFactory();
+const publisherFactory = new PublisherFactory(cloud);
+
+const events = new EventSenderService(storage, settings, publisherFactory);
 
 const lifecycleFactoryProvider = (window: BrowserWindow) => {
     const pushService = new PushService(window);
@@ -48,6 +56,7 @@ export default app({
         sessions: api(new SessionsApi(storage, settings)),
         templates: api(new TemplatesApi(storage, settings)),
         profiles: api(new ProfilesApi(storage, settings)),
+        events: api(new EventsApi(storage, settings, generation, events)),
         listeners: api(new ListenersApi(storage, settings, lifecycleFactoryProvider)),
     },
     channels: {
