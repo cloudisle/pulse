@@ -1,17 +1,19 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import Api from '../main/api'
-import { createPushBindings } from './push-bindings'
+import App from '../app'
 
-const electronAPIExposed = Api.expose(ipcRenderer, {
+const app = App.expose(ipcRenderer)
+
+const appExposed = {
   platform: process.platform,
-  ...createPushBindings(ipcRenderer)
-})
+  api: app.apis,
+  channels: app.channels,
+}
 
 if (process.contextIsolated) {
   try {
     contextBridge.exposeInMainWorld('electron', electronAPI)
-    contextBridge.exposeInMainWorld('electronAPI', electronAPIExposed)
+    contextBridge.exposeInMainWorld('app', appExposed)
   } catch (error) {
     console.error(error)
   }
@@ -19,5 +21,5 @@ if (process.contextIsolated) {
   // @ts-ignore (define in dts)
   window.electron = electronAPI
   // @ts-ignore (define in dts)
-  window.electronAPI = electronAPIExposed
+  window.app = appExposed
 }

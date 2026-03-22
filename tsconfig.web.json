@@ -1,6 +1,6 @@
 {
   "extends": "@electron-toolkit/tsconfig/tsconfig.web.json",
-  "include": ["src/renderer/src/**/*", "src/renderer/src/**/*.vue", "src/shared/**/*"],
+  "include": ["src/preload/**/*", "src/renderer/src/**/*", "src/renderer/src/**/*.vue", "src/shared/**/*"],
   "compilerOptions": {
     "composite": true,
     "strict": true

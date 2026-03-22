@@ -1,6 +1,5 @@
 import { randomUUID } from 'crypto'
 import path from 'path'
-import type { Api } from '../../shared/api'
 import type { CustomDataType, Schema, SchemaElement } from '../../shared/models/schema'
 import type { CreateCustomTypeInput, UpdateCustomTypeInput } from '../../shared/dto/custom-types'
 import { StorageService, StoragePaths } from '../services/storage'
@@ -10,8 +9,7 @@ export interface DeleteCustomTypeResult {
   warnings: string[]
 }
 
-export class CustomTypesApi implements Api {
-  readonly api: string = 'customTypes'
+export class CustomTypesApi {
 
   private readonly settings: SettingsService
 
