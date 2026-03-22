@@ -1,4 +1,3 @@
-import type { Api } from '../../shared/api'
 import type { AWSProfile, CredentialValidation } from '../../shared/models/aws'
 import { promises as fs } from 'fs'
 import os from 'os'
@@ -32,8 +31,7 @@ function parseIni(content: string): Record<string, Record<string, string>> {
   return result
 }
 
-export class AwsApi implements Api {
-  readonly api = 'aws'
+export class AwsApi {
 
   async listProfiles(): Promise<AWSProfile[]> {
     const profileMap = new Map<string, AWSProfile>()
