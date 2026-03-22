@@ -1,160 +1,78 @@
 import { describe, it, expect, vi } from 'vitest'
-import { createPushBindings } from '../../../src/preload/push-bindings'
-import type { IpcRenderer, IpcRendererEvent } from 'electron'
+import { MainChannel, RendererChannel, channel } from '../../../src/app/channel'
+import type { BrowserWindow, IpcRenderer, IpcRendererEvent } from 'electron'
+
+vi.mock('crypto', () => ({
+  randomUUID: vi.fn(() => 'listener-1')
+}))
 
 function makeMockRenderer(): IpcRenderer {
   return {
+    send: vi.fn(),
+    invoke: vi.fn(),
     on: vi.fn(),
     removeListener: vi.fn()
   } as unknown as IpcRenderer
 }
 
-describe('createPushBindings', () => {
-  describe('listeners.onLifecycle', () => {
-    it('registers an ipcRenderer.on listener for listeners:lifecycle', () => {
-      const renderer = makeMockRenderer()
-      const bindings = createPushBindings(renderer)
+function makeMockWindow(): BrowserWindow {
+  return {
+    webContents: {
+      send: vi.fn()
+    }
+  } as unknown as BrowserWindow
+}
 
-      bindings.listeners.onLifecycle(vi.fn())
+describe('app/channel', () => {
+  it('channel() marks config entries with __type="channel"', () => {
+    const configured = channel<string>()
+    expect(configured.__type).toBe('channel')
+  })
 
-      expect(renderer.on).toHaveBeenCalledWith('listeners:lifecycle', expect.any(Function))
-    })
+  it('RendererChannel.listen subscribes and unsubscribe removes the listener', () => {
+    const renderer = makeMockRenderer()
+    const callback = vi.fn()
+    const ch = new RendererChannel('channels.listeners.lifecycle', renderer)
 
-    it('invokes the callback with the event data when a message arrives', () => {
-      const renderer = makeMockRenderer()
-      const bindings = createPushBindings(renderer)
-      const callback = vi.fn()
+    const unsubscribe = ch.listen(callback)
+    const handler = vi.mocked(renderer.on).mock.calls[0][1] as Function
+    handler({} as IpcRendererEvent, { state: 'running' })
+    unsubscribe()
 
-      bindings.listeners.onLifecycle(callback)
+    expect(renderer.on).toHaveBeenCalledWith('channels.listeners.lifecycle', expect.any(Function))
+    expect(callback).toHaveBeenCalledWith({ state: 'running' })
+    expect(renderer.removeListener).toHaveBeenCalledWith('channels.listeners.lifecycle', handler)
+  })
 
-      const registeredHandler = vi.mocked(renderer.on).mock.calls[0][1] as Function
-      const payload = { listenerId: 'l1', state: 'running', timestamp: 't' }
-      registeredHandler({} as IpcRendererEvent, payload)
+  it('RendererChannel.send dispatches over both send and invoke bridge calls', () => {
+    const renderer = makeMockRenderer()
+    const ch = new RendererChannel('channels.log.entry', renderer)
 
-      expect(callback).toHaveBeenCalledWith(payload)
-    })
+    ch.send({ message: 'hello' })
 
-    it('returns an unsubscribe function that calls removeListener', () => {
-      const renderer = makeMockRenderer()
-      const bindings = createPushBindings(renderer)
-
-      const unsubscribe = bindings.listeners.onLifecycle(vi.fn())
-      const registeredHandler = vi.mocked(renderer.on).mock.calls[0][1]
-
-      unsubscribe()
-
-      expect(renderer.removeListener).toHaveBeenCalledWith('listeners:lifecycle', registeredHandler)
+    expect(renderer.send).toHaveBeenCalledWith('channels.log.entry', { message: 'hello' })
+    expect(renderer.invoke).toHaveBeenCalledWith('channelSendEvent', 'channels.log.entry', {
+      message: 'hello'
     })
   })
 
-  describe('listeners.onData', () => {
-    it('registers an ipcRenderer.on listener for listeners:data', () => {
-      const renderer = makeMockRenderer()
-      const bindings = createPushBindings(renderer)
+  it('MainChannel.listen receives local sends and forwards to webContents', () => {
+    const window = makeMockWindow()
+    const callback = vi.fn()
+    const ch = new MainChannel('channels.listeners.data', window)
 
-      bindings.listeners.onData(vi.fn())
+    const unsubscribe = ch.listen(callback)
+    ch.send({ eventId: 'evt-1' })
+    unsubscribe()
+    ch.send({ eventId: 'evt-2' })
 
-      expect(renderer.on).toHaveBeenCalledWith('listeners:data', expect.any(Function))
+    expect(callback).toHaveBeenCalledTimes(1)
+    expect(callback).toHaveBeenCalledWith({ eventId: 'evt-1' })
+    expect(window.webContents.send).toHaveBeenCalledWith('channels.listeners.data', {
+      eventId: 'evt-1'
     })
-
-    it('invokes the callback with the event data when a message arrives', () => {
-      const renderer = makeMockRenderer()
-      const bindings = createPushBindings(renderer)
-      const callback = vi.fn()
-
-      bindings.listeners.onData(callback)
-
-      const registeredHandler = vi.mocked(renderer.on).mock.calls[0][1] as Function
-      const payload = { listenerId: 'l1', sessionId: 's1', event: { id: 'e1' } }
-      registeredHandler({} as IpcRendererEvent, payload)
-
-      expect(callback).toHaveBeenCalledWith(payload)
-    })
-
-    it('returns an unsubscribe function that calls removeListener', () => {
-      const renderer = makeMockRenderer()
-      const bindings = createPushBindings(renderer)
-
-      const unsubscribe = bindings.listeners.onData(vi.fn())
-      const registeredHandler = vi.mocked(renderer.on).mock.calls[0][1]
-
-      unsubscribe()
-
-      expect(renderer.removeListener).toHaveBeenCalledWith('listeners:data', registeredHandler)
-    })
-  })
-
-  describe('listeners.onError', () => {
-    it('registers an ipcRenderer.on listener for listeners:error', () => {
-      const renderer = makeMockRenderer()
-      const bindings = createPushBindings(renderer)
-
-      bindings.listeners.onError(vi.fn())
-
-      expect(renderer.on).toHaveBeenCalledWith('listeners:error', expect.any(Function))
-    })
-
-    it('invokes the callback with the event data when a message arrives', () => {
-      const renderer = makeMockRenderer()
-      const bindings = createPushBindings(renderer)
-      const callback = vi.fn()
-
-      bindings.listeners.onError(callback)
-
-      const registeredHandler = vi.mocked(renderer.on).mock.calls[0][1] as Function
-      const payload = { listenerId: 'l1', error: 'failed', timestamp: 't' }
-      registeredHandler({} as IpcRendererEvent, payload)
-
-      expect(callback).toHaveBeenCalledWith(payload)
-    })
-
-    it('returns an unsubscribe function that calls removeListener', () => {
-      const renderer = makeMockRenderer()
-      const bindings = createPushBindings(renderer)
-
-      const unsubscribe = bindings.listeners.onError(vi.fn())
-      const registeredHandler = vi.mocked(renderer.on).mock.calls[0][1]
-
-      unsubscribe()
-
-      expect(renderer.removeListener).toHaveBeenCalledWith('listeners:error', registeredHandler)
-    })
-  })
-
-  describe('log.onEntry', () => {
-    it('registers an ipcRenderer.on listener for log:entry', () => {
-      const renderer = makeMockRenderer()
-      const bindings = createPushBindings(renderer)
-
-      bindings.log.onEntry(vi.fn())
-
-      expect(renderer.on).toHaveBeenCalledWith('log:entry', expect.any(Function))
-    })
-
-    it('invokes the callback with the log entry when a message arrives', () => {
-      const renderer = makeMockRenderer()
-      const bindings = createPushBindings(renderer)
-      const callback = vi.fn()
-
-      bindings.log.onEntry(callback)
-
-      const registeredHandler = vi.mocked(renderer.on).mock.calls[0][1] as Function
-      const payload = { id: 'log-1', timestamp: 't', level: 'info', source: 'app', message: 'hello' }
-      registeredHandler({} as IpcRendererEvent, payload)
-
-      expect(callback).toHaveBeenCalledWith(payload)
-    })
-
-    it('returns an unsubscribe function that calls removeListener', () => {
-      const renderer = makeMockRenderer()
-      const bindings = createPushBindings(renderer)
-
-      const unsubscribe = bindings.log.onEntry(vi.fn())
-      const registeredHandler = vi.mocked(renderer.on).mock.calls[0][1]
-
-      unsubscribe()
-
-      expect(renderer.removeListener).toHaveBeenCalledWith('log:entry', registeredHandler)
+    expect(window.webContents.send).toHaveBeenCalledWith('channels.listeners.data', {
+      eventId: 'evt-2'
     })
   })
 })

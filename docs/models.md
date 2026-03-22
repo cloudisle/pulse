@@ -1104,10 +1104,10 @@ interface ListenerErrorEvent {
 ```
 
 Lifecycle rules:
-- `listeners:start` moves a listener to `starting` immediately.
+- `api.listeners.start` moves a listener to `starting` immediately.
 - On successful source subscription, state transitions to `running`.
-- `listeners:stop` moves a running listener to `stopping`, then `stopped` once resources are released.
-- Runtime failures emit `listeners:error`; recoverable failures keep state as `running`, fatal failures transition to `error`.
+- `api.listeners.stop` moves a running listener to `stopping`, then `stopped` once resources are released.
+- Runtime failures emit `channels.listeners.error`; recoverable failures keep state as `running`, fatal failures transition to `error`.
 - Listener events are only persisted to `SessionEvent` when they satisfy correlation + filter evaluation.
 
 Correlation and filter evaluation order:
@@ -1119,7 +1119,7 @@ Correlation and filter evaluation order:
 4. Persist accepted event to `SessionEvent` and emit `ListenerDataEvent`.
 
 <details>
-<summary>ListenerConfig (runtime, passed to listeners:start)</summary>
+<summary>ListenerConfig (runtime, passed to api.listeners.start)</summary>
 
 ```json
 {
@@ -1162,7 +1162,7 @@ Correlation and filter evaluation order:
 </details>
 
 <details>
-<summary>ListenerStatus (runtime, returned by listeners:status)</summary>
+<summary>ListenerStatus (runtime, returned by api.listeners.status)</summary>
 
 ```json
 [
@@ -1181,7 +1181,7 @@ Correlation and filter evaluation order:
 </details>
 
 <details>
-<summary>ListenerLifecycleEvent (runtime, pushed via listeners:lifecycle)</summary>
+<summary>ListenerLifecycleEvent (runtime, pushed via channels.listeners.lifecycle)</summary>
 
 ```json
 {
@@ -1197,7 +1197,7 @@ Correlation and filter evaluation order:
 </details>
 
 <details>
-<summary>ListenerDataEvent (runtime, pushed via listeners:data)</summary>
+<summary>ListenerDataEvent (runtime, pushed via channels.listeners.data)</summary>
 
 ```json
 {
@@ -1227,7 +1227,7 @@ Correlation and filter evaluation order:
 </details>
 
 <details>
-<summary>ListenerErrorEvent (runtime, pushed via listeners:error)</summary>
+<summary>ListenerErrorEvent (runtime, pushed via channels.listeners.error)</summary>
 
 ```json
 {

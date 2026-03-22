@@ -1,9 +1,6 @@
-import type { Api } from '../../shared/api'
 import {CloudService, PutMode} from "../services/cloud.service";
 
-export class CloudApi implements Api {
-
-    readonly api = "cloud"
+export class CloudApi {
 
     readonly cloud: CloudService;
 

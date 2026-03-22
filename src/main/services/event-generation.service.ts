@@ -4,7 +4,7 @@ import { VariableReplacementService } from './variable-replacement.service'
 import { Schema, SchemaElement, CustomDataType, BuiltInType } from '../../shared/models/schema'
 import { Environment } from '../../shared/models/environment'
 import { Profile, ProfileOverride } from '../../shared/models/profile'
-import { GenerateEventInput, GeneratedEvent, ValidationWarning } from '../../shared/models/event'
+import { GenerateEventInput, GeneratedEvent, ValidationResult, ValidationWarning } from '../../shared/models/event'
 import {
   GenerationStrategy,
   FakerConfig,
@@ -23,10 +23,10 @@ export interface GenerateEventProps {
 }
 
 export class EventGenerationService {
-  private readonly varReplacement: VariableReplacementService
+  private readonly variables: VariableReplacementService
 
   constructor(private readonly logger?: LogService) {
-    this.varReplacement = new VariableReplacementService()
+    this.variables = new VariableReplacementService()
   }
 
   async generateEvent(
@@ -71,7 +71,7 @@ export class EventGenerationService {
         envVariables[v.key] = v.value
       }
     }
-    const finalPayload = this.varReplacement.replaceVariablesInObject(
+    const finalPayload = this.variables.replaceVariablesInObject(
       payload,
       envVariables
     ) as Record<string, any>
@@ -297,6 +297,16 @@ export class EventGenerationService {
     }
 
     return value
+  }
+
+  validateEvent(
+    payload: Record<string, any>,
+    schema: Schema,
+    customTypes: CustomDataType[] = []
+  ): ValidationResult {
+    const warnings: ValidationWarning[] = []
+    this.validatePayload(payload, schema.elements, '', warnings, customTypes)
+    return { valid: true, warnings }
   }
 
   private validatePayload(

@@ -331,6 +331,7 @@ describe('shared models — Session', () => {
 describe('shared models — Listener', () => {
   it('ListenerConfig satisfies interface shape', () => {
     const config: ListenerConfig = {
+      systemId: 'sys-1',
       outputId: 'out-1',
       sessionId: 'sess-1'
     }

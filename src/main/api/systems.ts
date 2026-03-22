@@ -1,7 +1,6 @@
 import { promises as fs } from 'fs'
 import path from 'path'
 import { v4 as uuidv4 } from 'uuid'
-import type { Api } from '../../shared/api'
 import { StorageService, StoragePaths } from '../services/storage'
 import { SettingsService } from '../services/settings.service'
 import type { System, InputConfig, OutputConfig } from '../../shared/models'
@@ -11,8 +10,7 @@ import type { Profile } from '../../shared/models/profile'
 import type { Template, TemplateFolder } from '../../shared/models/template'
 import type { CreateSystemInput, UpdateSystemInput, ExportedSystem } from '../../shared/dto'
 
-export class SystemsApi implements Api {
-  readonly api = 'systems'
+export class SystemsApi {
 
   constructor(
     private readonly storage: StorageService,

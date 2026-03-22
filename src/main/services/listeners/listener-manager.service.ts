@@ -1,4 +1,3 @@
-import type { VariableReplacementService } from '../variable-replacement.service'
 import type {
   ListenerConfig,
   ListenerStatus,
@@ -8,18 +7,22 @@ import type { OutputConfig } from '../../../shared/models'
 import type { Environment } from '../../../shared/models'
 import {ListenerLifecycleFactory} from "./factory";
 import {ListenerLifecycle} from "./listener";
+import {VariableReplacementService} from "../variable-replacement.service";
 import type { LogService } from '../log.service'
 
 export type ListenerEntry = { listener: ListenerLifecycle, status: ListenerStatus };
 
 export class ListenerManagerService {
+
+  private readonly variables: VariableReplacementService;
   private readonly listeners = new Map<string, ListenerEntry>();
 
   constructor(
     private readonly factory: ListenerLifecycleFactory,
-    private readonly variables: VariableReplacementService,
     private readonly logger?: LogService,
-  ) {}
+  ) {
+    this.variables = new VariableReplacementService();
+  }
 
   /**
    * Resolves variables in the output config, creates the appropriate listener,

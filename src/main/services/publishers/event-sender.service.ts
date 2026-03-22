@@ -11,13 +11,17 @@ import { PublishResult } from "./publisher";
 import type { LogService } from '../log.service'
 
 export class EventSenderService {
+
+  private readonly variables: VariableReplacementService;
+
   constructor(
     private readonly storage: StorageService,
     private readonly settings: SettingsService,
     private readonly factory: PublisherFactory,
-    private readonly variables: VariableReplacementService,
     private readonly logger?: LogService,
-  ) {}
+  ) {
+    this.variables = new VariableReplacementService();
+  }
 
   async sendEvent(
     systemId: string,
