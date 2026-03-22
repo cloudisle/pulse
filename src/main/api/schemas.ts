@@ -1,14 +1,12 @@
 import { randomUUID } from 'crypto'
 import path from 'path'
-import type { Api } from '../../shared/api'
 import type { Schema, SchemaElement } from '../../shared/models/schema'
 import type { ValidationResult, ValidationWarning } from '../../shared/models/event'
 import type { CreateSchemaInput, UpdateSchemaInput } from '../../shared/dto/schemas'
 import { StorageService, StoragePaths } from '../services/storage'
 import { SettingsService } from '../services/settings.service'
 
-export class SchemasApi implements Api {
-  readonly api: string = 'schemas'
+export class SchemasApi {
 
   private readonly settings: SettingsService
 

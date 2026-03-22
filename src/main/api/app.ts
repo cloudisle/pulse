@@ -1,9 +1,7 @@
-import type { Api } from '../../shared/api'
 import { SettingsService } from '../services/settings.service'
 import type { AppSettings } from '../../shared/models'
 
-export class AppApi implements Api {
-  readonly api: string = 'app'
+export class AppApi {
 
   private settings: SettingsService;
 
