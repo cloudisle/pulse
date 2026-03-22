@@ -113,7 +113,8 @@ beforeEach(async () => {
     sendListenerError: vi.fn()
   } as unknown as ReturnType<typeof vi.mocked<PushService>>
 
-  api = new EventsApi(storage, settings, generationService, senderService, pushService)
+  api = new EventsApi(storage, settings, generationService, senderService);
+  (api as any).pushService = pushService;
 })
 
 afterEach(async () => {

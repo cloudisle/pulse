@@ -89,8 +89,8 @@ beforeEach(async () => {
 
   lifecycleFactoryProvider = vi.fn().mockReturnValue({} as any)
 
-  api = new ListenersApi(storage, settings, lifecycleFactoryProvider)
-  ;(api as any).manager = listenerManager
+  api = new ListenersApi(storage, settings, lifecycleFactoryProvider);
+  (api as any).manager = listenerManager
 })
 
 afterEach(async () => {
