@@ -1,12 +1,28 @@
-import { beforeEach, describe, it, expect } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { beforeEach, describe, it, expect, vi } from 'vitest'
+import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import Sidebar from '@renderer/components/Sidebar.vue'
 import { useUiStore } from '@renderer/stores/ui'
+import { useSystemStore } from '@renderer/stores/system'
+import { useSchemaStore } from '@renderer/stores/schema.store'
+
+function mockAppApi(overrides: Record<string, any> = {}) {
+  ;(window as any).app = {
+    api: {
+      systems: { list: vi.fn().mockResolvedValue([]) },
+      schemas: { list: vi.fn().mockResolvedValue([]) },
+      environments: { list: vi.fn().mockResolvedValue([]) },
+      profiles: { list: vi.fn().mockResolvedValue([]) },
+      templates: { list: vi.fn().mockResolvedValue({ folders: [], templates: [] }) },
+      ...overrides
+    }
+  }
+}
 
 describe('Sidebar component', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    mockAppApi()
   })
 
   it('renders all navigation sections when expanded', () => {
@@ -43,5 +59,108 @@ describe('Sidebar component', () => {
     store.toggleSidebar()
     await wrapper.vm.$nextTick()
     expect(wrapper.find('.sidebar--collapsed').exists()).toBe(true)
+  })
+
+  it('loads systems on mount and populates the system dropdown', async () => {
+    const systems = [
+      { id: 'sys1', name: 'Production' },
+      { id: 'sys2', name: 'Staging' }
+    ]
+    mockAppApi({ systems: { list: vi.fn().mockResolvedValue(systems) } })
+    const pinia = createPinia()
+    mount(Sidebar, { global: { plugins: [pinia] } })
+    await flushPromises()
+    const systemStore = useSystemStore()
+    expect(systemStore.systems).toEqual(systems)
+  })
+
+  it('loads child entities when a system is selected', async () => {
+    const schemas = [{ id: 'sch1', name: 'Order Schema' }]
+    const environments = [{ id: 'env1', name: 'Production Env' }]
+    const profiles = [{ id: 'prof1', name: 'Default Profile' }]
+    const templates = { folders: [], templates: [{ id: 'tmpl1', name: 'Order Template', folderId: null }] }
+    const schemaListMock = vi.fn().mockResolvedValue(schemas)
+    const envListMock = vi.fn().mockResolvedValue(environments)
+    const profileListMock = vi.fn().mockResolvedValue(profiles)
+    const templateListMock = vi.fn().mockResolvedValue(templates)
+    mockAppApi({
+      schemas: { list: schemaListMock },
+      environments: { list: envListMock },
+      profiles: { list: profileListMock },
+      templates: { list: templateListMock }
+    })
+    const pinia = createPinia()
+    const wrapper = mount(Sidebar, { global: { plugins: [pinia] } })
+    await flushPromises()
+
+    // Pre-populate the systems dropdown so setValue can select a valid option
+    const systemStore = useSystemStore()
+    systemStore.systems = [{ id: 'sys1', name: 'Production' }]
+    await wrapper.vm.$nextTick()
+
+    const select = wrapper.find('.sidebar__system-select')
+    await select.setValue('sys1')
+    await flushPromises()
+
+    expect(schemaListMock).toHaveBeenCalledWith('sys1')
+    expect(envListMock).toHaveBeenCalledWith('sys1')
+    expect(profileListMock).toHaveBeenCalledWith('sys1')
+    expect(templateListMock).toHaveBeenCalledWith('sys1')
+
+    const schemaStore = useSchemaStore()
+    expect(schemaStore.schemas).toEqual([{ id: 'sch1', name: 'Order Schema' }])
+
+    const { useEnvironmentStore } = await import('@renderer/stores/environment')
+    const { useProfileStore } = await import('@renderer/stores/profile')
+    const { useTemplateStore } = await import('@renderer/stores/template.store')
+    expect(useEnvironmentStore().environments).toEqual([{ id: 'env1', name: 'Production Env' }])
+    expect(useProfileStore().availableProfiles).toEqual([{ id: 'prof1', name: 'Default Profile' }])
+    expect(useTemplateStore().templates).toEqual([{ id: 'tmpl1', name: 'Order Template', folderId: null }])
+  })
+
+  it('opens a schema tab when a schema item is clicked', async () => {
+    const pinia = createPinia()
+    const wrapper = mount(Sidebar, { global: { plugins: [pinia] } })
+    const schemaStore = useSchemaStore()
+    schemaStore.schemas = [{ id: 'sch1', name: 'My Schema' }]
+    await wrapper.vm.$nextTick()
+
+    const item = wrapper.find('.sidebar__item')
+    await item.trigger('click')
+
+    const uiStore = useUiStore()
+    expect(uiStore.openTabs).toContainEqual(
+      expect.objectContaining({ id: 'schema:sch1', type: 'schema', title: 'My Schema' })
+    )
+  })
+
+  it('focuses an existing tab instead of opening a duplicate', async () => {
+    const pinia = createPinia()
+    const wrapper = mount(Sidebar, { global: { plugins: [pinia] } })
+    const schemaStore = useSchemaStore()
+    schemaStore.schemas = [{ id: 'sch1', name: 'My Schema' }]
+    await wrapper.vm.$nextTick()
+
+    const item = wrapper.find('.sidebar__item')
+    await item.trigger('click')
+    await item.trigger('click')
+
+    const uiStore = useUiStore()
+    expect(uiStore.openTabs.filter((t) => t.id === 'schema:sch1')).toHaveLength(1)
+    expect(uiStore.activeTabId).toBe('schema:sch1')
+  })
+
+  it('opens the create schema tab when the Schemas + button is clicked', async () => {
+    const pinia = createPinia()
+    const wrapper = mount(Sidebar, { global: { plugins: [pinia] } })
+
+    const addBtns = wrapper.findAll('.sidebar__add-btn')
+    // First add button belongs to Schemas section (index 0)
+    await addBtns[0].trigger('click')
+
+    const uiStore = useUiStore()
+    expect(uiStore.openTabs).toContainEqual(
+      expect.objectContaining({ id: 'schema:new', type: 'schema' })
+    )
   })
 })
