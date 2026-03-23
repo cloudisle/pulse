@@ -8,7 +8,9 @@ import type { SessionEvent } from '../../../shared/models'
 import type { SendEventInput, SendEventResult } from '../../../shared/models'
 import { PublisherFactory } from "./factory";
 import { PublishResult } from "./publisher";
-import type { LogService } from '../log.service'
+import {logger} from "../../util/log";
+
+const log = logger('event-sender.service');
 
 export class EventSenderService {
 
@@ -18,7 +20,6 @@ export class EventSenderService {
     private readonly storage: StorageService,
     private readonly settings: SettingsService,
     private readonly factory: PublisherFactory,
-    private readonly logger?: LogService,
   ) {
     this.variables = new VariableReplacementService();
   }
@@ -37,11 +38,7 @@ export class EventSenderService {
     ) as KinesisConfig | SqsConfig | EventBridgeConfig
 
     const logContext = { systemId, sessionId: input.sessionId }
-    await this.logger?.info(
-      'events',
-      `Sending event to ${this.describeTarget(inputConfig.type, resolvedConfig)}`,
-      logContext
-    )
+    await log.info(`Sending event to ${this.describeTarget(inputConfig.type, resolvedConfig)}`, logContext);
 
     const timestamp = new Date().toISOString()
 
@@ -55,11 +52,11 @@ export class EventSenderService {
       const result = await this.dispatchEvent(input, inputConfig, resolvedConfig);
       eventId = result.id;
       metadata = result;
-      await this.logger?.info('events', 'Event sent successfully', logContext)
+      await log.info('Event sent successfully', logContext)
     } catch (err: unknown) {
       status = 'failed'
       error = err instanceof Error ? err.message : String(err)
-      await this.logger?.error('events', `Failed to send event: ${error}`, logContext)
+      await log.error(`Failed to send event: ${error}`, logContext)
     }
 
     // 4. Record the session event

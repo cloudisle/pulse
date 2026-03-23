@@ -2,25 +2,17 @@ import { StorageService, StoragePaths } from '../services/storage'
 import { SettingsService } from '../services/settings.service'
 import { ListenerManagerService } from '../services/listeners/listener-manager.service'
 import type { ListenerConfig, ListenerStartResult, ListenerStatus, System } from '../../shared/models'
-import {app, BrowserWindow} from "electron";
-import {ListenerLifecycleFactory} from "../services/listeners/factory";
+import {app} from "electron";
 
 let quitting = false;
 
 export class ListenersApi {
 
-  private manager: ListenerManagerService | null = null
-
   constructor(
     private readonly storage: StorageService,
     private readonly settings: SettingsService,
-    private readonly lifecycleFactoryProvider: (window: BrowserWindow) => ListenerLifecycleFactory
+    private readonly manager: ListenerManagerService,
   ) {}
-
-  setBrowserWindow(window: BrowserWindow) {
-    const lifecycleFactory = this.lifecycleFactoryProvider(window);
-    this.manager = new ListenerManagerService(lifecycleFactory)
-  }
 
   initialize(): void {
     app.on('before-quit', (event) => {
@@ -31,7 +23,7 @@ export class ListenersApi {
       event.preventDefault();
       quitting = true;
 
-      this.manager?.stopAll()
+      this.manager.stopAll()
           .catch(console.error)
           .finally(() => app.quit())
     });

@@ -1,10 +1,8 @@
-import { randomUUID } from 'crypto'
 import path from 'path'
 import { StorageService, StoragePaths } from '../services/storage'
 import { SettingsService } from '../services/settings.service'
 import { EventGenerationService } from '../services/event-generation.service'
 import { EventSenderService } from '../services/publishers/event-sender.service'
-import { PushService } from '../services/push.service'
 import type { Schema, CustomDataType } from '../../shared/models/schema'
 import type { Environment } from '../../shared/models/environment'
 import type { Profile } from '../../shared/models/profile'
@@ -16,11 +14,11 @@ import type {
   SendEventResult,
   ValidationResult
 } from '../../shared/models/event'
-import {BrowserWindow} from "electron";
+import {logger} from "../util/log";
+
+const log = logger('events.api');
 
 export class EventsApi {
-
-  private pushService: PushService|null = null;
 
   constructor(
     private readonly storage: StorageService,
@@ -28,10 +26,6 @@ export class EventsApi {
     private readonly generationService: EventGenerationService,
     private readonly senderService: EventSenderService
   ) {}
-
-  setBrowserWindow(window: BrowserWindow) {
-    this.pushService = new PushService(window);
-  }
 
   async generate(systemId: string, input: GenerateEventInput): Promise<GeneratedEvent> {
     const dataDir = await this.settings.getDataPath()
@@ -91,23 +85,17 @@ export class EventsApi {
 
     const result = await this.senderService.sendEvent(systemId, input, inputConfig, environment)
 
-    if (this.pushService !== null) {
-      this.pushService.sendLogEntry({
-        id: randomUUID(),
-        timestamp: new Date().toISOString(),
-        level: result.success ? 'info' : 'error',
-        source: 'events',
-        message: result.success
-          ? `Event sent to ${inputConfig.name}`
-          : `Failed to send event to ${inputConfig.name}: ${result.error ?? 'Unknown error'}`,
-        sessionId: input.sessionId,
-        metadata: {
-          sessionEventId: result.sessionEventId,
-          inputId: input.inputId,
-          schemaId: input.event.schemaId
-        }
-      })
-    }
+    const level = result.success ? 'info' : 'error';
+    const message = result.success
+        ? `Event sent to ${inputConfig.name}`
+        : `Failed to send event to ${inputConfig.name}: ${result.error ?? 'Unknown error'}`
+
+    await log.log(level, message, {
+      sessionId: input.sessionId,
+      sessionEventId: result.sessionEventId,
+      inputId: input.inputId,
+      schemaId: input.event.schemaId
+    });
 
     return result
   }

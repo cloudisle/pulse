@@ -1,7 +1,9 @@
 import type { AppSettings } from '../../shared/models'
 import { SettingsService } from './settings.service'
 import { StoragePaths, StorageService } from './storage'
-import type { LogService } from './log.service'
+import {logger} from "../util/log";
+
+const log = logger('cloud.service');
 
 export enum PutMode {
   MERGE,
@@ -18,7 +20,6 @@ export class CloudService {
   constructor(
     private readonly storage: StorageService,
     private readonly settings: SettingsService,
-    private readonly logger?: LogService,
   ) {}
 
   async get(platform: string, key?: string): Promise<any> {
@@ -64,7 +65,8 @@ export class CloudService {
       }
     }
 
-    await this.logger?.info('aws', `Updating ${platform} cloud settings`)
+    await log.info(`Updating ${platform} cloud settings`);
+
     await this.storage.write(StoragePaths.settings(current.dataDirectory), nextSettings)
   }
 

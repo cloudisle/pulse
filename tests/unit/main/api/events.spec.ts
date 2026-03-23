@@ -3,9 +3,37 @@ import { promises as fs } from 'fs'
 import os from 'os'
 import path from 'path'
 
+const appMocks = vi.hoisted(() => ({
+  logEntrySend: vi.fn(),
+  listenerLifecycleSend: vi.fn(),
+  listenerDataSend: vi.fn(),
+  listenerErrorSend: vi.fn(),
+  addSessionLog: vi.fn()
+}))
+
 vi.mock('electron', () => ({
   app: {
     getPath: vi.fn().mockReturnValue('/mock/userData')
+  }
+}))
+
+vi.mock('../../../../src/app', () => ({
+  default: {
+    channels: {
+      log: {
+        entry: { send: appMocks.logEntrySend }
+      },
+      listeners: {
+        lifecycle: { send: appMocks.listenerLifecycleSend },
+        data: { send: appMocks.listenerDataSend },
+        error: { send: appMocks.listenerErrorSend }
+      }
+    },
+    api: {
+      sessions: {
+        addLog: appMocks.addSessionLog
+      }
+    }
   }
 }))
 
@@ -13,7 +41,6 @@ import { StorageService, StoragePaths } from '../../../../src/main/services/stor
 import { SettingsService } from '../../../../src/main/services/settings.service'
 import { EventGenerationService } from '../../../../src/main/services/event-generation.service'
 import { EventSenderService } from '../../../../src/main/services/publishers/event-sender.service'
-import { PushService } from '../../../../src/main/services/push.service'
 import { EventsApi } from '../../../../src/main/api/events'
 import type { Schema, SchemaElement } from '../../../../src/shared/models/schema'
 import type { Environment } from '../../../../src/shared/models/environment'
@@ -89,7 +116,6 @@ let storage: StorageService
 let settings: SettingsService
 let generationService: ReturnType<typeof vi.mocked<EventGenerationService>>
 let senderService: ReturnType<typeof vi.mocked<EventSenderService>>
-let pushService: ReturnType<typeof vi.mocked<PushService>>
 let api: EventsApi
 
 beforeEach(async () => {
@@ -106,15 +132,13 @@ beforeEach(async () => {
     sendEvent: vi.fn()
   } as unknown as ReturnType<typeof vi.mocked<EventSenderService>>
 
-  pushService = {
-    sendLogEntry: vi.fn(),
-    sendListenerLifecycle: vi.fn(),
-    sendListenerData: vi.fn(),
-    sendListenerError: vi.fn()
-  } as unknown as ReturnType<typeof vi.mocked<PushService>>
+  appMocks.logEntrySend.mockReset()
+  appMocks.listenerLifecycleSend.mockReset()
+  appMocks.listenerDataSend.mockReset()
+  appMocks.listenerErrorSend.mockReset()
+  appMocks.addSessionLog.mockReset()
 
-  api = new EventsApi(storage, settings, generationService, senderService);
-  (api as any).pushService = pushService;
+  api = new EventsApi(storage, settings, generationService, senderService)
 })
 
 afterEach(async () => {
@@ -352,7 +376,7 @@ describe('EventsApi — send (success)', () => {
     expect(senderService.sendEvent).toHaveBeenCalledWith(SYSTEM_ID, input, makeKinesisInputConfig(), env)
   })
 
-  it('emits an info log entry via PushService on success', async () => {
+  it('emits an info log entry with exact message on success', async () => {
     const system = makeSystem()
     await storage.write(StoragePaths.system(tmpDir, SYSTEM_ID), system)
 
@@ -364,10 +388,11 @@ describe('EventsApi — send (success)', () => {
     const input = makeSendInput()
     await api.send(SYSTEM_ID, input)
 
-    expect(pushService.sendLogEntry).toHaveBeenCalledWith(
+    expect(appMocks.logEntrySend).toHaveBeenCalledWith(
       expect.objectContaining({
         level: 'info',
-        source: 'events',
+        source: 'events.api',
+        message: 'Event sent to Orders Kinesis',
         sessionId: input.sessionId,
         metadata: expect.objectContaining({
           sessionEventId: 'evt-42',
@@ -394,7 +419,7 @@ describe('EventsApi — send (success)', () => {
     expect(result).toEqual(sendResult)
   })
 
-  it('does not emit a log entry when PushService is not provided', async () => {
+  it('sends logs through App.channels.log.entry', async () => {
     const system = makeSystem()
     await storage.write(StoragePaths.system(tmpDir, SYSTEM_ID), system)
 
@@ -403,10 +428,9 @@ describe('EventsApi — send (success)', () => {
       sessionEventId: 'evt-1'
     })
 
-    const apiWithoutPush = new EventsApi(storage, settings, generationService, senderService)
-    await apiWithoutPush.send(SYSTEM_ID, makeSendInput())
+    await api.send(SYSTEM_ID, makeSendInput())
 
-    expect(pushService.sendLogEntry).not.toHaveBeenCalled()
+    expect(appMocks.logEntrySend).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -415,7 +439,7 @@ describe('EventsApi — send (success)', () => {
 // ---------------------------------------------------------------------------
 
 describe('EventsApi — send (failure)', () => {
-  it('emits an error log entry via PushService when send fails', async () => {
+  it('emits an error log entry with exact message when send fails', async () => {
     const system = makeSystem()
     await storage.write(StoragePaths.system(tmpDir, SYSTEM_ID), system)
 
@@ -430,10 +454,11 @@ describe('EventsApi — send (failure)', () => {
 
     expect(result.success).toBe(false)
     expect(result.error).toBe('ResourceNotFoundException')
-    expect(pushService.sendLogEntry).toHaveBeenCalledWith(
+    expect(appMocks.logEntrySend).toHaveBeenCalledWith(
       expect.objectContaining({
         level: 'error',
-        source: 'events',
+        source: 'events.api',
+        message: 'Failed to send event to Orders Kinesis: ResourceNotFoundException',
         sessionId: input.sessionId
       })
     )
