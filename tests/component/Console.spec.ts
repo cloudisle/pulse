@@ -1,9 +1,9 @@
 import { beforeEach, describe, it, expect, vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import Console from '@renderer/components/BottomPanel/Console.vue'
 import { useLogStore } from '@renderer/stores/log.store'
-import type { LogEntry } from '../../../src/shared/models'
+import {LogEntry} from "../../src/shared/models";
 
 function makeEntry(overrides: Partial<LogEntry> = {}): LogEntry {
   return {
