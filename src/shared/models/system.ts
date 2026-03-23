@@ -5,6 +5,7 @@ export type OutputType = 'kinesis' | 'sqs';
 export interface KinesisConfig {
   streamName: string; // supports {{ variable }} replacement
   region?: string; // supports {{ variable }} replacement
+  partitionKey?: string; // supports {{ variable }} replacement
   pollInterval?: number;
 }
 

@@ -155,8 +155,8 @@ describe('Sidebar component', () => {
     const wrapper = mount(Sidebar, { global: { plugins: [pinia] } })
 
     const addBtns = wrapper.findAll('.sidebar__add-btn')
-    // First add button belongs to Schemas section (index 0)
-    await addBtns[0].trigger('click')
+    // Systems add button is at index 0; Schemas add button is at index 1
+    await addBtns[1].trigger('click')
 
     const uiStore = useUiStore()
     expect(uiStore.openTabs).toContainEqual(

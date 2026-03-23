@@ -25,7 +25,7 @@ interface ContextMenuState {
   visible: boolean
   x: number
   y: number
-  entityType: 'schema' | 'environment' | 'profile' | 'template' | ''
+  entityType: 'schema' | 'environment' | 'profile' | 'template' | 'system' | ''
   entityId: string
 }
 
@@ -69,6 +69,14 @@ function openTemplateTab(id: string, name: string): void {
   uiStore.openTab({ id: `template:${id}`, type: 'template', title: name })
 }
 
+function createSystem(): void {
+  uiStore.openTab({ id: 'system:new', type: 'system', title: 'New System' })
+}
+
+function editSystem(id: string, name: string): void {
+  uiStore.openTab({ id: `system:${id}`, type: 'system', title: name })
+}
+
 function createSchema(): void {
   uiStore.openTab({ id: 'schema:new', type: 'schema', title: 'New Schema' })
 }
@@ -87,7 +95,7 @@ function createTemplate(): void {
 
 function showContextMenu(
   event: MouseEvent,
-  type: 'schema' | 'environment' | 'profile' | 'template',
+  type: 'schema' | 'environment' | 'profile' | 'template' | 'system',
   id: string
 ): void {
   contextMenu.value = { visible: true, x: event.clientX, y: event.clientY, entityType: type, entityId: id }
@@ -97,6 +105,18 @@ function showContextMenu(
 function hideContextMenu(): void {
   contextMenu.value.visible = false
   document.removeEventListener('click', hideContextMenu)
+}
+
+function onContextMenuEdit(): void {
+  if (contextMenu.value.entityType === 'system') {
+    const sys = systemStore.systems.find((s) => s.id === contextMenu.value.entityId)
+    if (sys) editSystem(sys.id, sys.name)
+  }
+  hideContextMenu()
+}
+
+function onContextMenuDelete(): void {
+  hideContextMenu()
 }
 
 interface TreeItem {
@@ -134,7 +154,10 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
     <nav v-if="!uiStore.sidebarCollapsed" class="sidebar__nav">
       <!-- Systems selector -->
       <section class="sidebar__section">
-        <h3 class="sidebar__section-title">Systems</h3>
+        <div class="sidebar__section-header">
+          <h3 class="sidebar__section-title">Systems</h3>
+          <button class="sidebar__add-btn" title="Create system" @click="createSystem">+</button>
+        </div>
         <div class="sidebar__system-selector">
           <select
             class="sidebar__system-select"
@@ -146,6 +169,14 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
               {{ sys.name }}
             </option>
           </select>
+          <button
+            v-if="systemStore.selectedSystemId"
+            class="sidebar__edit-btn"
+            title="Edit selected system"
+            @click="editSystem(systemStore.selectedSystemId!, systemStore.systems.find(s => s.id === systemStore.selectedSystemId)?.name ?? 'System')"
+          >
+            ✎
+          </button>
         </div>
       </section>
 
@@ -279,8 +310,8 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
         :style="{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }"
         @click.stop
       >
-        <button class="sidebar__context-item" @click="hideContextMenu">Edit</button>
-        <button class="sidebar__context-item" @click="hideContextMenu">Delete</button>
+        <button class="sidebar__context-item" @click="onContextMenuEdit">Edit</button>
+        <button class="sidebar__context-item" @click="onContextMenuDelete">Delete</button>
         <button
           v-if="contextMenu.entityType === 'template'"
           class="sidebar__context-item"
@@ -407,6 +438,30 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
 
 .sidebar__system-selector {
   padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sidebar__edit-btn {
+  background: none;
+  border: none;
+  color: #585b70;
+  font-size: 14px;
+  cursor: pointer;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.sidebar__edit-btn:hover {
+  background: #313244;
+  color: #cdd6f4;
 }
 
 .sidebar__system-select {
