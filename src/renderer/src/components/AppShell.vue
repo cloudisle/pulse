@@ -26,8 +26,9 @@ import StatusBar from '@renderer/components/StatusBar.vue'
 .app-shell {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  width: 100vw;
+  height: 100%;
+  width: 100%;
+  min-height: 0;
   overflow: hidden;
   background: #1e1e2e;
   color: #cdd6f4;

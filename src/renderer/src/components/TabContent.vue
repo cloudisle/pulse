@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useUiStore } from '@renderer/stores/ui.store'
+import { useUiStore } from '@renderer/stores/ui'
 
 const uiStore = useUiStore()
 

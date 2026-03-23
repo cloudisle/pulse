@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { useEnvironmentStore } from '@renderer/stores/environment.store'
-import { useProfileStore } from '@renderer/stores/profile.store'
+import { useEnvironmentStore } from '@renderer/stores/environment'
+import { useProfileStore } from '@renderer/stores/profile'
 
 const environmentStore = useEnvironmentStore()
 const profileStore = useProfileStore()
@@ -11,38 +11,41 @@ const profileStore = useProfileStore()
     <div class="top-bar__logo">
       <span class="top-bar__title">Pulse</span>
     </div>
-    <div class="top-bar__center">
-      <label class="top-bar__label" for="environment-select">Environment</label>
-      <select
-        id="environment-select"
-        class="top-bar__select"
-        :value="environmentStore.selectedEnvironmentId ?? ''"
-        @change="environmentStore.selectEnvironment(($event.target as HTMLSelectElement).value)"
-      >
-        <option value="" disabled>Select environment…</option>
-        <option
-          v-for="env in environmentStore.environments"
-          :key="env.id"
-          :value="env.id"
-        >{{ env.name }}</option>
-      </select>
-    </div>
+    <div class="top-bar__spacer" />
     <div class="top-bar__right">
-      <label class="top-bar__label">Profiles</label>
-      <div class="top-bar__profile-list">
-        <span
-          v-for="profile in profileStore.availableProfiles"
-          :key="profile.id"
-          class="top-bar__profile-chip"
-          :class="{ 'top-bar__profile-chip--active': profileStore.activeProfileIds.includes(profile.id) }"
-          role="button"
-          tabindex="0"
-          @click="profileStore.toggleProfile(profile.id)"
-          @keydown.enter="profileStore.toggleProfile(profile.id)"
-        >{{ profile.name }}</span>
-        <span v-if="profileStore.availableProfiles.length === 0" class="top-bar__profile-empty">
-          No profiles
-        </span>
+      <div class="top-bar__group">
+        <label class="top-bar__label" for="environment-select">Environment</label>
+        <select
+          id="environment-select"
+          class="top-bar__select"
+          :value="environmentStore.selectedEnvironmentId ?? ''"
+          @change="environmentStore.selectEnvironment(($event.target as HTMLSelectElement).value)"
+        >
+          <option value="" disabled>Select environment…</option>
+          <option
+            v-for="env in environmentStore.environments"
+            :key="env.id"
+            :value="env.id"
+          >{{ env.name }}</option>
+        </select>
+      </div>
+      <div class="top-bar__group">
+        <label class="top-bar__label">Profiles</label>
+        <div class="top-bar__profile-list">
+          <span
+            v-for="profile in profileStore.availableProfiles"
+            :key="profile.id"
+            class="top-bar__profile-chip"
+            :class="{ 'top-bar__profile-chip--active': profileStore.activeProfileIds.includes(profile.id) }"
+            role="button"
+            tabindex="0"
+            @click="profileStore.toggleProfile(profile.id)"
+            @keydown.enter="profileStore.toggleProfile(profile.id)"
+          >{{ profile.name }}</span>
+          <span v-if="profileStore.availableProfiles.length === 0" class="top-bar__profile-empty">
+            No profiles
+          </span>
+        </div>
       </div>
     </div>
   </header>
@@ -71,16 +74,18 @@ const profileStore = useProfileStore()
   letter-spacing: 0.04em;
 }
 
-.top-bar__center {
+.top-bar__spacer {
   flex: 1 1 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
 }
 
 .top-bar__right {
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.top-bar__group {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -106,6 +111,7 @@ const profileStore = useProfileStore()
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+  justify-content: flex-start;
 }
 
 .top-bar__profile-chip {

@@ -2,7 +2,7 @@ import { beforeEach, describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import Sidebar from '@renderer/components/Sidebar.vue'
-import { useUiStore } from '@renderer/stores/ui.store'
+import { useUiStore } from '@renderer/stores/ui'
 
 describe('Sidebar component', () => {
   beforeEach(() => {

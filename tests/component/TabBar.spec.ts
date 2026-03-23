@@ -2,7 +2,7 @@ import { beforeEach, describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import TabBar from '@renderer/components/TabBar.vue'
-import { useUiStore } from '@renderer/stores/ui.store'
+import { useUiStore } from '@renderer/stores/ui'
 
 describe('TabBar component', () => {
   beforeEach(() => {

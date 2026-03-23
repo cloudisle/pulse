@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useAwsStore } from '@renderer/stores/aws.store'
+import { useAwsStore } from '@renderer/stores/aws'
 
 const awsStore = useAwsStore()
 </script>
