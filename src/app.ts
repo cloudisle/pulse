@@ -11,9 +11,7 @@ import {EnvironmentsApi} from "./main/api/environments";
 import {CustomTypesApi} from "./main/api/custom-types";
 import {SessionsApi} from "./main/api/sessions";
 import {TemplatesApi} from "./main/api/templates";
-import {PushService} from "./main/services/push.service";
 import {ListenerFactory, ListenerLifecycleFactory} from "./main/services/listeners/factory";
-import {BrowserWindow} from "electron";
 import {CloudService} from "./main/services/cloud.service";
 import {ConverterFactory} from "./main/services/listeners/converter";
 import {FilterFactory} from "./main/services/listeners/filter";
@@ -22,6 +20,7 @@ import {EventsApi} from "./main/api/events";
 import {EventSenderService} from "./main/services/publishers/event-sender.service";
 import {EventGenerationService} from "./main/services/event-generation.service";
 import {PublisherFactory} from "./main/services/publishers/factory";
+import {ListenerManagerService} from "./main/services/listeners/listener-manager.service";
 
 const storage = new StorageService();
 const settings = new SettingsService(storage);
@@ -32,18 +31,10 @@ const listenerFactory = new ListenerFactory(cloud);
 const converterFactory = new ConverterFactory();
 const filterFactory = new FilterFactory();
 const publisherFactory = new PublisherFactory(cloud);
+const lifecycleFactory = new ListenerLifecycleFactory(listenerFactory, converterFactory, filterFactory);
 
 const events = new EventSenderService(storage, settings, publisherFactory);
-
-const lifecycleFactoryProvider = (window: BrowserWindow) => {
-    const pushService = new PushService(window);
-    return new ListenerLifecycleFactory(
-        pushService,
-        listenerFactory,
-        converterFactory,
-        filterFactory
-    )
-}
+const manager = new ListenerManagerService(lifecycleFactory);
 
 export default app({
     apis: {
@@ -57,7 +48,7 @@ export default app({
         templates: api(new TemplatesApi(storage, settings)),
         profiles: api(new ProfilesApi(storage, settings)),
         events: api(new EventsApi(storage, settings, generation, events)),
-        listeners: api(new ListenersApi(storage, settings, lifecycleFactoryProvider)),
+        listeners: api(new ListenersApi(storage, settings, manager)),
     },
     channels: {
         listeners: {

@@ -8,6 +8,9 @@ import type { SessionEvent } from '../../../shared/models'
 import type { SendEventInput, SendEventResult } from '../../../shared/models'
 import { PublisherFactory } from "./factory";
 import { PublishResult } from "./publisher";
+import {logger} from "../../util/log";
+
+const log = logger('event-sender.service');
 
 export class EventSenderService {
 
@@ -34,6 +37,9 @@ export class EventSenderService {
       variables
     ) as KinesisConfig | SqsConfig | EventBridgeConfig
 
+    const logContext = { systemId, sessionId: input.sessionId }
+    await log.info(`Sending event to ${this.describeTarget(inputConfig.type, resolvedConfig)}`, logContext);
+
     const timestamp = new Date().toISOString()
 
     let eventId: string = randomUUID()
@@ -46,9 +52,11 @@ export class EventSenderService {
       const result = await this.dispatchEvent(input, inputConfig, resolvedConfig);
       eventId = result.id;
       metadata = result;
+      await log.info('Event sent successfully', logContext)
     } catch (err: unknown) {
       status = 'failed'
       error = err instanceof Error ? err.message : String(err)
+      await log.error(`Failed to send event: ${error}`, logContext)
     }
 
     // 4. Record the session event
@@ -99,5 +107,12 @@ export class EventSenderService {
   private buildVariables(environment?: Environment): Record<string, string> {
     if (environment === undefined) return {}
     return Object.fromEntries(environment.variables.map((v) => [v.key, v.value]))
+  }
+
+  private describeTarget(type: string, config: KinesisConfig | SqsConfig | EventBridgeConfig): string {
+    if (type === 'kinesis') return `Kinesis stream ${(config as KinesisConfig).streamName}`
+    if (type === 'sqs') return `SQS queue ${(config as SqsConfig).queueUrl}`
+    if (type === 'eventbridge') return `EventBridge bus ${(config as EventBridgeConfig).eventBusName}`
+    return type
   }
 }

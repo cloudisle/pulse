@@ -24,11 +24,20 @@ export interface ConfigureContext {
 
 export class App<T extends AppConfig> {
 
-    constructor(
+    static instance: App<any>|null;
+
+    private initialized = false;
+    private exposed = false;
+
+    private constructor(
         private readonly config: T,
     ) {}
 
     public initialize(main: IpcMain, window: BrowserWindow): T {
+        if (this.initialized) {
+            throw new Error("App already initialized");
+        }
+
         this.configure('api', this.config.apis, {
             predicate: (o: any) => o['__type'] === 'api',
             configurer: (name: string, value: any) => initialize(name, value, {
@@ -41,10 +50,26 @@ export class App<T extends AppConfig> {
             configurer: (name: string) => new MainChannel(name, window)
         });
 
+        main.handle('channelSendEvent', async (_e, name: string, event: any) => {
+            // convert name from dot notation to access channel object from App.channels
+            const channel = name.split('.').reduce((obj, key) => obj[key], this.config);
+            if (channel && typeof channel['send'] === 'function') {
+                await (channel as unknown as Channel<any>).send(event);
+            } else {
+                return Promise.reject(`No channel found for name ${name}`);
+            }
+        });
+
+        this.initialized = true;
+
         return this.config;
     }
 
     public expose(renderer: IpcRenderer): T {
+        if (this.exposed) {
+            throw new Error("App already exposed");
+        }
+
         this.configure('api', this.config.apis, {
             predicate: (o: any) => o['__type'] === 'api',
             configurer: (name: string, value: any) => expose(name, value, {
@@ -57,7 +82,17 @@ export class App<T extends AppConfig> {
             configurer: (name: string) => new RendererChannel(name, renderer)
         });
 
+        this.exposed = true;
+
         return this.config;
+    }
+
+    public get api(): T['apis'] {
+        return this.config.apis;
+    }
+
+    public get channels(): T['channels'] {
+        return this.config.channels;
     }
 
     private configure(name: string, data: any|Record<string, any>, context: ConfigureContext) {
@@ -79,10 +114,24 @@ export class App<T extends AppConfig> {
         })
     }
 
+    public static create<T extends AppConfig>(config: T): App<T> {
+        if (App.instance) {
+            throw new Error('App instance already exists');
+        }
+
+        App.instance = new App(config);
+
+        return App.instance;
+    }
+
 }
 
 export function app<T extends AppConfig>(config: T): App<T> {
-    return new App(config);
+    if (App.instance) {
+        return App.instance;
+    }
+
+    return App.create(config);
 }
 
 export { api } from './api'

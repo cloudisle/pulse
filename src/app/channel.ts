@@ -1,22 +1,22 @@
 import {BrowserWindow, IpcRenderer, IpcRendererEvent} from "electron";
 import {randomUUID} from "crypto";
 
-export type ChannelListener<T> = (event: T, ) => void
+export type ChannelListener<T> = (event: T) => Promise<void>
 export type Handle = () => void
 
 export interface Channel<T> {
 
-    send(event: T): void;
+    send(event: T): Promise<void>;
     listen(listener: ChannelListener<T>): Handle
 
 }
 
-export function channel<T>(): Channel<T> & { __type: string } {
+export function channel<T>(): Channel<T> {
     return {
         __type: "channel",
         send: () => {},
         listen: () => () => {}
-    }
+    } as any as Channel<T>;
 }
 
 export class RendererChannel<T> implements Channel<T> {
@@ -26,13 +26,13 @@ export class RendererChannel<T> implements Channel<T> {
         private readonly renderer: IpcRenderer
     ) {}
 
-    send(event: T) {
+    async send(event: T) {
         this.renderer.send(this.name, event);
-        this.renderer.invoke('channelSendEvent', this.name, event);
+        await this.renderer.invoke('channelSendEvent', this.name, event);
     }
 
     listen(listener: ChannelListener<T>): Handle {
-        const handler = (_e: IpcRendererEvent, data: T) => listener(data);
+        const handler = async (_e: IpcRendererEvent, data: T) => await listener(data);
         this.renderer.on(this.name, handler);
         return () => this.renderer.removeListener(this.name, handler);
     }
@@ -48,10 +48,14 @@ export class MainChannel<T> implements Channel<T> {
         private readonly window: BrowserWindow
     ) {}
 
-    send(event: T) {
-        Object.keys(this.listeners).forEach(id => {
-            this.listeners[id](event);
-        });
+    async send(event: T) {
+        for (const id in Object.keys(this.listeners)) {
+            try {
+                await this.listeners[id](event);
+            } catch (e) {
+                console.error("Unhandled error for listener", id, e);
+            }
+        }
 
         this.window.webContents.send(this.name, event);
     }

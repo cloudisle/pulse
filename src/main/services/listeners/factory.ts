@@ -1,7 +1,6 @@
 import {CloudService} from "../cloud.service";
 import {type KinesisConfig, ListenerConfig, OutputConfig} from "../../../shared/models";
 import {KinesisListener} from "../../cloud/kinesis/kinesis-listener";
-import {PushService} from "../push.service";
 import {ConverterFactory} from "./converter";
 import {AggregateFilter, FilterFactory} from "./filter";
 import {DefaultListenerLifecycle, DefaultMessageHandler, Listener, ListenerLifecycle} from "./listener";
@@ -35,7 +34,6 @@ export interface ListenerLifecycleConfig {
 export class ListenerLifecycleFactory {
 
     constructor(
-        private readonly channel: PushService,
         private readonly listenerFactory: ListenerFactory,
         private readonly converterFactory: ConverterFactory,
         private readonly filterFactory: FilterFactory,
@@ -48,9 +46,9 @@ export class ListenerLifecycleFactory {
         const filter = this.createAggregateFilter(listenerConfig);
         const listener = this.listenerFactory.create(outputConfig);
 
-        const handler = new DefaultMessageHandler(listenerConfig, this.channel, filter, converter);
+        const handler = new DefaultMessageHandler(listenerConfig, filter, converter);
 
-        return new DefaultListenerLifecycle(listener, listenerConfig, handler, this.channel);
+        return new DefaultListenerLifecycle(listener, listenerConfig, handler);
     }
 
     private createAggregateFilter(config: ListenerConfig) {

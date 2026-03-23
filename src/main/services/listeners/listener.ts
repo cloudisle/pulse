@@ -1,6 +1,7 @@
 import {ListenerConfig, ListenerLifecycleState, SessionEvent} from "../../../shared/models";
-import {PushService} from "../push.service";
 import {randomUUID} from "crypto";
+import App from "../../../app";
+import {logger} from "../../util/log";
 
 export interface RawMessage {
     data: string;
@@ -14,8 +15,8 @@ export interface Message {
 }
 
 export interface MessageHandler {
-    handle(listenerId: string, message: RawMessage): void;
-    onError(listenerId: string, error: any): void;
+    handle(listenerId: string, message: RawMessage): Promise<void>;
+    onError(listenerId: string, error: any): Promise<void>;
 }
 
 export interface MessageConverter {
@@ -50,25 +51,29 @@ export interface ListenerLifecycle {
 
 export class DefaultMessageHandler implements MessageHandler {
 
+    private static log = logger('DefaultMessageHandler');
+
     constructor(
         private readonly config: ListenerConfig,
-        private readonly channel: PushService,
         private readonly filter: MessageFilter,
-        private readonly converter: MessageConverter,
+        private readonly converter: MessageConverter
     ) {
     }
 
-    handle(listenerId: string, raw: RawMessage): void {
+    async handle(listenerId: string, raw: RawMessage): Promise<void> {
+        const sessionId = this.config.sessionId;
         const message = this.converter.convert(raw);
 
         if (!this.filter.matches(message)) {
             return;
         }
 
+        await DefaultMessageHandler.log.debug(`Listener ${listenerId} data received`, { sessionId })
+
         const sessionEvent: SessionEvent = {
             id: randomUUID(),
-            listenerId: listenerId,
-            sessionId: this.config.sessionId,
+            listenerId,
+            sessionId,
             outputId: this.config.outputId,
             direction: 'received',
             timestamp: new Date().toISOString(),
@@ -80,15 +85,20 @@ export class DefaultMessageHandler implements MessageHandler {
             status: 'success',
         }
 
-        this.channel.sendListenerData({
+        await App.channels.listeners.data.send({
             listenerId,
-            sessionId: this.config.sessionId,
+            sessionId,
             event: sessionEvent
-        })
+        });
     }
 
-    onError(listenerId: string, error: any): void {
-        this.channel.sendListenerError({
+    async onError(listenerId: string, error: any): Promise<void> {
+        await DefaultMessageHandler.log.error(`Listener ${listenerId} error: ${error.message}`, {
+            sessionId: this.config.sessionId,
+            recoverable: error.recoverable ?? false
+        });
+
+        await App.channels.listeners.error.send({
             listenerId,
             error: error.message,
             timestamp: new Date().toISOString(),
@@ -100,53 +110,58 @@ export class DefaultMessageHandler implements MessageHandler {
 
 export class DefaultListenerLifecycle implements ListenerLifecycle {
 
+    private static log = logger('DefaultListenerLifecycle');
+
     private _state: ListenerLifecycleState;
 
     constructor(
         readonly listener: Listener,
         readonly config: ListenerConfig,
         private readonly handler: MessageHandler,
-        private readonly channel: PushService
     ) {
         this._state = 'stopped';
     }
 
     async start() {
-        this.state = 'starting';
+        await this.setState('starting');
 
         try {
             await this.listener.start(this.handler);
         } catch (error: any) {
             await this.stop();
-            this.state = 'error';
+            await this.setState('error');
         }
 
-        this.state = 'running';
+        await this.setState('running');
     }
 
     async stop() {
-        this.state = 'stopping';
+        await this.setState('stopping');
 
         await this.listener.stop();
 
-        this.state = 'stopped';
+        await this.setState('stopped');
     }
 
     get state() {
         return this._state;
     }
 
-    private set state(s: ListenerLifecycleState) {
+    private async setState(s: ListenerLifecycleState) {
+        const sessionId = this.config.sessionId;
         const previousState = this._state;
 
-        this.channel.sendListenerLifecycle({
+        await App.channels.listeners.lifecycle.send({
             listenerId: this.listener.id,
             outputId: this.config.outputId,
-            sessionId: this.config.sessionId,
+            sessionId,
             previousState,
             state: s,
             timestamp: new Date().toISOString()
         });
+
+        const level = s === 'error' ? 'error' : 'info';
+        await DefaultListenerLifecycle.log.log(level, `Listener ${this.listener.id} state changed to ${s}`, { sessionId });
 
         this._state = s;
     }

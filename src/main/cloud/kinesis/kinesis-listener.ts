@@ -48,7 +48,7 @@ export class KinesisListener implements Listener {
       if (shard.ShardId) {
         this.pollShard(shard.ShardId, handler).catch(async (err: any) => {
           if (!this.stopped) {
-            handler.onError(this.id, {
+            await handler.onError(this.id, {
               name: err.name ?? 'GenericKinesisError',
               message: err.message ?? String(err),
               stack: err.stack ?? '',
@@ -81,7 +81,7 @@ export class KinesisListener implements Listener {
         )
 
         for (const record of result.Records ?? []) {
-          this.processRecord(record, handler)
+          await this.processRecord(record, handler)
         }
 
         shardIterator = result.NextShardIterator ?? shardIterator
@@ -92,7 +92,7 @@ export class KinesisListener implements Listener {
       } catch (err: unknown) {
         const errName = (err as { name?: string })?.name
         if (errName === 'ExpiredIteratorException') {
-          handler.onError(this.id, {
+          await handler.onError(this.id, {
             name: errName,
             message: 'Shard iterator expired, re-acquiring',
             stack: (err as Error).stack ?? '',
@@ -123,16 +123,16 @@ export class KinesisListener implements Listener {
     return result.ShardIterator
   }
 
-  private processRecord(record: {
+  private async processRecord(record: {
     Data?: Uint8Array
     SequenceNumber?: string
     PartitionKey?: string
-  }, handler: MessageHandler): void {
+  }, handler: MessageHandler): Promise<void> {
     if (!record.Data) return
 
     const message = Buffer.from(record.Data).toString('utf-8')
 
-    handler.handle(this.id, {
+    await handler.handle(this.id, {
       data: message,
       metadata: {
         sequenceNumber: record.SequenceNumber,

@@ -8,6 +8,9 @@ import type { Environment } from '../../../shared/models'
 import {ListenerLifecycleFactory} from "./factory";
 import {ListenerLifecycle} from "./listener";
 import {VariableReplacementService} from "../variable-replacement.service";
+import {logger} from "../../util/log";
+
+const log = logger('listener-manager.service');
 
 export type ListenerEntry = { listener: ListenerLifecycle, status: ListenerStatus };
 
@@ -17,7 +20,7 @@ export class ListenerManagerService {
   private readonly listeners = new Map<string, ListenerEntry>();
 
   constructor(
-    private readonly factory: ListenerLifecycleFactory
+    private readonly factory: ListenerLifecycleFactory,
   ) {
     this.variables = new VariableReplacementService();
   }
@@ -47,6 +50,10 @@ export class ListenerManagerService {
     });
 
     const listenerId = lifecycle.listener.id;
+    await log.info(`Starting listener ${listenerId} for output ${listenerConfig.outputId}`, {
+      sessionId: listenerConfig.sessionId
+    });
+
     const postStart = () => {
       const entry = this.listeners.get(listenerId)
       if (entry) entry.status.status = entry.listener.state
@@ -65,6 +72,8 @@ export class ListenerManagerService {
   async stopListener(listenerId: string): Promise<void> {
     const entry = this.listeners.get(listenerId)
     if (!entry) return
+
+    await log.info(`Stopping listener ${listenerId}`);
 
     const lifecycle = entry.listener;
 

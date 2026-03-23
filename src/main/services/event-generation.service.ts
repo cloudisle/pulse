@@ -14,6 +14,9 @@ import {
   ConstantConfig,
   TemplateConfig
 } from '../../shared/models/generation'
+import {logger} from "../util/log";
+
+const log = logger('event-generation.service');
 
 export interface GenerateEventProps {
   environment?: Environment
@@ -33,6 +36,10 @@ export class EventGenerationService {
     schema: Schema,
     props: GenerateEventProps
   ): Promise<GeneratedEvent> {
+    await log.info(input.profileIds?.length
+        ? `Generating event from schema ${schema.id} with profiles [${input.profileIds.join(', ')}]`
+        : `Generating event from schema ${schema.id}`)
+
     const profileOverrides = this.resolveProfiles(
       input.profileIds ?? [],
       props.profiles ?? []

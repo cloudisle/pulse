@@ -1,10 +1,6 @@
 import {BrowserWindow, IpcMain, IpcRenderer} from "electron";
 
-export interface Api {
-    __type: "api"
-}
-
-export function api<T>(o: T): T & { __type: string } {
+export function api<T>(o: T): T {
     o['__type'] = "api";
     return o as T & { __type: string };
 }
