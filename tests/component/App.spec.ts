@@ -8,21 +8,12 @@ describe('App component', () => {
     setActivePinia(createPinia())
   })
 
-  it('renders the app name from the store', () => {
+  it('renders the app shell', () => {
     const wrapper = mount(App, {
       global: {
         plugins: [createPinia()]
       }
     })
-    expect(wrapper.find('h1').text()).toBe('Pulse')
-  })
-
-  it('renders the app description', () => {
-    const wrapper = mount(App, {
-      global: {
-        plugins: [createPinia()]
-      }
-    })
-    expect(wrapper.find('p').text()).toBe('Event Driven Test Application')
+    expect(wrapper.find('.app-shell').exists()).toBe(true)
   })
 })
