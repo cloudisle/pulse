@@ -10,6 +10,13 @@ export const useProfileStore = defineStore('profile', () => {
   const availableProfiles = ref<Profile[]>([])
   const activeProfileIds = ref<string[]>([])
 
+  async function list(systemId: string): Promise<void> {
+    const api = (window as any).app?.api
+    if (!api) return
+    const items: { id: string; name: string }[] = await api.profiles.list(systemId)
+    availableProfiles.value = items.map(({ id, name }) => ({ id, name }))
+  }
+
   function setProfiles(profiles: Profile[]): void {
     availableProfiles.value = profiles
   }
@@ -23,5 +30,5 @@ export const useProfileStore = defineStore('profile', () => {
     }
   }
 
-  return { availableProfiles, activeProfileIds, setProfiles, toggleProfile }
+  return { availableProfiles, activeProfileIds, list, setProfiles, toggleProfile }
 })
