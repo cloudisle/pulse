@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useUiStore } from '@renderer/stores/ui'
 import SystemEditor from '@renderer/components/SystemEditor/SystemEditor.vue'
+import SchemaEditor from '@renderer/components/SchemaEditor/SchemaEditor.vue'
 
 const uiStore = useUiStore()
 
@@ -12,6 +13,12 @@ function systemIdFromTab(tabId: string): string | undefined {
   const part = tabId.replace(/^system:/, '')
   return part === 'new' ? undefined : part
 }
+
+function schemaIdFromTab(tabId: string): string | undefined {
+  // tabId is "schema:new" or "schema:<uuid>"
+  const part = tabId.replace(/^schema:/, '')
+  return part === 'new' ? undefined : part
+}
 </script>
 
 <template>
@@ -20,6 +27,10 @@ function systemIdFromTab(tabId: string): string | undefined {
       <SystemEditor
         v-if="activeTab.type === 'system'"
         :system-id="systemIdFromTab(activeTab.id)"
+      />
+      <SchemaEditor
+        v-else-if="activeTab.type === 'schema'"
+        :schema-id="schemaIdFromTab(activeTab.id)"
       />
       <p v-else class="tab-content__placeholder">{{ activeTab.title }} ({{ activeTab.type }})</p>
     </div>
