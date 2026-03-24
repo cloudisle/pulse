@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useUiStore } from '@renderer/stores/ui'
 import SystemEditor from '@renderer/components/SystemEditor/SystemEditor.vue'
 import SchemaEditor from '@renderer/components/SchemaEditor/SchemaEditor.vue'
+import EventSender from '@renderer/components/EventSender/EventSender.vue'
 
 const uiStore = useUiStore()
 
@@ -31,6 +32,9 @@ function schemaIdFromTab(tabId: string): string | undefined {
       <SchemaEditor
         v-else-if="activeTab.type === 'schema'"
         :schema-id="schemaIdFromTab(activeTab.id)"
+      />
+      <EventSender
+        v-else-if="activeTab.type === 'event-sender'"
       />
       <p v-else class="tab-content__placeholder">{{ activeTab.title }} ({{ activeTab.type }})</p>
     </div>
