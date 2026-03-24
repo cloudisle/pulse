@@ -37,6 +37,7 @@ const outputs = reactive<OutputRow[]>([])
 const errorMessage = ref('')
 const saving = ref(false)
 const deleting = ref(false)
+const exporting = ref(false)
 
 const INPUT_TYPES: InputType[] = ['kinesis', 'sqs', 'eventbridge']
 const OUTPUT_TYPES: OutputType[] = ['kinesis', 'sqs']
@@ -206,6 +207,31 @@ async function deleteSystem(): Promise<void> {
     deleting.value = false
   }
 }
+
+async function exportSystem(): Promise<void> {
+  exporting.value = true
+  const api = (window as any).app?.api
+  if (!api) {
+    exporting.value = false
+    return
+  }
+  try {
+    const data = await api.systems.export(props.systemId)
+    const result = await api.dialog.showSaveDialog({
+      title: 'Export System',
+      defaultPath: `${name.value.replace(/[^a-z0-9_-]/gi, '_')}.json`,
+      filters: [{ name: 'JSON Files', extensions: ['json'] }]
+    })
+    if (!result.canceled && result.filePath) {
+      await api.dialog.writeTextFile(result.filePath, JSON.stringify(data, null, 2))
+    }
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e)
+    errorMessage.value = `Failed to export system: ${msg}`
+  } finally {
+    exporting.value = false
+  }
+}
 </script>
 
 <template>
@@ -227,6 +253,14 @@ async function deleteSystem(): Promise<void> {
           @click="deleteSystem"
         >
           {{ deleting ? 'Deleting…' : 'Delete' }}
+        </button>
+        <button
+          v-if="isEditMode"
+          class="system-editor__btn system-editor__btn--secondary"
+          :disabled="exporting"
+          @click="exportSystem"
+        >
+          {{ exporting ? 'Exporting…' : 'Export' }}
         </button>
       </div>
     </header>
@@ -417,6 +451,16 @@ async function deleteSystem(): Promise<void> {
 
 .system-editor__btn--danger:hover:not(:disabled) {
   background: #eba0ac;
+}
+
+.system-editor__btn--secondary {
+  background: #313244;
+  color: #cdd6f4;
+  border: 1px solid #45475a;
+}
+
+.system-editor__btn--secondary:hover:not(:disabled) {
+  background: #45475a;
 }
 
 .system-editor__error {
