@@ -3,7 +3,6 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import SystemEditor from '@renderer/components/SystemEditor/SystemEditor.vue'
 import { useUiStore } from '@renderer/stores/ui'
-import { useSystemStore } from '@renderer/stores/system'
 
 function mockAppApi(overrides: Record<string, any> = {}) {
   ;(window as any).app = {
