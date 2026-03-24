@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useUiStore } from '@renderer/stores/ui'
+import Console from '@renderer/components/BottomPanel/Console.vue'
 
 const uiStore = useUiStore()
 const activeSubTab = ref<'console' | 'listeners'>('console')
@@ -62,7 +63,7 @@ function onDragEnd(): void {
     </div>
     <div v-if="!uiStore.bottomPanelCollapsed" class="bottom-panel__content">
       <div v-if="activeSubTab === 'console'" class="bottom-panel__console">
-        <p class="bottom-panel__placeholder">Console output will appear here.</p>
+        <Console />
       </div>
       <div v-else class="bottom-panel__listeners">
         <p class="bottom-panel__placeholder">Active listeners will appear here.</p>
@@ -148,8 +149,17 @@ function onDragEnd(): void {
 
 .bottom-panel__content {
   flex: 1;
-  overflow: auto;
+  overflow: hidden;
   padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.bottom-panel__console {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .bottom-panel__placeholder {
