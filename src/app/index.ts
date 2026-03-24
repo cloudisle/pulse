@@ -38,6 +38,8 @@ export class App<T extends AppConfig> {
             throw new Error("App already initialized");
         }
 
+        console.debug("Initializing App");
+
         this.configure('api', this.config.apis, {
             predicate: (o: any) => o['__type'] === 'api',
             configurer: (name: string, value: any) => initialize(name, value, {
@@ -51,6 +53,8 @@ export class App<T extends AppConfig> {
         });
 
         main.handle('channelSendEvent', async (_e, name: string, event: any) => {
+            console.debug(`Handling channelSendEvent for channel ${name} with event:`, event);
+
             // convert name from dot notation to access channel object from App.channels
             const channel = name.split('.').reduce((obj, key) => obj[key], this.config);
             if (channel && typeof channel['send'] === 'function') {

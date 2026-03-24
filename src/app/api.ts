@@ -28,8 +28,9 @@ export function initialize(identifier: string, api: any, context: InitContext) {
                 api.initialize();
             }
 
-            main.handle(`${identifier}.${method}`, (event, ...args) => {
-                return api[method](...args, event)
+            main.handle(`${identifier}.${method}`, (_e, ...args) => {
+                console.debug(`Handling ${identifier}.${method}: ${JSON.stringify(args)}`);
+                return api[method](...args)
             })
         });
 

@@ -2,6 +2,7 @@ import path from 'path'
 import { app } from 'electron'
 import { StorageService, StoragePaths } from './storage'
 import type { AppSettings } from '../../shared/models/settings'
+import {lazy} from "../util";
 
 const DEFAULT_SETTINGS: Omit<AppSettings, 'dataDirectory'> = {
   sessionHistoryLimit: 10,
@@ -11,13 +12,15 @@ const DEFAULT_SETTINGS: Omit<AppSettings, 'dataDirectory'> = {
 }
 
 export class SettingsService {
+
+  // @ts-ignore - this value is set lazily
   private readonly dataDir: string
 
   constructor(
     private readonly storage: StorageService,
     dataDir?: string
   ) {
-    this.dataDir = dataDir ?? path.join(app.getPath('userData'), 'data')
+    lazy(this, "dataDir", () => dataDir ?? path.join(app.getPath('userData'), 'data'))
   }
 
   async getDataPath(): Promise<string> {

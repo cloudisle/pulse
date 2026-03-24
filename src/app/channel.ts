@@ -27,6 +27,8 @@ export class RendererChannel<T> implements Channel<T> {
     ) {}
 
     async send(event: T) {
+        console.debug(`Sending event to ${this.name}: ${JSON.stringify(event)}`);
+
         this.renderer.send(this.name, event);
         await this.renderer.invoke('channelSendEvent', this.name, event);
     }
@@ -49,6 +51,8 @@ export class MainChannel<T> implements Channel<T> {
     ) {}
 
     async send(event: T) {
+        console.debug(`Sending event to ${this.name}: ${JSON.stringify(event)}`);
+
         for (const id in Object.keys(this.listeners)) {
             try {
                 await this.listeners[id](event);

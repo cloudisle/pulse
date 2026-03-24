@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import {ref, reactive, onMounted, computed, toRaw} from 'vue'
 import { useUiStore } from '@renderer/stores/ui'
 import { useSystemStore } from '@renderer/stores/system'
 import type { InputType, OutputType } from '../../../../shared/models/system'
@@ -140,13 +140,13 @@ async function save(): Promise<void> {
         id: row.id,
         name: row.name,
         type: row.type,
-        config: row.config
+        config: toRaw(row.config),
       }))
       const updatedOutputs = outputs.map((row) => ({
         id: row.id,
         name: row.name,
         type: row.type,
-        config: row.config,
+        config: toRaw(row.config),
         contentType: row.contentType
       }))
       await api.systems.update(props.systemId, {
@@ -163,12 +163,12 @@ async function save(): Promise<void> {
       const createdInputs = inputs.map((row) => ({
         name: row.name,
         type: row.type,
-        config: row.config
+        config: toRaw(row.config)
       }))
       const createdOutputs = outputs.map((row) => ({
         name: row.name,
         type: row.type,
-        config: row.config,
+        config: toRaw(row.config),
         contentType: row.contentType
       }))
       await api.systems.create({
@@ -180,7 +180,8 @@ async function save(): Promise<void> {
       await systemStore.loadSystems()
       uiStore.closeTab('system:new')
     }
-  } catch {
+  } catch (e) {
+    console.debug("Failed to save system", e);
     errorMessage.value = 'Failed to save system.'
   } finally {
     saving.value = false
