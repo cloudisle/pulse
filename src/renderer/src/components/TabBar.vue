@@ -35,7 +35,7 @@ const uiStore = useUiStore()
   height: 36px;
   background: #181825;
   border-bottom: 1px solid #313244;
-  overflow-x: auto;
+  overflow: hidden;
   flex-shrink: 0;
 }
 

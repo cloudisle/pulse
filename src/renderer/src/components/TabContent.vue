@@ -1,16 +1,27 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useUiStore } from '@renderer/stores/ui'
+import SystemEditor from '@renderer/components/SystemEditor/SystemEditor.vue'
 
 const uiStore = useUiStore()
 
 const activeTab = computed(() => uiStore.openTabs.find((t) => t.id === uiStore.activeTabId))
+
+function systemIdFromTab(tabId: string): string | undefined {
+  // tabId is "system:new" or "system:<uuid>"
+  const part = tabId.replace(/^system:/, '')
+  return part === 'new' ? undefined : part
+}
 </script>
 
 <template>
   <div class="tab-content">
     <div v-if="activeTab" class="tab-content__view">
-      <p class="tab-content__placeholder">{{ activeTab.title }} ({{ activeTab.type }})</p>
+      <SystemEditor
+        v-if="activeTab.type === 'system'"
+        :system-id="systemIdFromTab(activeTab.id)"
+      />
+      <p v-else class="tab-content__placeholder">{{ activeTab.title }} ({{ activeTab.type }})</p>
     </div>
     <div v-else class="tab-content__empty">
       <p>Select an item from the sidebar to open it here.</p>
