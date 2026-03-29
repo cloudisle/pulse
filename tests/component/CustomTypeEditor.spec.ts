@@ -297,12 +297,77 @@ describe('CustomTypeEditor component', () => {
       expect(wrapper.find('[data-testid="enum-tags"]').text()).not.toContain('active')
     })
 
-    it('shows no extra config for random strategy', async () => {
-      const { wrapper } = mountEditor()
-      // random is the default
-      expect(wrapper.find('[data-testid="faker-method"]').exists()).toBe(false)
-      expect(wrapper.find('[data-testid="pattern-input"]').exists()).toBe(false)
-      expect(wrapper.find('[data-testid="enum-tags"]').exists()).toBe(false)
+    it('includes pattern config in the payload when strategy is pattern', async () => {
+      const createMock = vi.fn().mockResolvedValue({ id: 'ct-pat', name: 'PatternType' })
+      mockAppApi({ customTypes: { create: createMock } })
+      const pinia = createPinia()
+      const wrapper = mount(CustomTypeEditor, { global: { plugins: [pinia] } })
+      const systemStore = useSystemStore()
+      systemStore.selectedSystemId = 'sys-1'
+
+      await wrapper.find('[data-testid="custom-type-name"]').setValue('PatternType')
+      await wrapper.find('[data-testid="custom-type-strategy"]').setValue('pattern')
+      await wrapper.vm.$nextTick()
+      await wrapper.find('[data-testid="pattern-input"]').setValue('[A-Z]{3}-\\d{4}')
+      await wrapper.find('[data-testid="save-btn"]').trigger('click')
+      await flushPromises()
+
+      expect(createMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          defaultStrategy: { type: 'pattern', config: { pattern: '[A-Z]{3}-\\d{4}' } }
+        })
+      )
+    })
+
+    it('includes faker config in the payload when strategy is faker', async () => {
+      const createMock = vi.fn().mockResolvedValue({ id: 'ct-fkr', name: 'FakerType' })
+      mockAppApi({ customTypes: { create: createMock } })
+      const pinia = createPinia()
+      const wrapper = mount(CustomTypeEditor, { global: { plugins: [pinia] } })
+      const systemStore = useSystemStore()
+      systemStore.selectedSystemId = 'sys-1'
+
+      await wrapper.find('[data-testid="custom-type-name"]').setValue('FakerType')
+      await wrapper.find('[data-testid="custom-type-strategy"]').setValue('faker')
+      await wrapper.vm.$nextTick()
+      await wrapper.find('[data-testid="faker-method"]').setValue('person.firstName')
+      await wrapper.find('[data-testid="faker-locale"]').setValue('en')
+      await wrapper.find('[data-testid="save-btn"]').trigger('click')
+      await flushPromises()
+
+      expect(createMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          defaultStrategy: { type: 'faker', config: { method: 'person.firstName', locale: 'en' } }
+        })
+      )
+    })
+
+    it('includes enum values in the payload when strategy is enum', async () => {
+      const createMock = vi.fn().mockResolvedValue({ id: 'ct-enm', name: 'StatusType' })
+      mockAppApi({ customTypes: { create: createMock } })
+      const pinia = createPinia()
+      const wrapper = mount(CustomTypeEditor, { global: { plugins: [pinia] } })
+      const systemStore = useSystemStore()
+      systemStore.selectedSystemId = 'sys-1'
+
+      await wrapper.find('[data-testid="custom-type-name"]').setValue('StatusType')
+      await wrapper.find('[data-testid="custom-type-strategy"]').setValue('enum')
+      await wrapper.vm.$nextTick()
+      const enumInput = wrapper.find('[data-testid="enum-value-input"]')
+      await enumInput.setValue('active')
+      await enumInput.trigger('keydown', { key: 'Enter' })
+      await wrapper.vm.$nextTick()
+      await enumInput.setValue('inactive')
+      await enumInput.trigger('keydown', { key: 'Enter' })
+      await wrapper.vm.$nextTick()
+      await wrapper.find('[data-testid="save-btn"]').trigger('click')
+      await flushPromises()
+
+      expect(createMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          defaultStrategy: { type: 'enum', config: { values: ['active', 'inactive'] } }
+        })
+      )
     })
   })
 
