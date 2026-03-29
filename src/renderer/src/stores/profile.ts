@@ -30,5 +30,21 @@ export const useProfileStore = defineStore('profile', () => {
     }
   }
 
-  return { availableProfiles, activeProfileIds, list, setProfiles, toggleProfile }
+  function reorderProfile(fromIndex: number, toIndex: number): void {
+    if (
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= activeProfileIds.value.length ||
+      toIndex >= activeProfileIds.value.length ||
+      fromIndex === toIndex
+    ) {
+      return
+    }
+    const ids = [...activeProfileIds.value]
+    const [moved] = ids.splice(fromIndex, 1)
+    ids.splice(toIndex, 0, moved)
+    activeProfileIds.value = ids
+  }
+
+  return { availableProfiles, activeProfileIds, list, setProfiles, toggleProfile, reorderProfile }
 })
