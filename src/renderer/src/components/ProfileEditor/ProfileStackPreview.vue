@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import {ref, computed, watch, onMounted, toRaw} from 'vue'
 import { useProfileStore } from '@renderer/stores/profile'
 import { useSchemaStore } from '@renderer/stores/schema.store'
 import { useSystemStore } from '@renderer/stores/system'
@@ -173,7 +173,7 @@ async function generateSample(): Promise<void> {
   try {
     const event = await api.events.generate(systemId, {
       schemaId: selectedSchemaId.value,
-      profileIds: profileStore.activeProfileIds,
+      profileIds: toRaw(profileStore.activeProfileIds),
       overrides: {}
     })
     samplePayload.value = JSON.stringify(event.payload, null, 2)
