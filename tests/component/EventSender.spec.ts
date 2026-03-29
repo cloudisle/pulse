@@ -117,9 +117,7 @@ describe('EventSender component', () => {
     await wrapper.find('[data-testid="new-session-btn"]').trigger('click')
     await flushPromises()
 
-    expect(createMock).toHaveBeenCalledWith(
-      expect.objectContaining({ systemId: 'sys-1' })
-    )
+    expect(createMock).toHaveBeenCalledWith("sys-1")
     const store = useEventSenderStore()
     expect(store.selectedSessionId).toBe('sess-new')
   })
@@ -235,12 +233,14 @@ describe('EventSender component', () => {
     const { wrapper } = mountComponent(pinia)
     const store = useEventSenderStore()
     store.selectedSchemaId = 'sch-1'
+    const systemStore = useSystemStore()
+    systemStore.selectedSystemId = 'sys-1'
     await wrapper.vm.$nextTick()
 
     await wrapper.find('[data-testid="generate-btn"]').trigger('click')
     await flushPromises()
 
-    expect(generateMock).toHaveBeenCalledWith(
+    expect(generateMock).toHaveBeenCalledWith("sys-1",
       expect.objectContaining({ schemaId: 'sch-1' })
     )
     const preview = wrapper.find('[data-testid="preview-editor"]')
@@ -260,6 +260,8 @@ describe('EventSender component', () => {
     const { wrapper } = mountComponent(pinia)
     const store = useEventSenderStore()
     store.selectedSchemaId = 'sch-1'
+    const systemStore = useSystemStore()
+    systemStore.selectedSystemId = 'sys-1'
     await wrapper.vm.$nextTick()
 
     await wrapper.find('[data-testid="generate-btn"]').trigger('click')
@@ -282,6 +284,8 @@ describe('EventSender component', () => {
     const { wrapper } = mountComponent(pinia)
     const store = useEventSenderStore()
     store.selectedSchemaId = 'sch-1'
+    const systemStore = useSystemStore()
+    systemStore.selectedSystemId = 'sys-1'
     const profileStore = useProfileStore()
     profileStore.activeProfileIds = ['p1', 'p2']
     const envStore = useEnvironmentStore()
@@ -291,7 +295,7 @@ describe('EventSender component', () => {
     await wrapper.find('[data-testid="generate-btn"]').trigger('click')
     await flushPromises()
 
-    expect(generateMock).toHaveBeenCalledWith(
+    expect(generateMock).toHaveBeenCalledWith("sys-1",
       expect.objectContaining({
         profileIds: ['p1', 'p2'],
         environmentId: 'env-1'
@@ -311,6 +315,8 @@ describe('EventSender component', () => {
     const pinia = createPinia()
     const { wrapper } = mountComponent(pinia)
     const store = useEventSenderStore()
+    const systemStore = useSystemStore()
+    systemStore.selectedSystemId = 'sys-1'
     store.selectedSchemaId = 'sch-1'
     store.overrides = [{ elementPath: 'orderId', value: 'custom-123' }]
     await wrapper.vm.$nextTick()
@@ -318,7 +324,7 @@ describe('EventSender component', () => {
     await wrapper.find('[data-testid="generate-btn"]').trigger('click')
     await flushPromises()
 
-    expect(generateMock).toHaveBeenCalledWith(
+    expect(generateMock).toHaveBeenCalledWith("sys-1",
       expect.objectContaining({
         overrides: { orderId: 'custom-123' }
       })
@@ -361,6 +367,8 @@ describe('EventSender component', () => {
     const pinia = createPinia()
     const { wrapper } = mountComponent(pinia)
     const store = useEventSenderStore()
+    const systemStore = useSystemStore()
+    systemStore.selectedSystemId = 'sys-1'
     store.generatedEvent = { schemaId: 'sch-1', payload: {}, appliedProfiles: [], warnings: [] }
     store.previewJson = '{}'
     store.selectedSessionId = 'sess-1'
@@ -378,6 +386,8 @@ describe('EventSender component', () => {
     const pinia = createPinia()
     const { wrapper } = mountComponent(pinia)
     const store = useEventSenderStore()
+    const systemStore = useSystemStore()
+    systemStore.selectedSystemId = 'sys-1'
     store.generatedEvent = { schemaId: 'sch-1', payload: {}, appliedProfiles: [], warnings: [] }
     store.previewJson = '{}'
     store.selectedInputId = 'inp-1'
@@ -398,6 +408,8 @@ describe('EventSender component', () => {
     const pinia = createPinia()
     const { wrapper } = mountComponent(pinia)
     const store = useEventSenderStore()
+    const systemStore = useSystemStore()
+    systemStore.selectedSystemId = 'sys-1'
     store.generatedEvent = { schemaId: 'sch-1', payload: { id: '1' }, appliedProfiles: [], warnings: [] }
     store.previewJson = JSON.stringify({ id: '1' }, null, 2)
     store.selectedInputId = 'inp-1'
@@ -409,7 +421,7 @@ describe('EventSender component', () => {
     await wrapper.find('[data-testid="send-btn"]').trigger('click')
     await flushPromises()
 
-    expect(sendMock).toHaveBeenCalledWith(
+    expect(sendMock).toHaveBeenCalledWith("sys-1",
       expect.objectContaining({
         inputId: 'inp-1',
         sessionId: 'sess-1',
@@ -427,6 +439,8 @@ describe('EventSender component', () => {
     const pinia = createPinia()
     const { wrapper } = mountComponent(pinia)
     const store = useEventSenderStore()
+    const systemStore = useSystemStore()
+    systemStore.selectedSystemId = 'sys-1'
     store.generatedEvent = { schemaId: 'sch-1', payload: {}, appliedProfiles: [], warnings: [] }
     store.previewJson = '{}'
     store.selectedInputId = 'inp-1'
@@ -471,6 +485,8 @@ describe('EventSender component', () => {
     const pinia = createPinia()
     const { wrapper } = mountComponent(pinia)
     const store = useEventSenderStore()
+    const systemStore = useSystemStore()
+    systemStore.selectedSystemId = 'sys-1'
     store.selectedSchemaId = 'sch-1'
     store.selectedInputId = 'inp-1'
     store.selectedSessionId = 'sess-1'
@@ -490,7 +506,7 @@ describe('EventSender component', () => {
     await wrapper.find('[data-testid="send-btn"]').trigger('click')
     await flushPromises()
 
-    expect(sendMock).toHaveBeenCalledWith(
+    expect(sendMock).toHaveBeenCalledWith("sys-1",
       expect.objectContaining({
         inputId: 'inp-1',
         sessionId: 'sess-1',

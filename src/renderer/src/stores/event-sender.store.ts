@@ -1,8 +1,8 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import type { GeneratedEvent, SendEventResult, ValidationWarning } from '../../../shared/models/event'
-import type { Session } from '../../../shared/models/session'
-import type { InputConfig } from '../../../shared/models/system'
+import {defineStore} from 'pinia'
+import {ref, toRaw} from 'vue'
+import type {GeneratedEvent, SendEventResult, ValidationWarning} from '../../../shared/models/event'
+import type {Session} from '../../../shared/models/session'
+import type {InputConfig, System} from '../../../shared/models/system'
 
 export interface Override {
   elementPath: string
@@ -34,17 +34,14 @@ export const useEventSenderStore = defineStore('event-sender', () => {
   async function loadInputs(systemId: string): Promise<void> {
     const api = (window as any).app?.api
     if (!api) return
-    const system = await api.systems.get(systemId)
-    inputs.value = system?.inputs ?? []
+    const system: System = await api.systems.get(systemId)
+    inputs.value = system.inputs
   }
 
   async function createSession(systemId: string): Promise<void> {
     const api = (window as any).app?.api
     if (!api) return
-    const session: Session = await api.sessions.create({
-      systemId,
-      name: `Session ${new Date().toLocaleTimeString()}`
-    })
+    const session: Session = await api.sessions.create(systemId);
     sessions.value.unshift(session)
     selectedSessionId.value = session.id
   }
@@ -57,7 +54,7 @@ export const useEventSenderStore = defineStore('event-sender', () => {
     overrides.value.splice(index, 1)
   }
 
-  async function generate(profileIds: string[], environmentId: string | null): Promise<void> {
+  async function generate(systemId: string, profileIds: string[], environmentId: string | null): Promise<void> {
     if (!selectedSchemaId.value) {
       errorMessage.value = 'Select a schema first.'
       return
@@ -72,16 +69,17 @@ export const useEventSenderStore = defineStore('event-sender', () => {
       for (const o of overrides.value) {
         if (o.elementPath) overridesMap[o.elementPath] = o.value
       }
-      const event: GeneratedEvent = await api.events.generate({
+      const event: GeneratedEvent = await api.events.generate(toRaw(systemId), {
         schemaId: selectedSchemaId.value,
-        environmentId: environmentId ?? undefined,
-        profileIds,
+        environmentId: toRaw(environmentId) ?? undefined,
+        profileIds: toRaw(profileIds),
         overrides: overridesMap
       })
       generatedEvent.value = event
       previewJson.value = JSON.stringify(event.payload, null, 2)
       validationWarnings.value = event.warnings ?? []
     } catch (err: any) {
+      console.error(err)
       errorMessage.value = err?.message ?? 'Failed to generate event.'
     } finally {
       generating.value = false
@@ -113,7 +111,7 @@ export const useEventSenderStore = defineStore('event-sender', () => {
     }
   }
 
-  async function send(awsProfile: string, environmentId: string | null): Promise<void> {
+  async function send(systemId: string, awsProfile: string, environmentId: string | null): Promise<void> {
     if (!selectedInputId.value) {
       errorMessage.value = 'Select a destination input first.'
       return
@@ -139,15 +137,20 @@ export const useEventSenderStore = defineStore('event-sender', () => {
         sending.value = false
         return
       }
-      const result: SendEventResult = await api.events.send({
+      sendResult.value = await api.events.send(toRaw(systemId), {
         inputId: selectedInputId.value,
         sessionId: selectedSessionId.value,
-        event: { ...generatedEvent.value, payload },
-        awsProfile,
-        environmentId: environmentId ?? undefined
+        event: {
+          schemaId: generatedEvent.value.schemaId,
+          payload,
+          appliedProfiles: toRaw(generatedEvent.value.appliedProfiles),
+          environmentId: toRaw(environmentId),
+        },
+        awsProfile: toRaw(awsProfile),
+        environmentId: toRaw(environmentId) ?? undefined
       })
-      sendResult.value = result
     } catch (err: any) {
+      console.error(err);
       sendResult.value = {
         success: false,
         sessionEventId: '',

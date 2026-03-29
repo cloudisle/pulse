@@ -124,15 +124,6 @@ export class EventGenerationService {
     }
 
     const hasAdHocOverride = Object.prototype.hasOwnProperty.call(adHocOverrides, path)
-    const isRequired =
-      element.required ||
-      profileOverride?.action === 'require' ||
-      hasAdHocOverride ||
-      profileOverride !== undefined
-
-    if (!isRequired && Math.random() < 0.5) {
-      return undefined
-    }
 
     if (hasAdHocOverride) {
       return adHocOverrides[path]

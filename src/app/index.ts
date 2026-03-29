@@ -83,7 +83,13 @@ export class App<T extends AppConfig> {
 
         this.configure('channels', this.config.channels, {
             predicate: (o: any) => o['__type'] === 'channel',
-            configurer: (name: string) => new RendererChannel(name, renderer)
+            configurer: (name: string) => {
+                const channel = new RendererChannel(name, renderer) ;
+                return {
+                    send: (event: any) => channel.send(event),
+                    listen: (listener: any) => channel.listen(listener)
+                }
+            }
         });
 
         this.exposed = true;

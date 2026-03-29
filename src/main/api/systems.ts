@@ -33,9 +33,13 @@ export class SystemsApi {
 
     const systems: System[] = []
     for (const entry of entries) {
-      const system = await this.storage.read<System>(StoragePaths.system(dataDir, entry))
-      if (system !== null) {
-        systems.push(system)
+      try {
+        const system = await this.storage.read<System>(StoragePaths.system(dataDir, entry))
+        if (system !== null) {
+          systems.push(system)
+        }
+      } catch (err: unknown) {
+        console.warn(err)
       }
     }
     return systems

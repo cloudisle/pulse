@@ -25,7 +25,13 @@ onMounted(init)
 watch(() => systemStore.selectedSystemId, init)
 
 async function onGenerate(): Promise<void> {
-  await store.generate(profileStore.activeProfileIds, environmentStore.selectedEnvironmentId)
+  if (!store.selectedSchemaId) {
+    store.errorMessage = 'Select a schema first.'
+    return
+  }
+  const systemId = systemStore.selectedSystemId
+  if (!systemId) return
+  await store.generate(systemId, profileStore.activeProfileIds, environmentStore.selectedEnvironmentId)
 }
 
 async function onValidate(): Promise<void> {
@@ -33,7 +39,9 @@ async function onValidate(): Promise<void> {
 }
 
 async function onSend(): Promise<void> {
-  await store.send(awsStore.selectedProfile ?? '', environmentStore.selectedEnvironmentId)
+  const systemId = systemStore.selectedSystemId
+  if (!systemId) return
+  await store.send(systemId, awsStore.selectedProfile ?? '', environmentStore.selectedEnvironmentId)
 }
 
 async function onCreateSession(): Promise<void> {

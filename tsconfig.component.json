@@ -1,6 +1,6 @@
 {
   "extends": "./tsconfig.web.json",
-  "include": ["tests/component/**/*.ts", "src/renderer/src/**/*.vue", "src/renderer/src/**/*.ts"],
+  "include": ["tests/component/**/*.ts", "src/renderer/src/**/*.vue", "src/renderer/src/**/*.ts", "src/shared/**/*.ts"],
   "compilerOptions": {
     "composite": true
   }

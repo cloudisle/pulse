@@ -530,20 +530,6 @@ describe('EventGenerationService', () => {
       expect(results.every((r) => Object.prototype.hasOwnProperty.call(r.payload, 'required'))).toBe(true)
     })
 
-    it('sometimes omits optional elements (over many iterations)', async () => {
-      const schema = makeSchema([
-        makeElement('opt', { required: false, generationStrategy: { type: 'constant', config: { value: 'v' } } })
-      ])
-      const results = await Promise.all(
-        Array.from({ length: 100 }, () => service.generateEvent(makeInput(), schema, makeProps()))
-      )
-      const present = results.filter((r) => Object.prototype.hasOwnProperty.call(r.payload, 'opt'))
-      const absent = results.filter((r) => !Object.prototype.hasOwnProperty.call(r.payload, 'opt'))
-      // With 100 iterations and 50% probability, both should appear
-      expect(present.length).toBeGreaterThan(0)
-      expect(absent.length).toBeGreaterThan(0)
-    })
-
     it('profile require action forces optional element to be included', async () => {
       const profile: Profile = {
         id: 'p1',
