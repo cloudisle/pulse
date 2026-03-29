@@ -386,7 +386,7 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
           >
             {{ sectionExpanded.templates ? '▾' : '▸' }}
           </button>
-          <h3 class="sidebar__section-title" style="cursor:pointer" @click="openTemplateBrowser">Templates</h3>
+          <h3 class="sidebar__section-title sidebar__section-title--clickable" @click="openTemplateBrowser">Templates</h3>
           <button class="sidebar__add-btn" title="Browse templates" @click="openTemplateBrowser">⊞</button>
           <button class="sidebar__add-btn" title="Create template" @click="createTemplate">+</button>
         </div>
@@ -657,6 +657,14 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
 
 .sidebar__folder-icon {
   font-size: 11px;
+}
+
+.sidebar__section-title--clickable {
+  cursor: pointer;
+}
+
+.sidebar__section-title--clickable:hover {
+  color: #89b4fa;
 }
 
 .sidebar__send-event-btn {

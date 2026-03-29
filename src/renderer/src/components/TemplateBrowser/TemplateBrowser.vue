@@ -59,7 +59,8 @@ const deleteConfirm = ref<{
 // ─── Drag-and-drop ────────────────────────────────────────────────────────────
 
 const draggingTemplateId = ref<string | null>(null)
-const dragOverFolderId = ref<string | null | undefined>(undefined)
+const dragOverFolderId = ref<string | null>(null)
+const isDraggingOver = ref(false)
 
 // ─── Folder tree (flat, with expand/collapse) ─────────────────────────────────
 
@@ -383,6 +384,7 @@ function onDragStart(event: DragEvent, templateId: string): void {
 
 function onDragOver(event: DragEvent, folderId: string | null): void {
   event.preventDefault()
+  isDraggingOver.value = true
   dragOverFolderId.value = folderId
   if (event.dataTransfer) {
     event.dataTransfer.dropEffect = 'move'
@@ -390,12 +392,14 @@ function onDragOver(event: DragEvent, folderId: string | null): void {
 }
 
 function onDragLeave(): void {
-  dragOverFolderId.value = undefined
+  isDraggingOver.value = false
+  dragOverFolderId.value = null
 }
 
 async function onDrop(event: DragEvent, targetFolderId: string | null): Promise<void> {
   event.preventDefault()
-  dragOverFolderId.value = undefined
+  isDraggingOver.value = false
+  dragOverFolderId.value = null
 
   const templateId = draggingTemplateId.value
   if (!templateId) return
@@ -421,7 +425,8 @@ async function onDrop(event: DragEvent, targetFolderId: string | null): Promise<
 
 function onDragEnd(): void {
   draggingTemplateId.value = null
-  dragOverFolderId.value = undefined
+  isDraggingOver.value = false
+  dragOverFolderId.value = null
 }
 </script>
 
@@ -456,7 +461,7 @@ function onDragEnd(): void {
           class="tb__tree-item"
           :class="{
             'tb__tree-item--active': selectedFolderId === null,
-            'tb__tree-item--dragover': dragOverFolderId === null
+            'tb__tree-item--dragover': isDraggingOver && dragOverFolderId === null
           }"
           data-testid="folder-root"
           @click="selectFolder(null)"
@@ -476,7 +481,7 @@ function onDragEnd(): void {
           class="tb__tree-item"
           :class="{
             'tb__tree-item--active': selectedFolderId === item.id,
-            'tb__tree-item--dragover': dragOverFolderId === item.id
+            'tb__tree-item--dragover': isDraggingOver && dragOverFolderId === item.id
           }"
           :style="{ paddingLeft: `${12 + item.depth * 14}px` }"
           :data-testid="`folder-item-${item.id}`"
