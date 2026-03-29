@@ -4,6 +4,7 @@ import { useUiStore } from '@renderer/stores/ui'
 import SystemEditor from '@renderer/components/SystemEditor/SystemEditor.vue'
 import SchemaEditor from '@renderer/components/SchemaEditor/SchemaEditor.vue'
 import EventSender from '@renderer/components/EventSender/EventSender.vue'
+import ProfileEditor from '@renderer/components/ProfileEditor/ProfileEditor.vue'
 
 const uiStore = useUiStore()
 
@@ -18,6 +19,12 @@ function systemIdFromTab(tabId: string): string | undefined {
 function schemaIdFromTab(tabId: string): string | undefined {
   // tabId is "schema:new" or "schema:<uuid>"
   const part = tabId.replace(/^schema:/, '')
+  return part === 'new' ? undefined : part
+}
+
+function profileIdFromTab(tabId: string): string | undefined {
+  // tabId is "profile:new" or "profile:<uuid>"
+  const part = tabId.replace(/^profile:/, '')
   return part === 'new' ? undefined : part
 }
 </script>
@@ -35,6 +42,10 @@ function schemaIdFromTab(tabId: string): string | undefined {
       />
       <EventSender
         v-else-if="activeTab.type === 'event-sender'"
+      />
+      <ProfileEditor
+        v-else-if="activeTab.type === 'profile'"
+        :profile-id="profileIdFromTab(activeTab.id)"
       />
       <p v-else class="tab-content__placeholder">{{ activeTab.title }} ({{ activeTab.type }})</p>
     </div>
