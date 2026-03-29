@@ -5,6 +5,7 @@ import SystemEditor from '@renderer/components/SystemEditor/SystemEditor.vue'
 import SchemaEditor from '@renderer/components/SchemaEditor/SchemaEditor.vue'
 import EventSender from '@renderer/components/EventSender/EventSender.vue'
 import ProfileEditor from '@renderer/components/ProfileEditor/ProfileEditor.vue'
+import EnvironmentEditor from '@renderer/components/EnvironmentEditor/EnvironmentEditor.vue'
 
 const uiStore = useUiStore()
 
@@ -27,6 +28,12 @@ function profileIdFromTab(tabId: string): string | undefined {
   const part = tabId.replace(/^profile:/, '')
   return part === 'new' ? undefined : part
 }
+  
+function environmentIdFromTab(tabId: string): string | undefined {
+  // tabId is "environment:new" or "environment:<uuid>"
+  const part = tabId.replace(/^environment:/, '')
+  return part === 'new' ? undefined : part
+}
 </script>
 
 <template>
@@ -46,6 +53,10 @@ function profileIdFromTab(tabId: string): string | undefined {
       <ProfileEditor
         v-else-if="activeTab.type === 'profile'"
         :profile-id="profileIdFromTab(activeTab.id)"
+      />
+      <EnvironmentEditor
+        v-else-if="activeTab.type === 'environment'"
+        :environment-id="environmentIdFromTab(activeTab.id)"
       />
       <p v-else class="tab-content__placeholder">{{ activeTab.title }} ({{ activeTab.type }})</p>
     </div>
