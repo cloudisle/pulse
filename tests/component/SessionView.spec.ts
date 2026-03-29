@@ -4,7 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import SessionView from '@renderer/components/SessionView/SessionView.vue'
 import { useSessionStore } from '@renderer/stores/session.store'
 import { useSystemStore } from '@renderer/stores/system'
-import type { SessionDetail, SessionEvent } from '../../../src/shared/models/session'
+import {SessionDetail, SessionEvent} from "../../src/shared/models";
 
 const SESSION_ID = 'sess-1'
 const SYSTEM_ID = 'sys-1'
@@ -373,9 +373,12 @@ describe('SessionView component', () => {
 
   // ─── Real-time updates ──────────────────────────────────────────────────────
 
+  type Callback = (event: any) => void;
+
   it('adds new events from listener data channel', async () => {
-    let listenerCallback: ((event: any) => void) | null = null
-    ;(window as any).app = {
+    let listenerCallback: Callback | null = null;
+
+    (window as any).app = {
       api: {
         sessions: { get: vi.fn().mockResolvedValue(makeSession([])), list: vi.fn().mockResolvedValue([]) }
       },
@@ -402,7 +405,7 @@ describe('SessionView component', () => {
     // Simulate a new event from listener
     const newEvent = makeReceivedEvent({ id: 'evt-new' })
     if (listenerCallback) {
-      listenerCallback({ sessionEvent: newEvent })
+      (listenerCallback as Callback)({ sessionEvent: newEvent })
     }
     await wrapper.vm.$nextTick()
 
