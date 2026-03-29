@@ -4,6 +4,7 @@ import { useUiStore } from '@renderer/stores/ui'
 import SystemEditor from '@renderer/components/SystemEditor/SystemEditor.vue'
 import SchemaEditor from '@renderer/components/SchemaEditor/SchemaEditor.vue'
 import EventSender from '@renderer/components/EventSender/EventSender.vue'
+import SessionView from '@renderer/components/SessionView/SessionView.vue'
 
 const uiStore = useUiStore()
 
@@ -20,6 +21,11 @@ function schemaIdFromTab(tabId: string): string | undefined {
   const part = tabId.replace(/^schema:/, '')
   return part === 'new' ? undefined : part
 }
+
+function sessionIdFromTab(tabId: string): string {
+  // tabId is "session:<uuid>"
+  return tabId.replace(/^session:/, '')
+}
 </script>
 
 <template>
@@ -35,6 +41,10 @@ function schemaIdFromTab(tabId: string): string | undefined {
       />
       <EventSender
         v-else-if="activeTab.type === 'event-sender'"
+      />
+      <SessionView
+        v-else-if="activeTab.type === 'session'"
+        :session-id="sessionIdFromTab(activeTab.id)"
       />
       <p v-else class="tab-content__placeholder">{{ activeTab.title }} ({{ activeTab.type }})</p>
     </div>
