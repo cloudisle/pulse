@@ -18,14 +18,22 @@ const sectionExpanded = ref({
   schemas: true,
   environments: true,
   profiles: true,
-  templates: true
+  templates: true,
+  customTypes: true
 })
+
+interface CustomTypeItem {
+  id: string
+  name: string
+}
+
+const customTypes = ref<CustomTypeItem[]>([])
 
 interface ContextMenuState {
   visible: boolean
   x: number
   y: number
-  entityType: 'schema' | 'environment' | 'profile' | 'template' | 'system' | ''
+  entityType: 'schema' | 'environment' | 'profile' | 'template' | 'system' | 'custom-type' | ''
   entityId: string
 }
 
@@ -49,8 +57,20 @@ async function onSystemChange(event: Event): Promise<void> {
     schemaStore.list(id),
     environmentStore.list(id),
     profileStore.list(id),
-    templateStore.list(id)
+    templateStore.list(id),
+    loadCustomTypes(id)
   ])
+}
+
+async function loadCustomTypes(systemId: string): Promise<void> {
+  const api = (window as any).app?.api
+  if (!api) return
+  try {
+    const types = await api.customTypes.list(systemId)
+    customTypes.value = types.map((t: { id: string; name: string }) => ({ id: t.id, name: t.name }))
+  } catch {
+    customTypes.value = []
+  }
 }
 
 function openSchemaTab(id: string, name: string): void {
@@ -67,6 +87,14 @@ function openProfileTab(id: string, name: string): void {
 
 function openTemplateTab(id: string, name: string): void {
   uiStore.openTab({ id: `template:${id}`, type: 'template', title: name })
+}
+
+function openCustomTypeTab(id: string, name: string): void {
+  uiStore.openTab({ id: `custom-type:${id}`, type: 'custom-type', title: name })
+}
+
+function createCustomType(): void {
+  uiStore.openTab({ id: 'custom-type:new', type: 'custom-type', title: 'New Custom Type' })
 }
 
 function createSystem(): void {
@@ -99,7 +127,7 @@ function openEventSender(): void {
 
 function showContextMenu(
   event: MouseEvent,
-  type: 'schema' | 'environment' | 'profile' | 'template' | 'system',
+  type: 'schema' | 'environment' | 'profile' | 'template' | 'system' | 'custom-type',
   id: string
 ): void {
   contextMenu.value = { visible: true, x: event.clientX, y: event.clientY, entityType: type, entityId: id }
@@ -275,6 +303,33 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
             @contextmenu.prevent="showContextMenu($event, 'profile', profile.id)"
           >
             {{ profile.name }}
+          </li>
+        </ul>
+      </section>
+
+      <!-- Custom Types -->
+      <section class="sidebar__section">
+        <div class="sidebar__section-header">
+          <button
+            class="sidebar__section-toggle"
+            :aria-expanded="sectionExpanded.customTypes"
+            @click="sectionExpanded.customTypes = !sectionExpanded.customTypes"
+          >
+            {{ sectionExpanded.customTypes ? '▾' : '▸' }}
+          </button>
+          <h3 class="sidebar__section-title">Custom Types</h3>
+          <button class="sidebar__add-btn" title="Create custom type" data-testid="create-custom-type-btn" @click="createCustomType">+</button>
+        </div>
+        <ul v-if="sectionExpanded.customTypes" class="sidebar__list">
+          <li v-if="customTypes.length === 0" class="sidebar__empty">No items</li>
+          <li
+            v-for="ct in customTypes"
+            :key="ct.id"
+            class="sidebar__item"
+            @click="openCustomTypeTab(ct.id, ct.name)"
+            @contextmenu.prevent="showContextMenu($event, 'custom-type', ct.id)"
+          >
+            {{ ct.name }}
           </li>
         </ul>
       </section>

@@ -4,6 +4,7 @@ import { useUiStore } from '@renderer/stores/ui'
 import SystemEditor from '@renderer/components/SystemEditor/SystemEditor.vue'
 import SchemaEditor from '@renderer/components/SchemaEditor/SchemaEditor.vue'
 import EventSender from '@renderer/components/EventSender/EventSender.vue'
+import CustomTypeEditor from '@renderer/components/CustomTypeEditor/CustomTypeEditor.vue'
 
 const uiStore = useUiStore()
 
@@ -18,6 +19,12 @@ function systemIdFromTab(tabId: string): string | undefined {
 function schemaIdFromTab(tabId: string): string | undefined {
   // tabId is "schema:new" or "schema:<uuid>"
   const part = tabId.replace(/^schema:/, '')
+  return part === 'new' ? undefined : part
+}
+
+function customTypeIdFromTab(tabId: string): string | undefined {
+  // tabId is "custom-type:new" or "custom-type:<uuid>"
+  const part = tabId.replace(/^custom-type:/, '')
   return part === 'new' ? undefined : part
 }
 </script>
@@ -35,6 +42,10 @@ function schemaIdFromTab(tabId: string): string | undefined {
       />
       <EventSender
         v-else-if="activeTab.type === 'event-sender'"
+      />
+      <CustomTypeEditor
+        v-else-if="activeTab.type === 'custom-type'"
+        :custom-type-id="customTypeIdFromTab(activeTab.id)"
       />
       <p v-else class="tab-content__placeholder">{{ activeTab.title }} ({{ activeTab.type }})</p>
     </div>
