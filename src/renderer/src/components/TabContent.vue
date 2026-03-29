@@ -5,6 +5,8 @@ import SystemEditor from '@renderer/components/SystemEditor/SystemEditor.vue'
 import SchemaEditor from '@renderer/components/SchemaEditor/SchemaEditor.vue'
 import EventSender from '@renderer/components/EventSender/EventSender.vue'
 import CustomTypeEditor from '@renderer/components/CustomTypeEditor/CustomTypeEditor.vue'
+import SettingsView from '@renderer/components/Settings/SettingsView.vue'
+import EnvironmentEditor from '@renderer/components/EnvironmentEditor/EnvironmentEditor.vue'
 
 const uiStore = useUiStore()
 
@@ -27,6 +29,12 @@ function customTypeIdFromTab(tabId: string): string | undefined {
   const part = tabId.replace(/^custom-type:/, '')
   return part === 'new' ? undefined : part
 }
+  
+function environmentIdFromTab(tabId: string): string | undefined {
+  // tabId is "environment:new" or "environment:<uuid>"
+  const part = tabId.replace(/^environment:/, '')
+  return part === 'new' ? undefined : part
+}
 </script>
 
 <template>
@@ -43,9 +51,16 @@ function customTypeIdFromTab(tabId: string): string | undefined {
       <EventSender
         v-else-if="activeTab.type === 'event-sender'"
       />
+      <EnvironmentEditor
+        v-else-if="activeTab.type === 'environment'"
+        :environment-id="environmentIdFromTab(activeTab.id)"
+      />
       <CustomTypeEditor
         v-else-if="activeTab.type === 'custom-type'"
         :custom-type-id="customTypeIdFromTab(activeTab.id)"
+      />
+      <SettingsView
+        v-else-if="activeTab.type === 'settings'"
       />
       <p v-else class="tab-content__placeholder">{{ activeTab.title }} ({{ activeTab.type }})</p>
     </div>
