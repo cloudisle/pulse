@@ -5,6 +5,10 @@ import TabBar from '@renderer/components/TabBar.vue'
 import TabContent from '@renderer/components/TabContent.vue'
 import BottomPanel from '@renderer/components/BottomPanel.vue'
 import StatusBar from '@renderer/components/StatusBar.vue'
+import ProfileStackPreview from '@renderer/components/ProfileEditor/ProfileStackPreview.vue'
+import { useUiStore } from '@renderer/stores/ui'
+
+const uiStore = useUiStore()
 </script>
 
 <template>
@@ -19,6 +23,7 @@ import StatusBar from '@renderer/components/StatusBar.vue'
     </div>
     <BottomPanel />
     <StatusBar />
+    <ProfileStackPreview v-if="uiStore.stackPreviewOpen" />
   </div>
 </template>
 
