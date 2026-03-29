@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import {ref, computed, onMounted, onBeforeUnmount, watch, toRaw} from 'vue'
 import { useUiStore } from '@renderer/stores/ui'
 import { useSystemStore } from '@renderer/stores/system'
 import { useTemplateStore } from '@renderer/stores/template.store'
@@ -61,6 +61,22 @@ const deleteConfirm = ref<{
 const draggingTemplateId = ref<string | null>(null)
 const dragOverFolderId = ref<string | null>(null)
 const isDraggingOver = ref(false)
+
+// ─── Panel resize ────────────────────────────────────────────────────────────
+
+const bodyRef = ref<HTMLElement | null>(null)
+const treeWidth = ref(200)
+const listWidth = ref(220)
+const resizingPane = ref<'tree' | 'list' | null>(null)
+const resizeStartX = ref(0)
+const resizeStartTreeWidth = ref(200)
+const resizeStartListWidth = ref(220)
+
+const TREE_MIN_WIDTH = 140
+const TREE_MAX_WIDTH = 420
+const LIST_MIN_WIDTH = 160
+const LIST_MAX_WIDTH = 520
+const DETAIL_MIN_WIDTH = 260
 
 // ─── Folder tree (flat, with expand/collapse) ─────────────────────────────────
 
@@ -221,9 +237,9 @@ async function generatePreview(): Promise<void> {
       }
     }
 
-    const event = await api.events.generate(systemId, {
-      schemaId: selectedTemplate.value.schemaId,
-      profileIds: selectedTemplate.value.profileIds,
+    const event = await api.events.generate(toRaw(systemId), {
+      schemaId: toRaw(selectedTemplate.value.schemaId),
+      profileIds: toRaw(selectedTemplate.value.profileIds),
       overrides
     })
 
@@ -257,9 +273,9 @@ async function quickSend(): Promise<void> {
     }
 
     // Generate the event
-    const event = await api.events.generate(systemId, {
-      schemaId: selectedTemplate.value.schemaId,
-      profileIds: selectedTemplate.value.profileIds,
+    const event = await api.events.generate(toRaw(systemId), {
+      schemaId: toRaw(selectedTemplate.value.schemaId),
+      profileIds: toRaw(selectedTemplate.value.profileIds),
       overrides
     })
 
@@ -276,13 +292,13 @@ async function quickSend(): Promise<void> {
     }
 
     // Send
-    const result = await api.events.send(systemId, {
-      inputId: selectedTemplate.value.inputId,
-      sessionId,
+    const result = await api.events.send(toRaw(systemId), {
+      inputId: toRaw(selectedTemplate.value.inputId),
+      sessionId: toRaw(sessionId),
       event: {
-        schemaId: event.schemaId,
-        payload: event.payload,
-        appliedProfiles: event.appliedProfiles
+        schemaId: toRaw(event.schemaId),
+        payload: toRaw(event.payload),
+        appliedProfiles: toRaw(event.appliedProfiles)
       },
       awsProfile: ''
     })
@@ -428,6 +444,46 @@ function onDragEnd(): void {
   isDraggingOver.value = false
   dragOverFolderId.value = null
 }
+
+function startResize(pane: 'tree' | 'list', event: MouseEvent): void {
+  event.preventDefault()
+  resizingPane.value = pane
+  resizeStartX.value = event.clientX
+  resizeStartTreeWidth.value = treeWidth.value
+  resizeStartListWidth.value = listWidth.value
+  window.addEventListener('mousemove', onResizeMove)
+  window.addEventListener('mouseup', stopResize)
+}
+
+function onResizeMove(event: MouseEvent): void {
+  const bodyWidth = bodyRef.value?.clientWidth
+  if (!bodyWidth || !resizingPane.value) return
+
+  const deltaX = event.clientX - resizeStartX.value
+
+  if (resizingPane.value === 'tree') {
+    // Keep room for list + detail while resizing the folder tree.
+    const maxByLayout = bodyWidth - listWidth.value - DETAIL_MIN_WIDTH - 12
+    const maxWidth = Math.max(TREE_MIN_WIDTH, Math.min(TREE_MAX_WIDTH, maxByLayout))
+    treeWidth.value = Math.min(maxWidth, Math.max(TREE_MIN_WIDTH, resizeStartTreeWidth.value + deltaX))
+    return
+  }
+
+  // Keep room for detail while resizing the template list.
+  const maxByLayout = bodyWidth - treeWidth.value - DETAIL_MIN_WIDTH - 12
+  const maxWidth = Math.max(LIST_MIN_WIDTH, Math.min(LIST_MAX_WIDTH, maxByLayout))
+  listWidth.value = Math.min(maxWidth, Math.max(LIST_MIN_WIDTH, resizeStartListWidth.value + deltaX))
+}
+
+function stopResize(): void {
+  resizingPane.value = null
+  window.removeEventListener('mousemove', onResizeMove)
+  window.removeEventListener('mouseup', stopResize)
+}
+
+onBeforeUnmount(() => {
+  stopResize()
+})
 </script>
 
 <template>
@@ -453,9 +509,13 @@ function onDragEnd(): void {
       </div>
     </header>
 
-    <div class="tb__body">
+    <div ref="bodyRef" class="tb__body">
       <!-- ── Left: Folder tree ─────────────────────────────────────────────── -->
-      <aside class="tb__tree" data-testid="folder-tree">
+      <aside
+        class="tb__tree"
+        :style="{ width: `${treeWidth}px` }"
+        data-testid="folder-tree"
+      >
         <!-- Root item -->
         <div
           class="tb__tree-item"
@@ -514,8 +574,22 @@ function onDragEnd(): void {
         </div>
       </aside>
 
+      <div
+        class="tb__divider"
+        :class="{ 'tb__divider--active': resizingPane === 'tree' }"
+        data-testid="tree-list-divider"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize folder tree"
+        @mousedown="startResize('tree', $event)"
+      />
+
       <!-- ── Middle: Template list ─────────────────────────────────────────── -->
-      <section class="tb__list" data-testid="template-list">
+      <section
+        class="tb__list"
+        :style="{ width: `${listWidth}px` }"
+        data-testid="template-list"
+      >
         <div class="tb__list-header">
           <span class="tb__list-title">
             {{
@@ -551,6 +625,16 @@ function onDragEnd(): void {
           <span class="tb__list-item-name">{{ tmpl.name }}</span>
         </div>
       </section>
+
+      <div
+        class="tb__divider"
+        :class="{ 'tb__divider--active': resizingPane === 'list' }"
+        data-testid="list-detail-divider"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize template list"
+        @mousedown="startResize('list', $event)"
+      />
 
       <!-- ── Right: Template detail ─────────────────────────────────────────── -->
       <section class="tb__detail" data-testid="template-detail">
@@ -874,7 +958,6 @@ function onDragEnd(): void {
 /* ── Tree panel ──────────────────────────────────────────────────────────── */
 
 .tb__tree {
-  width: 200px;
   flex-shrink: 0;
   overflow-y: auto;
   border-right: 1px solid #313244;
@@ -947,12 +1030,34 @@ function onDragEnd(): void {
 /* ── Template list panel ─────────────────────────────────────────────────── */
 
 .tb__list {
-  width: 220px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   border-right: 1px solid #313244;
   overflow-y: auto;
+}
+
+.tb__divider {
+  width: 6px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  position: relative;
+  background: transparent;
+}
+
+.tb__divider::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 2px;
+  width: 1px;
+  background: #313244;
+}
+
+.tb__divider:hover::before,
+.tb__divider--active::before {
+  background: #89b4fa;
 }
 
 .tb__list-header {
