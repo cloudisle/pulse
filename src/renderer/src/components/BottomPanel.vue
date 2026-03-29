@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useUiStore } from '@renderer/stores/ui'
 import Console from '@renderer/components/BottomPanel/Console.vue'
+import ListenerPanel from '@renderer/components/Listeners/ListenerPanel.vue'
 
 const uiStore = useUiStore()
 const activeSubTab = ref<'console' | 'listeners'>('console')
@@ -66,7 +67,7 @@ function onDragEnd(): void {
         <Console />
       </div>
       <div v-else class="bottom-panel__listeners">
-        <p class="bottom-panel__placeholder">Active listeners will appear here.</p>
+        <ListenerPanel />
       </div>
     </div>
   </div>
@@ -162,10 +163,10 @@ function onDragEnd(): void {
   flex-direction: column;
 }
 
-.bottom-panel__placeholder {
-  font-size: 12px;
-  color: #585b70;
-  font-style: italic;
-  margin: 0;
+.bottom-panel__listeners {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 </style>
