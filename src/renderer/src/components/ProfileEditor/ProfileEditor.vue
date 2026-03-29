@@ -280,6 +280,16 @@ async function deleteProfile(): Promise<void> {
 
 // ─── Generate Sample ─────────────────────────────────────────────────────────
 
+function buildSetOverridesMap(): Record<string, any> {
+  const map: Record<string, any> = {}
+  for (const o of overrides) {
+    if (o.elementPath && o.action === 'set' && o.value !== undefined) {
+      map[o.elementPath] = o.value
+    }
+  }
+  return map
+}
+
 async function generateSample(): Promise<void> {
   if (!selectedSchemaId.value) {
     errorMessage.value = 'Select a schema context to generate a sample.'
@@ -293,11 +303,13 @@ async function generateSample(): Promise<void> {
   try {
     const systemId = systemStore.selectedSystemId
     if (!systemId) throw new Error('No system selected')
+    // In edit mode use the saved profileId; in create mode apply set-action overrides directly
     const profileIds = isEditMode.value && props.profileId ? [props.profileId] : []
+    const overridesMap = isEditMode.value ? {} : buildSetOverridesMap()
     const event = await api.events.generate(systemId, {
       schemaId: selectedSchemaId.value,
       profileIds,
-      overrides: {}
+      overrides: overridesMap
     })
     samplePayload.value = JSON.stringify(event.payload, null, 2)
   } catch {

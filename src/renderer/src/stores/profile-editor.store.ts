@@ -5,7 +5,6 @@ import type { Profile } from '../../../shared/models/profile'
 export const useProfileEditorStore = defineStore('profileEditor', () => {
   const workingProfile = ref<Profile | null>(null)
   const savedProfile = ref<Profile | null>(null)
-  const previewData = ref<{ original: any; withOverrides: any } | null>(null)
   const samplePayload = ref<string | null>(null)
 
   const isDirty = computed(() => {
@@ -17,7 +16,6 @@ export const useProfileEditorStore = defineStore('profileEditor', () => {
   function load(profile: Profile): void {
     savedProfile.value = JSON.parse(JSON.stringify(profile))
     workingProfile.value = JSON.parse(JSON.stringify(profile))
-    previewData.value = null
     samplePayload.value = null
   }
 
@@ -33,7 +31,6 @@ export const useProfileEditorStore = defineStore('profileEditor', () => {
       updatedAt: now
     }
     savedProfile.value = null
-    previewData.value = null
     samplePayload.value = null
   }
 
@@ -49,14 +46,12 @@ export const useProfileEditorStore = defineStore('profileEditor', () => {
   function reset(): void {
     workingProfile.value = null
     savedProfile.value = null
-    previewData.value = null
     samplePayload.value = null
   }
 
   return {
     workingProfile,
     savedProfile,
-    previewData,
     samplePayload,
     isDirty,
     load,
