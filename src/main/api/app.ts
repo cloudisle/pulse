@@ -1,3 +1,4 @@
+import { dialog } from 'electron'
 import { SettingsService } from '../services/settings.service'
 import type { AppSettings } from '../../shared/models'
 
@@ -19,5 +20,13 @@ export class AppApi {
 
   async getDataPath(): Promise<string> {
     return this.settings.getDataPath()
+  }
+
+  async selectDirectory(): Promise<string | null> {
+    const result = await dialog.showOpenDialog({ properties: ['openDirectory'] })
+    if (result.canceled || result.filePaths.length === 0) {
+      return null
+    }
+    return result.filePaths[0]
   }
 }

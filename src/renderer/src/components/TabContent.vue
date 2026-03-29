@@ -5,6 +5,8 @@ import SystemEditor from '@renderer/components/SystemEditor/SystemEditor.vue'
 import SchemaEditor from '@renderer/components/SchemaEditor/SchemaEditor.vue'
 import EventSender from '@renderer/components/EventSender/EventSender.vue'
 import SessionView from '@renderer/components/SessionView/SessionView.vue'
+import SettingsView from '@renderer/components/Settings/SettingsView.vue'
+import EnvironmentEditor from '@renderer/components/EnvironmentEditor/EnvironmentEditor.vue'
 
 const uiStore = useUiStore()
 
@@ -26,6 +28,12 @@ function sessionIdFromTab(tabId: string): string {
   // tabId is "session:<uuid>"
   return tabId.replace(/^session:/, '')
 }
+  
+function environmentIdFromTab(tabId: string): string | undefined {
+  // tabId is "environment:new" or "environment:<uuid>"
+  const part = tabId.replace(/^environment:/, '')
+  return part === 'new' ? undefined : part
+}
 </script>
 
 <template>
@@ -42,9 +50,16 @@ function sessionIdFromTab(tabId: string): string {
       <EventSender
         v-else-if="activeTab.type === 'event-sender'"
       />
+      <EnvironmentEditor
+        v-else-if="activeTab.type === 'environment'"
+        :environment-id="environmentIdFromTab(activeTab.id)"
+      />
       <SessionView
         v-else-if="activeTab.type === 'session'"
         :session-id="sessionIdFromTab(activeTab.id)"
+      />
+      <SettingsView
+        v-else-if="activeTab.type === 'settings'"
       />
       <p v-else class="tab-content__placeholder">{{ activeTab.title }} ({{ activeTab.type }})</p>
     </div>

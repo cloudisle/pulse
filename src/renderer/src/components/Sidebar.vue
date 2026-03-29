@@ -97,6 +97,10 @@ function createTemplate(): void {
   uiStore.openTab({ id: 'template:new', type: 'template', title: 'New Template' })
 }
 
+function openSettingsTab(): void {
+  uiStore.openTab({ id: 'settings', type: 'settings', title: 'Settings' })
+}
+
 function openEventSender(): void {
   uiStore.openTab({ id: 'event-sender', type: 'event-sender', title: 'Send Event' })
 }
@@ -351,6 +355,18 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
       </section>
     </nav>
 
+    <!-- Settings button -->
+    <div v-if="!uiStore.sidebarCollapsed" class="sidebar__footer">
+      <button
+        class="sidebar__settings-btn"
+        title="Open settings"
+        data-testid="settings-btn"
+        @click="openSettingsTab"
+      >
+        ⚙ Settings
+      </button>
+    </div>
+
     <!-- Context menu -->
     <Teleport to="body">
       <div
@@ -600,6 +616,30 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
 .sidebar__send-event-btn:hover {
   background: #45475a;
   color: #b4befe;
+}
+
+.sidebar__footer {
+  padding: 8px;
+  border-top: 1px solid #313244;
+  flex-shrink: 0;
+}
+
+.sidebar__settings-btn {
+  background: none;
+  border: none;
+  color: #585b70;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 8px;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 4px;
+  width: 100%;
+}
+
+.sidebar__settings-btn:hover {
+  background: #313244;
+  color: #a6adc8;
 }
 </style>
 
