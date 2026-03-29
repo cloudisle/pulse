@@ -93,6 +93,10 @@ function createTemplate(): void {
   uiStore.openTab({ id: 'template:new', type: 'template', title: 'New Template' })
 }
 
+function openEventSender(): void {
+  uiStore.openTab({ id: 'event-sender', type: 'event-sender', title: 'Send Event' })
+}
+
 function showContextMenu(
   event: MouseEvent,
   type: 'schema' | 'environment' | 'profile' | 'template' | 'system',
@@ -178,6 +182,17 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
             ✎
           </button>
         </div>
+      </section>
+
+      <!-- Send Event -->
+      <section class="sidebar__section">
+        <button
+          class="sidebar__send-event-btn"
+          data-testid="send-event-btn"
+          @click="openEventSender"
+        >
+          ⚡ Send Event
+        </button>
       </section>
 
       <!-- Schemas -->
@@ -532,6 +547,25 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
 
 .sidebar__folder-icon {
   font-size: 11px;
+}
+
+.sidebar__send-event-btn {
+  background: #313244;
+  border: 1px solid #45475a;
+  color: #89b4fa;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 12px;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 4px;
+  margin: 4px 8px;
+  width: calc(100% - 16px);
+}
+
+.sidebar__send-event-btn:hover {
+  background: #45475a;
+  color: #b4befe;
 }
 </style>
 
