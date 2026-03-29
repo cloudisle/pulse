@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { useEnvironmentStore } from '@renderer/stores/environment'
 import { useProfileStore } from '@renderer/stores/profile'
+import { useUiStore } from '@renderer/stores/ui'
 
 const environmentStore = useEnvironmentStore()
 const profileStore = useProfileStore()
+const uiStore = useUiStore()
 </script>
 
 <template>
@@ -46,6 +48,12 @@ const profileStore = useProfileStore()
             No profiles
           </span>
         </div>
+        <button
+          v-if="profileStore.activeProfileIds.length >= 2"
+          class="top-bar__preview-btn"
+          data-testid="preview-stack-btn"
+          @click="uiStore.openStackPreview()"
+        >Preview stack</button>
       </div>
     </div>
   </header>
@@ -135,5 +143,21 @@ const profileStore = useProfileStore()
   font-size: 12px;
   color: #585b70;
   font-style: italic;
+}
+
+.top-bar__preview-btn {
+  padding: 3px 10px;
+  background: #313244;
+  color: #89b4fa;
+  border: 1px solid #89b4fa;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.top-bar__preview-btn:hover {
+  background: rgba(137, 180, 250, 0.15);
 }
 </style>

@@ -13,6 +13,7 @@ export const useUiStore = defineStore('ui', () => {
   const sidebarCollapsed = ref(false)
   const bottomPanelCollapsed = ref(false)
   const bottomPanelHeight = ref(200)
+  const stackPreviewOpen = ref(false)
 
   function openTab(tab: Tab): void {
     const existing = openTabs.value.find((t) => t.id === tab.id)
@@ -47,17 +48,28 @@ export const useUiStore = defineStore('ui', () => {
     bottomPanelHeight.value = height
   }
 
+  function openStackPreview(): void {
+    stackPreviewOpen.value = true
+  }
+
+  function closeStackPreview(): void {
+    stackPreviewOpen.value = false
+  }
+
   return {
     openTabs,
     activeTabId,
     sidebarCollapsed,
     bottomPanelCollapsed,
     bottomPanelHeight,
+    stackPreviewOpen,
     openTab,
     closeTab,
     setActiveTab,
     toggleSidebar,
     toggleBottomPanel,
-    setBottomPanelHeight
+    setBottomPanelHeight,
+    openStackPreview,
+    closeStackPreview
   }
 })
