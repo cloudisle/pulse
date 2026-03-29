@@ -4,6 +4,7 @@ import { useUiStore } from '@renderer/stores/ui'
 import SystemEditor from '@renderer/components/SystemEditor/SystemEditor.vue'
 import SchemaEditor from '@renderer/components/SchemaEditor/SchemaEditor.vue'
 import EventSender from '@renderer/components/EventSender/EventSender.vue'
+import CustomTypeEditor from '@renderer/components/CustomTypeEditor/CustomTypeEditor.vue'
 import SessionView from '@renderer/components/SessionView/SessionView.vue'
 import ProfileEditor from '@renderer/components/ProfileEditor/ProfileEditor.vue'
 import SettingsView from '@renderer/components/Settings/SettingsView.vue'
@@ -25,6 +26,12 @@ function schemaIdFromTab(tabId: string): string | undefined {
   return part === 'new' ? undefined : part
 }
 
+function customTypeIdFromTab(tabId: string): string | undefined {
+  // tabId is "custom-type:new" or "custom-type:<uuid>"
+  const part = tabId.replace(/^custom-type:/, '')
+  return part === 'new' ? undefined : part
+}
+  
 function sessionIdFromTab(tabId: string): string {
   // tabId is "session:<uuid>"
   return tabId.replace(/^session:/, '')
@@ -64,6 +71,10 @@ function environmentIdFromTab(tabId: string): string | undefined {
       <EnvironmentEditor
         v-else-if="activeTab.type === 'environment'"
         :environment-id="environmentIdFromTab(activeTab.id)"
+      />
+      <CustomTypeEditor
+        v-else-if="activeTab.type === 'custom-type'"
+        :custom-type-id="customTypeIdFromTab(activeTab.id)"
       />
       <SessionView
         v-else-if="activeTab.type === 'session'"

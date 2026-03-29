@@ -14,6 +14,7 @@ function mockAppApi(overrides: Record<string, any> = {}) {
       environments: { list: vi.fn().mockResolvedValue([]) },
       profiles: { list: vi.fn().mockResolvedValue([]) },
       templates: { list: vi.fn().mockResolvedValue({ folders: [], templates: [] }) },
+      customTypes: { list: vi.fn().mockResolvedValue([]) },
       sessions: { list: vi.fn().mockResolvedValue([]) },
       ...overrides
     }
@@ -29,7 +30,7 @@ describe('Sidebar component', () => {
   it('renders all navigation sections when expanded', () => {
     const wrapper = mount(Sidebar, { global: { plugins: [createPinia()] } })
     const titles = wrapper.findAll('.sidebar__section-title').map((el) => el.text())
-    expect(titles).toEqual(['Systems', 'Schemas', 'Environments', 'Profiles', 'Sessions', 'Templates'])
+    expect(titles).toEqual(['Systems', 'Schemas', 'Environments', 'Profiles', 'Custom Types', 'Sessions', 'Templates'])
   })
 
   it('hides navigation when collapsed', async () => {
