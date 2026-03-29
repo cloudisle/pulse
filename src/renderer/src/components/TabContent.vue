@@ -4,6 +4,7 @@ import { useUiStore } from '@renderer/stores/ui'
 import SystemEditor from '@renderer/components/SystemEditor/SystemEditor.vue'
 import SchemaEditor from '@renderer/components/SchemaEditor/SchemaEditor.vue'
 import EventSender from '@renderer/components/EventSender/EventSender.vue'
+import SessionView from '@renderer/components/SessionView/SessionView.vue'
 import ProfileEditor from '@renderer/components/ProfileEditor/ProfileEditor.vue'
 import SettingsView from '@renderer/components/Settings/SettingsView.vue'
 import EnvironmentEditor from '@renderer/components/EnvironmentEditor/EnvironmentEditor.vue'
@@ -24,6 +25,11 @@ function schemaIdFromTab(tabId: string): string | undefined {
   return part === 'new' ? undefined : part
 }
 
+function sessionIdFromTab(tabId: string): string {
+  // tabId is "session:<uuid>"
+  return tabId.replace(/^session:/, '')
+}
+  
 function profileIdFromTab(tabId: string): string | undefined {
   // tabId is "profile:new" or "profile:<uuid>"
   const part = tabId.replace(/^profile:/, '')
@@ -58,6 +64,10 @@ function environmentIdFromTab(tabId: string): string | undefined {
       <EnvironmentEditor
         v-else-if="activeTab.type === 'environment'"
         :environment-id="environmentIdFromTab(activeTab.id)"
+      />
+      <SessionView
+        v-else-if="activeTab.type === 'session'"
+        :session-id="sessionIdFromTab(activeTab.id)"
       />
       <SettingsView
         v-else-if="activeTab.type === 'settings'"

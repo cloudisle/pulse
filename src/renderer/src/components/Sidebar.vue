@@ -6,6 +6,7 @@ import { useSchemaStore } from '@renderer/stores/schema.store'
 import { useEnvironmentStore } from '@renderer/stores/environment'
 import { useProfileStore } from '@renderer/stores/profile'
 import { useTemplateStore } from '@renderer/stores/template.store'
+import { useSessionStore } from '@renderer/stores/session.store'
 
 const uiStore = useUiStore()
 const systemStore = useSystemStore()
@@ -13,12 +14,14 @@ const schemaStore = useSchemaStore()
 const environmentStore = useEnvironmentStore()
 const profileStore = useProfileStore()
 const templateStore = useTemplateStore()
+const sessionStore = useSessionStore()
 
 const sectionExpanded = ref({
   schemas: true,
   environments: true,
   profiles: true,
-  templates: true
+  templates: true,
+  sessions: true
 })
 
 interface ContextMenuState {
@@ -49,7 +52,8 @@ async function onSystemChange(event: Event): Promise<void> {
     schemaStore.list(id),
     environmentStore.list(id),
     profileStore.list(id),
-    templateStore.list(id)
+    templateStore.list(id),
+    sessionStore.loadSessions(id)
   ])
 }
 
@@ -99,6 +103,10 @@ function openSettingsTab(): void {
 
 function openEventSender(): void {
   uiStore.openTab({ id: 'event-sender', type: 'event-sender', title: 'Send Event' })
+}
+
+function openSessionTab(id: string, name: string): void {
+  uiStore.openTab({ id: `session:${id}`, type: 'session', title: name })
 }
 
 function showContextMenu(
@@ -279,6 +287,32 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
             @contextmenu.prevent="showContextMenu($event, 'profile', profile.id)"
           >
             {{ profile.name }}
+          </li>
+        </ul>
+      </section>
+
+      <!-- Sessions -->
+      <section class="sidebar__section">
+        <div class="sidebar__section-header">
+          <button
+            class="sidebar__section-toggle"
+            :aria-expanded="sectionExpanded.sessions"
+            @click="sectionExpanded.sessions = !sectionExpanded.sessions"
+          >
+            {{ sectionExpanded.sessions ? '▾' : '▸' }}
+          </button>
+          <h3 class="sidebar__section-title">Sessions</h3>
+        </div>
+        <ul v-if="sectionExpanded.sessions" class="sidebar__list" data-testid="sessions-list">
+          <li v-if="sessionStore.sessions.length === 0" class="sidebar__empty">No sessions</li>
+          <li
+            v-for="session in sessionStore.sessions"
+            :key="session.id"
+            class="sidebar__item"
+            :data-testid="`session-item-${session.id}`"
+            @click="openSessionTab(session.id, session.name ?? session.id)"
+          >
+            {{ session.name ?? session.id }}
           </li>
         </ul>
       </section>
