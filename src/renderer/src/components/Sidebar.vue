@@ -6,6 +6,8 @@ import { useSchemaStore } from '@renderer/stores/schema.store'
 import { useEnvironmentStore } from '@renderer/stores/environment'
 import { useProfileStore } from '@renderer/stores/profile'
 import { useTemplateStore } from '@renderer/stores/template.store'
+import SensitiveVarsDialog from './SensitiveVarsDialog.vue'
+import type { SensitiveVar } from './SensitiveVarsDialog.vue'
 
 const uiStore = useUiStore()
 const systemStore = useSystemStore()
@@ -40,6 +42,13 @@ const contextMenu = ref<ContextMenuState>({
 onMounted(async () => {
   await systemStore.loadSystems()
 })
+
+// Import state
+const sensitiveVars = ref<SensitiveVar[]>([])
+const pendingImportData = ref<any>(null)
+const showSensitiveDialog = ref(false)
+const importing = ref(false)
+const importError = ref('')
 
 async function onSystemChange(event: Event): Promise<void> {
   const id = (event.target as HTMLSelectElement).value
@@ -143,6 +152,110 @@ function buildTemplateList(parentId: string | null, depth: number): TreeItem[] {
 }
 
 const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
+
+async function importSystem(): Promise<void> {
+  const api = (window as any).app?.api
+  if (!api) return
+  importError.value = ''
+  try {
+    const dialogResult = await api.dialog.showOpenDialog({
+      title: 'Import System',
+      filters: [{ name: 'JSON Files', extensions: ['json'] }],
+      properties: ['openFile']
+    })
+    if (dialogResult.canceled || dialogResult.filePaths.length === 0) return
+
+    let content: string
+    try {
+      content = await api.dialog.readTextFile(dialogResult.filePaths[0])
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e)
+      importError.value = `Failed to read file: ${msg}`
+      return
+    }
+
+    let data: any
+    try {
+      data = JSON.parse(content)
+    } catch {
+      importError.value = 'Failed to parse file: not valid JSON.'
+      return
+    }
+
+    // Detect missing sensitive variables
+    const missing: SensitiveVar[] = []
+    if (Array.isArray(data.environments)) {
+      for (const env of data.environments) {
+        if (Array.isArray(env.variables)) {
+          for (const v of env.variables) {
+            if (v.sensitive && !v.value) {
+              missing.push({ envName: env.name, key: v.key, value: '' })
+            }
+          }
+        }
+      }
+    }
+
+    if (missing.length > 0) {
+      pendingImportData.value = data
+      sensitiveVars.value = missing
+      showSensitiveDialog.value = true
+    } else {
+      await doImport(data)
+    }
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e)
+    importError.value = `Failed to open file dialog: ${msg}`
+  }
+}
+
+async function doImport(data: any): Promise<void> {
+  const api = (window as any).app?.api
+  if (!api) return
+  importing.value = true
+  importError.value = ''
+  try {
+    const imported = await api.systems.import(data)
+    await systemStore.loadSystems()
+    systemStore.selectSystem(imported.id)
+    await Promise.all([
+      schemaStore.list(imported.id),
+      environmentStore.list(imported.id),
+      profileStore.list(imported.id),
+      templateStore.list(imported.id)
+    ])
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e)
+    importError.value = `Failed to import system: ${msg}`
+  } finally {
+    importing.value = false
+  }
+}
+
+async function onSensitiveVarsConfirm(vars: SensitiveVar[]): Promise<void> {
+  showSensitiveDialog.value = false
+  const data = pendingImportData.value
+  if (!data) return
+
+  // Apply user-supplied values back into the data
+  for (const env of data.environments) {
+    for (const v of env.variables) {
+      if (v.sensitive) {
+        const supplied = vars.find((s) => s.envName === env.name && s.key === v.key)
+        if (supplied) v.value = supplied.value
+      }
+    }
+  }
+  pendingImportData.value = null
+  sensitiveVars.value = []
+  await doImport(data)
+}
+
+function onSensitiveVarsCancel(): void {
+  showSensitiveDialog.value = false
+  pendingImportData.value = null
+  sensitiveVars.value = []
+}
 </script>
 
 <template>
@@ -161,7 +274,9 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
         <div class="sidebar__section-header">
           <h3 class="sidebar__section-title">Systems</h3>
           <button class="sidebar__add-btn" title="Create system" @click="createSystem">+</button>
+          <button class="sidebar__add-btn" title="Import system" @click="importSystem">↑</button>
         </div>
+        <p v-if="importError" class="sidebar__import-error">{{ importError }}</p>
         <div class="sidebar__system-selector">
           <select
             class="sidebar__system-select"
@@ -336,6 +451,16 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
         </button>
       </div>
     </Teleport>
+
+    <!-- Sensitive variables dialog for import -->
+    <Teleport to="body">
+      <SensitiveVarsDialog
+        v-if="showSensitiveDialog"
+        :vars="sensitiveVars"
+        @confirm="onSensitiveVarsConfirm"
+        @cancel="onSensitiveVarsCancel"
+      />
+    </Teleport>
   </aside>
 </template>
 
@@ -449,6 +574,12 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
 .sidebar__add-btn:hover {
   background: #313244;
   color: #cdd6f4;
+}
+
+.sidebar__import-error {
+  padding: 4px 8px;
+  font-size: 11px;
+  color: #f38ba8;
 }
 
 .sidebar__system-selector {

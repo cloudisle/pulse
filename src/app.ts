@@ -11,6 +11,7 @@ import {EnvironmentsApi} from "./main/api/environments";
 import {CustomTypesApi} from "./main/api/custom-types";
 import {SessionsApi} from "./main/api/sessions";
 import {TemplatesApi} from "./main/api/templates";
+import {DialogApi} from "./main/api/dialog";
 import {ListenerFactory, ListenerLifecycleFactory} from "./main/services/listeners/factory";
 import {CloudService} from "./main/services/cloud.service";
 import {ConverterFactory} from "./main/services/listeners/converter";
@@ -40,6 +41,7 @@ export default app({
     apis: {
         app: api(new AppApi(settings)),
         aws: api(new AwsApi()),
+        dialog: api(new DialogApi()),
         systems: api(new SystemsApi(storage, settings)),
         schemas: api(new SchemasApi(storage, settings)),
         environments: api(new EnvironmentsApi(storage, settings)),
