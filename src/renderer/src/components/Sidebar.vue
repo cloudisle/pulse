@@ -6,6 +6,7 @@ import { useSchemaStore } from '@renderer/stores/schema.store'
 import { useEnvironmentStore } from '@renderer/stores/environment'
 import { useProfileStore } from '@renderer/stores/profile'
 import { useTemplateStore } from '@renderer/stores/template.store'
+import { useSessionStore } from '@renderer/stores/session.store'
 
 const uiStore = useUiStore()
 const systemStore = useSystemStore()
@@ -13,19 +14,29 @@ const schemaStore = useSchemaStore()
 const environmentStore = useEnvironmentStore()
 const profileStore = useProfileStore()
 const templateStore = useTemplateStore()
+const sessionStore = useSessionStore()
 
 const sectionExpanded = ref({
   schemas: true,
   environments: true,
   profiles: true,
-  templates: true
+  templates: true,
+  customTypes: true,
+  sessions: true
 })
+
+interface CustomTypeItem {
+  id: string
+  name: string
+}
+
+const customTypes = ref<CustomTypeItem[]>([])
 
 interface ContextMenuState {
   visible: boolean
   x: number
   y: number
-  entityType: 'schema' | 'environment' | 'profile' | 'template' | 'system' | ''
+  entityType: 'schema' | 'environment' | 'profile' | 'template' | 'system' | 'custom-type' | ''
   entityId: string
 }
 
@@ -49,8 +60,21 @@ async function onSystemChange(event: Event): Promise<void> {
     schemaStore.list(id),
     environmentStore.list(id),
     profileStore.list(id),
-    templateStore.list(id)
+    templateStore.list(id),
+    loadCustomTypes(id),
+    sessionStore.loadSessions(id)
   ])
+}
+
+async function loadCustomTypes(systemId: string): Promise<void> {
+  const api = (window as any).app?.api
+  if (!api) return
+  try {
+    const types = await api.customTypes.list(systemId)
+    customTypes.value = types.map((t: { id: string; name: string }) => ({ id: t.id, name: t.name }))
+  } catch {
+    customTypes.value = []
+  }
 }
 
 function openSchemaTab(id: string, name: string): void {
@@ -67,6 +91,14 @@ function openProfileTab(id: string, name: string): void {
 
 function openTemplateTab(id: string, name: string): void {
   uiStore.openTab({ id: `template:${id}`, type: 'template', title: name })
+}
+
+function openCustomTypeTab(id: string, name: string): void {
+  uiStore.openTab({ id: `custom-type:${id}`, type: 'custom-type', title: name })
+}
+
+function createCustomType(): void {
+  uiStore.openTab({ id: 'custom-type:new', type: 'custom-type', title: 'New Custom Type' })
 }
 
 function createSystem(): void {
@@ -101,9 +133,13 @@ function openEventSender(): void {
   uiStore.openTab({ id: 'event-sender', type: 'event-sender', title: 'Send Event' })
 }
 
+function openSessionTab(id: string, name: string): void {
+  uiStore.openTab({ id: `session:${id}`, type: 'session', title: name })
+}
+
 function showContextMenu(
   event: MouseEvent,
-  type: 'schema' | 'environment' | 'profile' | 'template' | 'system',
+  type: 'schema' | 'environment' | 'profile' | 'template' | 'system' | 'custom-type',
   id: string
 ): void {
   contextMenu.value = { visible: true, x: event.clientX, y: event.clientY, entityType: type, entityId: id }
@@ -279,6 +315,59 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
             @contextmenu.prevent="showContextMenu($event, 'profile', profile.id)"
           >
             {{ profile.name }}
+          </li>
+        </ul>
+      </section>
+
+      <!-- Custom Types -->
+      <section class="sidebar__section">
+        <div class="sidebar__section-header">
+          <button
+            class="sidebar__section-toggle"
+            :aria-expanded="sectionExpanded.customTypes"
+            @click="sectionExpanded.customTypes = !sectionExpanded.customTypes"
+          >
+            {{ sectionExpanded.customTypes ? '▾' : '▸' }}
+          </button>
+          <h3 class="sidebar__section-title">Custom Types</h3>
+          <button class="sidebar__add-btn" title="Create custom type" data-testid="create-custom-type-btn" @click="createCustomType">+</button>
+        </div>
+        <ul v-if="sectionExpanded.customTypes" class="sidebar__list">
+          <li v-if="customTypes.length === 0" class="sidebar__empty">No items</li>
+          <li
+            v-for="ct in customTypes"
+            :key="ct.id"
+            class="sidebar__item"
+            @click="openCustomTypeTab(ct.id, ct.name)"
+            @contextmenu.prevent="showContextMenu($event, 'custom-type', ct.id)"
+          >
+            {{ ct.name }}
+          </li>
+        </ul>
+      </section>
+      
+      <!-- Sessions -->
+      <section class="sidebar__section">
+        <div class="sidebar__section-header">
+          <button
+            class="sidebar__section-toggle"
+            :aria-expanded="sectionExpanded.sessions"
+            @click="sectionExpanded.sessions = !sectionExpanded.sessions"
+          >
+            {{ sectionExpanded.sessions ? '▾' : '▸' }}
+          </button>
+          <h3 class="sidebar__section-title">Sessions</h3>
+        </div>
+        <ul v-if="sectionExpanded.sessions" class="sidebar__list" data-testid="sessions-list">
+          <li v-if="sessionStore.sessions.length === 0" class="sidebar__empty">No sessions</li>
+          <li
+            v-for="session in sessionStore.sessions"
+            :key="session.id"
+            class="sidebar__item"
+            :data-testid="`session-item-${session.id}`"
+            @click="openSessionTab(session.id, session.name ?? session.id)"
+          >
+            {{ session.name ?? session.id }}
           </li>
         </ul>
       </section>
