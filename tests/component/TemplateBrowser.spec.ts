@@ -224,7 +224,7 @@ describe('TemplateBrowser component', () => {
   // ─── Template selection ──────────────────────────────────────────────────────
 
   it('selecting a template shows its detail', async () => {
-    const { systemStore, pinia } = setupStores()
+    const { pinia } = setupStores()
     mockAppApi()
     const { wrapper } = mountBrowser(pinia)
     const templateStore = useTemplateStore()
