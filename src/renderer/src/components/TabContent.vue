@@ -4,6 +4,7 @@ import { useUiStore } from '@renderer/stores/ui'
 import SystemEditor from '@renderer/components/SystemEditor/SystemEditor.vue'
 import SchemaEditor from '@renderer/components/SchemaEditor/SchemaEditor.vue'
 import EventSender from '@renderer/components/EventSender/EventSender.vue'
+import SettingsView from '@renderer/components/Settings/SettingsView.vue'
 
 const uiStore = useUiStore()
 
@@ -35,6 +36,9 @@ function schemaIdFromTab(tabId: string): string | undefined {
       />
       <EventSender
         v-else-if="activeTab.type === 'event-sender'"
+      />
+      <SettingsView
+        v-else-if="activeTab.type === 'settings'"
       />
       <p v-else class="tab-content__placeholder">{{ activeTab.title }} ({{ activeTab.type }})</p>
     </div>
