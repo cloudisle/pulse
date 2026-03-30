@@ -18,7 +18,8 @@ import type {
   ListenerStartResult,
   ListenerStatus,
   System,
-  OutputConfig
+  OutputConfig,
+  Environment,
 } from '../../../../src/shared/models'
 
 let tmpDir: string
@@ -98,7 +99,7 @@ afterEach(async () => {
 // ---------------------------------------------------------------------------
 
 describe('ListenersApi — start', () => {
-  it('calls listenerManager.startListener with config and loaded output', async () => {
+  it('calls listenerManager.startListener with config, loaded output, and undefined environment when no environmentId', async () => {
     const system = makeSystem()
     await storage.write(StoragePaths.system(tmpDir, SYS_ID), system)
 
@@ -107,7 +108,33 @@ describe('ListenersApi — start', () => {
 
     expect(listenerManager.startListener).toHaveBeenCalledWith(
       config,
-      system.outputs[0]
+      system.outputs[0],
+      undefined
+    )
+  })
+
+  it('loads the environment and passes it to startListener when environmentId is provided', async () => {
+    const system = makeSystem()
+    await storage.write(StoragePaths.system(tmpDir, SYS_ID), system)
+
+    const ENV_ID = 'env-1'
+    const env: Environment = {
+      id: ENV_ID,
+      systemId: SYS_ID,
+      name: 'Staging',
+      variables: [{ key: 'REGION', value: 'eu-west-1', sensitive: false }],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
+    await storage.write(StoragePaths.environment(tmpDir, SYS_ID, ENV_ID), env)
+
+    const config = makeListenerConfig({ environmentId: ENV_ID })
+    await api.start(config)
+
+    expect(listenerManager.startListener).toHaveBeenCalledWith(
+      config,
+      system.outputs[0],
+      env
     )
   })
 

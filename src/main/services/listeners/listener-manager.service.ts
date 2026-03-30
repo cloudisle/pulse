@@ -40,11 +40,13 @@ export class ListenerManagerService {
       outputConfig.config,
       variables
     ) as OutputConfig['config'];
+    const resolvedName = this.variables.replaceVariables(outputConfig.name, variables);
 
     const lifecycle = await this.factory.create({
       listenerConfig,
       outputConfig: {
         ...outputConfig,
+        name: resolvedName,
         config: resolvedConfig,
       }
     });

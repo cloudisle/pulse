@@ -3,6 +3,7 @@ import {ref, computed, onMounted, onUnmounted, watch, toRaw} from 'vue'
 import { useListenerStore } from '@renderer/stores/listener.store'
 import { useSystemStore } from '@renderer/stores/system'
 import { useSessionStore } from '@renderer/stores/session.store'
+import { useEnvironmentStore } from '@renderer/stores/environment'
 import type { OutputConfig } from '../../../../shared/models/system'
 import type {
   ListenerFilterMode,
@@ -22,6 +23,7 @@ interface LocalFilter {
 const listenerStore = useListenerStore()
 const systemStore = useSystemStore()
 const sessionStore = useSessionStore()
+const environmentStore = useEnvironmentStore()
 
 let unsubLifecycle: (() => void) | null = null
 let unsubData: (() => void) | null = null
@@ -177,6 +179,7 @@ async function onStartListener(): Promise<void> {
       systemId,
       outputId: formOutputId.value,
       sessionId: formSessionId.value,
+      environmentId: environmentStore.selectedEnvironmentId ?? undefined,
       filters: filters.length > 0 ? filters : undefined,
       filterMode: formFilterMode.value,
       includeUnmatched: formIncludeUnmatched.value,

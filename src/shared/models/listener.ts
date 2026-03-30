@@ -29,6 +29,7 @@ export interface ListenerConfig {
   systemId: string; // FK → System
   outputId: string; // FK → OutputConfig
   sessionId: string; // FK → Session (used for filter context)
+  environmentId?: string; // FK → Environment (used for variable replacement)
   cloud: CloudOperationSettings; // cloud-provider settings for this listener operation
   filters?: ListenerFilter[];
   filterMode?: ListenerFilterMode; // default: 'all'
