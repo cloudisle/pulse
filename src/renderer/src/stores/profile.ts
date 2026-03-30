@@ -30,5 +30,51 @@ export const useProfileStore = defineStore('profile', () => {
     }
   }
 
-  return { availableProfiles, activeProfileIds, list, setProfiles, toggleProfile }
+  function moveProfileUp(id: string): void {
+    const idx = activeProfileIds.value.indexOf(id)
+    if (idx <= 0) return
+    const arr = [...activeProfileIds.value]
+    ;[arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]]
+    activeProfileIds.value = arr
+  }
+
+  function moveProfileDown(id: string): void {
+    const idx = activeProfileIds.value.indexOf(id)
+    if (idx === -1 || idx >= activeProfileIds.value.length - 1) return
+    const arr = [...activeProfileIds.value]
+    ;[arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]]
+    activeProfileIds.value = arr
+  }
+
+  function reorderProfiles(orderedIds: string[]): void {
+    activeProfileIds.value = orderedIds.filter((id) => activeProfileIds.value.includes(id))
+  }
+
+  function reorderProfile(fromIndex: number, toIndex: number): void {
+    if (
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= activeProfileIds.value.length ||
+      toIndex >= activeProfileIds.value.length ||
+      fromIndex === toIndex
+    ) {
+      return
+    }
+    const ids = [...activeProfileIds.value]
+    const [moved] = ids.splice(fromIndex, 1)
+    ids.splice(toIndex, 0, moved)
+    activeProfileIds.value = ids
+  }
+
+  return {
+    availableProfiles,
+    activeProfileIds,
+    list,
+    setProfiles,
+    toggleProfile,
+    moveProfileUp,
+    moveProfileDown,
+    reorderProfile,
+    reorderProfiles
+  }
 })

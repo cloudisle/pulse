@@ -17,7 +17,7 @@ export const useEnvironmentStore = defineStore('environment', () => {
     environments.value = items.map(({ id, name }) => ({ id, name }))
   }
 
-  function selectEnvironment(id: string): void {
+  function selectEnvironment(id: string | null): void {
     selectedEnvironmentId.value = id
   }
 

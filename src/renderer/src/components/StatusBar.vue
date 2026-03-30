@@ -1,7 +1,12 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { useAwsStore } from '@renderer/stores/aws'
 
 const awsStore = useAwsStore()
+
+onMounted(() => {
+  awsStore.loadProfiles()
+})
 </script>
 
 <template>
@@ -22,6 +27,21 @@ const awsStore = useAwsStore()
           :value="profile"
         >{{ profile }}</option>
       </select>
+      <button
+        class="status-bar__validate-btn"
+        :disabled="!awsStore.selectedProfile || awsStore.validating"
+        :title="awsStore.validating ? 'Validating…' : 'Validate credentials'"
+        @click="awsStore.validateCredentials(awsStore.selectedProfile!)"
+      >
+        <span v-if="awsStore.validating" class="status-bar__validate-icon status-bar__validate-icon--pending">⟳</span>
+        <span
+          v-else-if="awsStore.validationResult !== null"
+          class="status-bar__validate-icon"
+          :class="awsStore.validationResult.valid ? 'status-bar__validate-icon--success' : 'status-bar__validate-icon--failure'"
+          :title="awsStore.validationResult.valid ? `Valid — ${awsStore.validationResult.identity?.arn ?? ''}` : awsStore.validationResult.error"
+        >{{ awsStore.validationResult.valid ? '✓' : '✗' }}</span>
+        <span v-else class="status-bar__validate-icon">✓?</span>
+      </button>
     </div>
   </footer>
 </template>
@@ -61,5 +81,43 @@ const awsStore = useAwsStore()
   border-radius: 3px;
   font-size: 11px;
   cursor: pointer;
+}
+
+.status-bar__validate-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  height: 16px;
+  background: transparent;
+  border: 1px solid #45475a;
+  border-radius: 3px;
+  font-size: 10px;
+  cursor: pointer;
+  color: #a6adc8;
+  line-height: 1;
+}
+
+.status-bar__validate-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.status-bar__validate-icon--success {
+  color: #a6e3a1;
+}
+
+.status-bar__validate-icon--failure {
+  color: #f38ba8;
+}
+
+.status-bar__validate-icon--pending {
+  color: #f9e2af;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 </style>

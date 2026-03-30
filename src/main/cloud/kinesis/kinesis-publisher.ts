@@ -6,7 +6,9 @@ import {fromIni} from "@aws-sdk/credential-providers";
 
 export interface KinesisPublisherOptions {
     config: KinesisConfig;
-    awsProfile: string;
+    aws: {
+        profile: string;
+    };
 }
 
 export class KinesisPublisher implements Publisher {
@@ -21,7 +23,7 @@ export class KinesisPublisher implements Publisher {
         this.id = randomUUID();
         this.client = new KinesisClient({
             region: options.config.region,
-            credentials: fromIni({ profile: options.awsProfile })
+            credentials: fromIni({ profile: options.aws.profile })
         })
     }
 

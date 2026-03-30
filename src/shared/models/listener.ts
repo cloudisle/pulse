@@ -1,4 +1,5 @@
 import { SessionEvent } from './session'
+import type { CloudOperationSettings } from './aws'
 
 export type ListenerLifecycleState = 'starting' | 'running' | 'stopping' | 'stopped' | 'error';
 export type ListenerFilterMode = 'all' | 'any';
@@ -28,6 +29,7 @@ export interface ListenerConfig {
   systemId: string; // FK → System
   outputId: string; // FK → OutputConfig
   sessionId: string; // FK → Session (used for filter context)
+  cloud: CloudOperationSettings; // cloud-provider settings for this listener operation
   filters?: ListenerFilter[];
   filterMode?: ListenerFilterMode; // default: 'all'
   includeUnmatched?: boolean; // default: false

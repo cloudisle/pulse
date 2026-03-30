@@ -1,6 +1,7 @@
 import {defineStore} from 'pinia'
 import {ref, toRaw} from 'vue'
 import type {GeneratedEvent, SendEventResult, ValidationWarning} from '../../../shared/models/event'
+import type {CloudOperationSettings} from '../../../shared/models/aws'
 import type {Session} from '../../../shared/models/session'
 import type {InputConfig, System} from '../../../shared/models/system'
 
@@ -111,7 +112,11 @@ export const useEventSenderStore = defineStore('event-sender', () => {
     }
   }
 
-  async function send(systemId: string, awsProfile: string, environmentId: string | null): Promise<void> {
+  async function send(
+    systemId: string,
+    cloud: CloudOperationSettings,
+    environmentId: string | null
+  ): Promise<void> {
     if (!selectedInputId.value) {
       errorMessage.value = 'Select a destination input first.'
       return
@@ -146,7 +151,7 @@ export const useEventSenderStore = defineStore('event-sender', () => {
           appliedProfiles: toRaw(generatedEvent.value.appliedProfiles),
           environmentId: toRaw(environmentId),
         },
-        awsProfile: toRaw(awsProfile),
+        cloud: toRaw(cloud),
         environmentId: toRaw(environmentId) ?? undefined
       })
     } catch (err: any) {

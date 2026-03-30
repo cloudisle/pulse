@@ -12,7 +12,6 @@ import {CustomTypesApi} from "./main/api/custom-types";
 import {SessionsApi} from "./main/api/sessions";
 import {TemplatesApi} from "./main/api/templates";
 import {ListenerFactory, ListenerLifecycleFactory} from "./main/services/listeners/factory";
-import {CloudService} from "./main/services/cloud.service";
 import {ConverterFactory} from "./main/services/listeners/converter";
 import {FilterFactory} from "./main/services/listeners/filter";
 import {AwsApi} from "./main/api/aws";
@@ -24,13 +23,12 @@ import {ListenerManagerService} from "./main/services/listeners/listener-manager
 
 const storage = new StorageService();
 const settings = new SettingsService(storage);
-const cloud = new CloudService(storage, settings);
 const generation = new EventGenerationService();
 
-const listenerFactory = new ListenerFactory(cloud);
+const listenerFactory = new ListenerFactory();
 const converterFactory = new ConverterFactory();
 const filterFactory = new FilterFactory();
-const publisherFactory = new PublisherFactory(cloud);
+const publisherFactory = new PublisherFactory();
 const lifecycleFactory = new ListenerLifecycleFactory(listenerFactory, converterFactory, filterFactory);
 
 const events = new EventSenderService(storage, settings, publisherFactory);

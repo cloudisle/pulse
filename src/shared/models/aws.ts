@@ -4,6 +4,14 @@ export interface AWSProfile {
   region?: string;
 }
 
+export interface AwsOperationSettings {
+  profile: string;
+}
+
+export interface CloudOperationSettings {
+  aws?: AwsOperationSettings;
+}
+
 export interface CredentialValidation {
   valid: boolean;
   identity?: {

@@ -38,7 +38,10 @@ export class EventSenderService {
     ) as KinesisConfig | SqsConfig | EventBridgeConfig
 
     const logContext = { systemId, sessionId: input.sessionId }
-    await log.info(`Sending event to ${this.describeTarget(inputConfig.type, resolvedConfig)}`, logContext);
+    await log.info(`Sending event to ${this.describeTarget(inputConfig.type, resolvedConfig)}`, {
+      ...logContext,
+      ...input,
+    });
 
     const timestamp = new Date().toISOString()
 
@@ -99,7 +102,7 @@ export class EventSenderService {
     const publisher = this.factory.create({
       ...inputConfig,
       config: resolvedConfig,
-    });
+    }, input.cloud);
 
     return await publisher.publish(payload);
   }
