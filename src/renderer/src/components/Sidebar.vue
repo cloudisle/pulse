@@ -125,6 +125,10 @@ function createTemplate(): void {
   uiStore.openTab({ id: 'template:new', type: 'template', title: 'New Template' })
 }
 
+function openTemplateBrowser(): void {
+  uiStore.openTab({ id: 'template-browser', type: 'template-browser', title: 'Templates' })
+}
+
 function openSettingsTab(): void {
   uiStore.openTab({ id: 'settings', type: 'settings', title: 'Settings' })
 }
@@ -382,7 +386,8 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
           >
             {{ sectionExpanded.templates ? '▾' : '▸' }}
           </button>
-          <h3 class="sidebar__section-title">Templates</h3>
+          <h3 class="sidebar__section-title sidebar__section-title--clickable" @click="openTemplateBrowser">Templates</h3>
+          <button class="sidebar__add-btn" title="Browse templates" @click="openTemplateBrowser">⊞</button>
           <button class="sidebar__add-btn" title="Create template" @click="createTemplate">+</button>
         </div>
         <ul v-if="sectionExpanded.templates" class="sidebar__list">
@@ -652,6 +657,14 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
 
 .sidebar__folder-icon {
   font-size: 11px;
+}
+
+.sidebar__section-title--clickable {
+  cursor: pointer;
+}
+
+.sidebar__section-title--clickable:hover {
+  color: #89b4fa;
 }
 
 .sidebar__send-event-btn {

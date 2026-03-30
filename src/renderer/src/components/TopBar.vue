@@ -63,6 +63,12 @@ function openProfileEditor(): void {
             >create one</a>
           </span>
         </div>
+        <button
+          v-if="profileStore.activeProfileIds.length >= 2"
+          class="top-bar__preview-btn"
+          data-testid="preview-stack-btn"
+          @click="uiStore.openStackPreview()"
+        >Preview stack</button>
       </div>
     </div>
   </header>
@@ -152,6 +158,22 @@ function openProfileEditor(): void {
   font-size: 12px;
   color: #585b70;
   font-style: italic;
+}
+
+.top-bar__preview-btn {
+  padding: 3px 10px;
+  background: #313244;
+  color: #89b4fa;
+  border: 1px solid #89b4fa;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.top-bar__preview-btn:hover {
+  background: rgba(137, 180, 250, 0.15);
 }
 
 .top-bar__profile-create-link {
