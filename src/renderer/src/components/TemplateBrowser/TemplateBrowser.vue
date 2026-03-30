@@ -7,6 +7,7 @@ import { useSchemaStore } from '@renderer/stores/schema.store'
 import { useProfileStore } from '@renderer/stores/profile'
 import type { Template } from '../../../../../shared/models/template'
 import type { InputConfig } from '../../../../../shared/models/system'
+import {resolveCloudSettings} from "@renderer/util/cloud";
 
 const uiStore = useUiStore()
 const systemStore = useSystemStore()
@@ -300,7 +301,7 @@ async function quickSend(): Promise<void> {
         payload: toRaw(event.payload),
         appliedProfiles: toRaw(event.appliedProfiles)
       },
-      awsProfile: ''
+      cloud: toRaw(resolveCloudSettings())
     })
 
     sendResult.value = result

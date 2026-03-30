@@ -1,9 +1,9 @@
 import {defineStore} from 'pinia'
 import {ref, toRaw} from 'vue'
 import type {GeneratedEvent, SendEventResult, ValidationWarning} from '../../../shared/models/event'
-import type {CloudOperationSettings} from '../../../shared/models/aws'
 import type {Session} from '../../../shared/models/session'
 import type {InputConfig, System} from '../../../shared/models/system'
+import {resolveCloudSettings} from "@renderer/util/cloud";
 
 export interface Override {
   elementPath: string
@@ -114,7 +114,6 @@ export const useEventSenderStore = defineStore('event-sender', () => {
 
   async function send(
     systemId: string,
-    cloud: CloudOperationSettings,
     environmentId: string | null
   ): Promise<void> {
     if (!selectedInputId.value) {
@@ -151,7 +150,7 @@ export const useEventSenderStore = defineStore('event-sender', () => {
           appliedProfiles: toRaw(generatedEvent.value.appliedProfiles),
           environmentId: toRaw(environmentId),
         },
-        cloud: toRaw(cloud),
+        cloud: toRaw(resolveCloudSettings()),
         environmentId: toRaw(environmentId) ?? undefined
       })
     } catch (err: any) {

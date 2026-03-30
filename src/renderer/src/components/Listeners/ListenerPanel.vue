@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import {ref, computed, onMounted, onUnmounted, watch, toRaw} from 'vue'
 import { useListenerStore } from '@renderer/stores/listener.store'
 import { useSystemStore } from '@renderer/stores/system'
 import { useSessionStore } from '@renderer/stores/session.store'
@@ -10,6 +10,7 @@ import type {
   JsonPathFilterConfig,
   RegexFilterConfig,
 } from '../../../../shared/models/listener'
+import {resolveCloudSettings} from "@renderer/util/cloud";
 
 interface LocalFilter {
   _id: string
@@ -179,6 +180,7 @@ async function onStartListener(): Promise<void> {
       filters: filters.length > 0 ? filters : undefined,
       filterMode: formFilterMode.value,
       includeUnmatched: formIncludeUnmatched.value,
+      cloud: toRaw(resolveCloudSettings()),
     })
 
     showForm.value = false

@@ -5,15 +5,12 @@ import { useSystemStore } from '@renderer/stores/system'
 import { useSchemaStore } from '@renderer/stores/schema.store'
 import { useProfileStore } from '@renderer/stores/profile'
 import { useEnvironmentStore } from '@renderer/stores/environment'
-import { useAwsStore } from '@renderer/stores/aws'
-import type { CloudOperationSettings } from '../../../../shared/models/aws'
 
 const store = useEventSenderStore()
 const systemStore = useSystemStore()
 const schemaStore = useSchemaStore()
 const profileStore = useProfileStore()
 const environmentStore = useEnvironmentStore()
-const awsStore = useAwsStore()
 
 async function init(): Promise<void> {
   const systemId = systemStore.selectedSystemId
@@ -42,10 +39,7 @@ async function onValidate(): Promise<void> {
 async function onSend(): Promise<void> {
   const systemId = systemStore.selectedSystemId
   if (!systemId) return
-  const cloud: CloudOperationSettings | undefined = awsStore.selectedProfile
-    ? { aws: { profile: awsStore.selectedProfile } }
-    : undefined
-  await store.send(systemId, cloud, environmentStore.selectedEnvironmentId)
+  await store.send(systemId, environmentStore.selectedEnvironmentId)
 }
 
 async function onCreateSession(): Promise<void> {
