@@ -50,6 +50,22 @@ export const useProfileStore = defineStore('profile', () => {
     activeProfileIds.value = orderedIds.filter((id) => activeProfileIds.value.includes(id))
   }
 
+  function reorderProfile(fromIndex: number, toIndex: number): void {
+    if (
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= activeProfileIds.value.length ||
+      toIndex >= activeProfileIds.value.length ||
+      fromIndex === toIndex
+    ) {
+      return
+    }
+    const ids = [...activeProfileIds.value]
+    const [moved] = ids.splice(fromIndex, 1)
+    ids.splice(toIndex, 0, moved)
+    activeProfileIds.value = ids
+  }
+
   return {
     availableProfiles,
     activeProfileIds,
@@ -58,6 +74,7 @@ export const useProfileStore = defineStore('profile', () => {
     toggleProfile,
     moveProfileUp,
     moveProfileDown,
+    reorderProfile,
     reorderProfiles
   }
 })

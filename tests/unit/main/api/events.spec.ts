@@ -86,7 +86,7 @@ function makeSendInput(overrides?: Partial<SendEventInput>): SendEventInput {
     inputId: 'input-1',
     sessionId: 'session-1',
     event: makeGeneratedEvent(),
-    awsProfile: 'default',
+    cloud: { aws: { profile: 'default' } },
     ...overrides
   }
 }

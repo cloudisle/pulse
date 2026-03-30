@@ -6,7 +6,9 @@ import {EventBridgeConfig} from "../../../shared/models";
 
 export interface EventBridgePublisherOptions {
     config: EventBridgeConfig;
-    awsProfile: string;
+    aws: {
+        profile: string;
+    };
 }
 
 export class EventBridgePublisher implements Publisher {
@@ -21,7 +23,7 @@ export class EventBridgePublisher implements Publisher {
         this.id = randomUUID();
         this.client = new EventBridgeClient({
             region: options.config.region,
-            credentials: fromIni({ profile: options.awsProfile })
+            credentials: fromIni({ profile: options.aws.profile })
         })
     }
 

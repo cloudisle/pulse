@@ -463,7 +463,7 @@ describe('shared models — Event Generation', () => {
         appliedProfiles: [],
         warnings: []
       },
-      awsProfile: 'dev-account'
+      cloud: { aws: { profile: 'dev-account' } }
     }
     expectTypeOf(input).toMatchTypeOf<SendEventInput>()
   })

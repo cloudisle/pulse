@@ -45,7 +45,7 @@ function createListener() {
       region: 'us-east-1',
       pollInterval: 0
     },
-    awsProfile: 'dev-profile'
+    aws: { profile: 'dev-profile' }
   })
 }
 

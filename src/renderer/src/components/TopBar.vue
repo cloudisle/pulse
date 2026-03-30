@@ -6,6 +6,10 @@ import { useUiStore } from '@renderer/stores/ui'
 const environmentStore = useEnvironmentStore()
 const profileStore = useProfileStore()
 const uiStore = useUiStore()
+
+function openProfileEditor(): void {
+  uiStore.openTab({ id: 'profile:new', type: 'profile', title: 'New Profile' })
+}
 </script>
 
 <template>
@@ -21,9 +25,9 @@ const uiStore = useUiStore()
           id="environment-select"
           class="top-bar__select"
           :value="environmentStore.selectedEnvironmentId ?? ''"
-          @change="environmentStore.selectEnvironment(($event.target as HTMLSelectElement).value)"
+          @change="environmentStore.selectEnvironment(($event.target as HTMLSelectElement).value || null)"
         >
-          <option value="" disabled>Select environment…</option>
+          <option value="">(none)</option>
           <option
             v-for="env in environmentStore.environments"
             :key="env.id"
@@ -43,9 +47,20 @@ const uiStore = useUiStore()
             tabindex="0"
             @click="profileStore.toggleProfile(profile.id)"
             @keydown.enter="profileStore.toggleProfile(profile.id)"
-          >{{ profile.name }}</span>
+          >
+            <span
+              v-if="profileStore.activeProfileIds.includes(profile.id)"
+              class="top-bar__profile-order"
+            >{{ profileStore.activeProfileIds.indexOf(profile.id) + 1 }}</span>
+            {{ profile.name }}
+          </span>
           <span v-if="profileStore.availableProfiles.length === 0" class="top-bar__profile-empty">
-            No profiles
+            No profiles —
+            <a
+              href="#"
+              class="top-bar__profile-create-link"
+              @click.prevent="openProfileEditor"
+            >create one</a>
           </span>
         </div>
         <button
@@ -159,5 +174,26 @@ const uiStore = useUiStore()
 
 .top-bar__preview-btn:hover {
   background: rgba(137, 180, 250, 0.15);
+}
+
+.top-bar__profile-create-link {
+  color: #89b4fa;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.top-bar__profile-order {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #1e1e2e;
+  color: #89b4fa;
+  font-size: 9px;
+  font-weight: 700;
+  margin-right: 3px;
+  flex-shrink: 0;
 }
 </style>
