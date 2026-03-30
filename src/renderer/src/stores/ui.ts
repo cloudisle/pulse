@@ -13,6 +13,8 @@ export const useUiStore = defineStore('ui', () => {
   const sidebarCollapsed = ref(false)
   const bottomPanelCollapsed = ref(false)
   const bottomPanelHeight = ref(200)
+  const rightSidebarCollapsed = ref(false)
+  const rightSidebarWidth = ref(300)
   const stackPreviewOpen = ref(false)
 
   function openTab(tab: Tab): void {
@@ -48,6 +50,14 @@ export const useUiStore = defineStore('ui', () => {
     bottomPanelHeight.value = height
   }
 
+  function toggleRightSidebar(): void {
+    rightSidebarCollapsed.value = !rightSidebarCollapsed.value
+  }
+
+  function setRightSidebarWidth(width: number): void {
+    rightSidebarWidth.value = width
+  }
+
   function openStackPreview(): void {
     stackPreviewOpen.value = true
   }
@@ -62,6 +72,8 @@ export const useUiStore = defineStore('ui', () => {
     sidebarCollapsed,
     bottomPanelCollapsed,
     bottomPanelHeight,
+    rightSidebarCollapsed,
+    rightSidebarWidth,
     stackPreviewOpen,
     openTab,
     closeTab,
@@ -69,6 +81,8 @@ export const useUiStore = defineStore('ui', () => {
     toggleSidebar,
     toggleBottomPanel,
     setBottomPanelHeight,
+    toggleRightSidebar,
+    setRightSidebarWidth,
     openStackPreview,
     closeStackPreview
   }

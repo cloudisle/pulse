@@ -2,10 +2,8 @@
 import { ref } from 'vue'
 import { useUiStore } from '@renderer/stores/ui'
 import Console from '@renderer/components/BottomPanel/Console.vue'
-import ListenerPanel from '@renderer/components/Listeners/ListenerPanel.vue'
 
 const uiStore = useUiStore()
-const activeSubTab = ref<'console' | 'listeners'>('console')
 
 const dragStartY = ref(0)
 const dragStartHeight = ref(0)
@@ -37,22 +35,7 @@ function onDragEnd(): void {
   >
     <div class="bottom-panel__resize-handle" @mousedown="onDragStart" />
     <div class="bottom-panel__header">
-      <div class="bottom-panel__tabs" role="tablist">
-        <button
-          class="bottom-panel__tab"
-          :class="{ 'bottom-panel__tab--active': activeSubTab === 'console' }"
-          role="tab"
-          :aria-selected="activeSubTab === 'console'"
-          @click="activeSubTab = 'console'"
-        >Console</button>
-        <button
-          class="bottom-panel__tab"
-          :class="{ 'bottom-panel__tab--active': activeSubTab === 'listeners' }"
-          role="tab"
-          :aria-selected="activeSubTab === 'listeners'"
-          @click="activeSubTab = 'listeners'"
-        >Listeners</button>
-      </div>
+      <h3 class="bottom-panel__title">Console</h3>
       <button
         class="bottom-panel__toggle"
         :aria-label="uiStore.bottomPanelCollapsed ? 'Expand bottom panel' : 'Collapse bottom panel'"
@@ -63,12 +46,7 @@ function onDragEnd(): void {
       </button>
     </div>
     <div v-if="!uiStore.bottomPanelCollapsed" class="bottom-panel__content">
-      <div v-if="activeSubTab === 'console'" class="bottom-panel__console">
-        <Console />
-      </div>
-      <div v-else class="bottom-panel__listeners">
-        <ListenerPanel />
-      </div>
+      <Console />
     </div>
   </div>
 </template>
@@ -101,37 +79,19 @@ function onDragEnd(): void {
 .bottom-panel__header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   height: 28px;
   padding: 0 8px;
   flex-shrink: 0;
   gap: 4px;
+  border-bottom: 1px solid #313244;
 }
 
-.bottom-panel__tabs {
-  display: flex;
-  gap: 2px;
-  flex: 1;
-}
-
-.bottom-panel__tab {
-  padding: 0 12px;
-  height: 26px;
-  background: none;
-  border: none;
-  color: #a6adc8;
-  font-size: 12px;
-  cursor: pointer;
-  border-radius: 4px 4px 0 0;
-}
-
-.bottom-panel__tab:hover {
-  background: #313244;
-}
-
-.bottom-panel__tab--active {
-  background: #1e1e2e;
+.bottom-panel__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
   color: #cdd6f4;
-  border-bottom: 2px solid #89b4fa;
 }
 
 .bottom-panel__toggle {
@@ -152,20 +112,6 @@ function onDragEnd(): void {
   flex: 1;
   overflow: hidden;
   padding: 8px 12px;
-  display: flex;
-  flex-direction: column;
-}
-
-.bottom-panel__console {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.bottom-panel__listeners {
-  flex: 1;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
