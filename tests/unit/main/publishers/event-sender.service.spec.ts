@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { GeneratedEvent, InputConfig, Environment, SendEventInput } from '../../../../src/shared/models'
 import { StoragePaths, StorageService } from '../../../../src/main/services/storage'
 import { SettingsService } from '../../../../src/main/services/settings.service'
-import { VariableReplacementService } from '../../../../src/main/services/variable-replacement.service'
 import { EventSenderService } from '../../../../src/main/services/publishers/event-sender.service'
 
 const DATA_DIR = '/test/data'
@@ -26,7 +25,7 @@ function makeSendEventInput(overrides?: Partial<SendEventInput>): SendEventInput
     inputId: 'input-1',
     sessionId: SESSION_ID,
     event: makeGeneratedEvent(),
-    awsProfile: AWS_PROFILE,
+    cloud: { aws: { profile: AWS_PROFILE } },
     ...overrides
   }
 }
@@ -86,7 +85,6 @@ function makeEnvironment(variables: Record<string, string> = {}): Environment {
 describe('EventSenderService', () => {
   let storage: StorageService
   let settings: SettingsService
-  let variableReplacement: VariableReplacementService
   let service: EventSenderService
   let factory: { create: ReturnType<typeof vi.fn> }
   let mockKinesisPublish: ReturnType<typeof vi.fn>
@@ -111,8 +109,6 @@ describe('EventSenderService', () => {
       getDataPath: vi.fn().mockResolvedValue(DATA_DIR)
     } as unknown as SettingsService
 
-    variableReplacement = new VariableReplacementService()
-
     factory = {
       create: vi.fn((config: InputConfig) => {
         if (config.type === 'kinesis') return { id: 'kinesis-publisher', publish: mockKinesisPublish }
@@ -124,7 +120,7 @@ describe('EventSenderService', () => {
       })
     }
 
-    service = new EventSenderService(storage, settings, factory as any, variableReplacement)
+    service = new EventSenderService(storage, settings, factory as any)
   })
 
   describe('Kinesis', () => {
@@ -139,7 +135,8 @@ describe('EventSenderService', () => {
         expect.objectContaining({
           type: 'kinesis',
           config: expect.objectContaining({ streamName: 'orders-stream', region: 'us-east-1' })
-        })
+        }),
+        { aws: { profile: AWS_PROFILE } }
       )
       expect(result.success).toBe(true)
       expect(result.metadata).toEqual({ id: 'evt-1', SequenceNumber: 'seq-1', ShardId: 'shard-0' })
@@ -155,7 +152,8 @@ describe('EventSenderService', () => {
       expect(factory.create).toHaveBeenCalledWith(
         expect.objectContaining({
           config: expect.objectContaining({ streamName: 'dev-orders-stream' })
-        })
+        }),
+        { aws: { profile: AWS_PROFILE } }
       )
     })
 
@@ -205,7 +203,8 @@ describe('EventSenderService', () => {
             queueUrl: 'https://sqs.us-east-1.amazonaws.com/123456789/my-queue',
             region: 'us-east-1'
           })
-        })
+        }),
+        { aws: { profile: AWS_PROFILE } }
       )
       expect(mockSqsPublish).toHaveBeenCalledWith(JSON.stringify(input.event.payload))
       expect(result.success).toBe(true)
@@ -224,7 +223,8 @@ describe('EventSenderService', () => {
           config: expect.objectContaining({
             queueUrl: 'https://sqs.us-east-1.amazonaws.com/999888777/my-queue'
           })
-        })
+        }),
+        { aws: { profile: AWS_PROFILE } }
       )
     })
 
@@ -255,7 +255,8 @@ describe('EventSenderService', () => {
             detailType: 'OrderCreated',
             region: 'us-east-1'
           })
-        })
+        }),
+        { aws: { profile: AWS_PROFILE } }
       )
       expect(mockEventBridgePublish).toHaveBeenCalledWith(JSON.stringify(input.event.payload))
       expect(result.success).toBe(true)
@@ -284,7 +285,8 @@ describe('EventSenderService', () => {
             source: 'myapp.orders',
             detailType: 'OrderPlaced'
           })
-        })
+        }),
+        { aws: { profile: AWS_PROFILE } }
       )
     })
 
@@ -380,7 +382,8 @@ describe('EventSenderService', () => {
       expect(factory.create).toHaveBeenCalledWith(
         expect.objectContaining({
           config: expect.objectContaining({ streamName: '{{ env }}-stream' })
-        })
+        }),
+        { aws: { profile: AWS_PROFILE } }
       )
     })
 
@@ -394,7 +397,8 @@ describe('EventSenderService', () => {
       expect(factory.create).toHaveBeenCalledWith(
         expect.objectContaining({
           config: expect.objectContaining({ region: 'ap-southeast-2' })
-        })
+        }),
+        { aws: { profile: AWS_PROFILE } }
       )
     })
   })

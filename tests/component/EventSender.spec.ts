@@ -425,7 +425,7 @@ describe('EventSender component', () => {
       expect.objectContaining({
         inputId: 'inp-1',
         sessionId: 'sess-1',
-        awsProfile: 'default'
+        cloud: { aws: { profile: 'default' } }
       })
     )
     expect(wrapper.find('[data-testid="send-result"]').exists()).toBe(true)

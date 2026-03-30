@@ -6,7 +6,9 @@ import {SendMessageCommand, SQSClient} from "@aws-sdk/client-sqs";
 
 export interface SqsPublisherOptions {
     config: SqsConfig;
-    awsProfile: string;
+    aws: {
+        profile: string;
+    };
 }
 
 export class SqsPublisher implements Publisher {
@@ -21,7 +23,7 @@ export class SqsPublisher implements Publisher {
         this.id = randomUUID();
         this.client = new SQSClient({
             region: options.config.region,
-            credentials: fromIni({ profile: options.awsProfile })
+            credentials: fromIni({ profile: options.aws.profile })
         })
     }
 

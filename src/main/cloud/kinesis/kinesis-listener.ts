@@ -11,7 +11,9 @@ import {Listener, MessageHandler} from "../../services/listeners/listener";
 
 export interface KinesisListenerOptions {
   config: KinesisConfig
-  awsProfile: string
+  aws: {
+    profile: string
+  }
 }
 
 export class KinesisListener implements Listener {
@@ -27,7 +29,7 @@ export class KinesisListener implements Listener {
     this.id = randomUUID()
     this.client = new KinesisClient({
       region: options.config.region,
-      credentials: fromIni({ profile: options.awsProfile })
+      credentials: fromIni({ profile: options.aws.profile })
     })
   }
 

@@ -1,37 +1,48 @@
 import {Publisher} from "./publisher";
-import {EventBridgeConfig, InputConfig, KinesisConfig, SqsConfig} from "../../../shared/models";
+import {
+    AwsOperationSettings,
+    CloudOperationSettings,
+    EventBridgeConfig,
+    InputConfig,
+    KinesisConfig,
+    SqsConfig
+} from "../../../shared/models";
 import {KinesisPublisher} from "../../cloud/kinesis/kinesis-publisher";
 import {SqsPublisher} from "../../cloud/sqs/sqs-publisher";
 import {EventBridgePublisher} from "../../cloud/eventbridge/eventbridge-publisher";
-import {CloudService} from "../cloud.service";
 
 export class PublisherFactory {
 
-    constructor(
-        private readonly cloud: CloudService,
-    ) {}
-
-    create(config: InputConfig): Publisher {
-        const awsProfile = this.cloud.get('aws', 'profile') as unknown as string;
+    create(config: InputConfig, cloud: CloudOperationSettings): Publisher {
         switch (config.type) {
             case 'kinesis':
                 return new KinesisPublisher({
                     config: config.config as KinesisConfig,
-                    awsProfile
+                    aws: this.requireAws(cloud)
                 })
             case 'sqs':
                 return new SqsPublisher({
                     config: config.config as SqsConfig,
-                    awsProfile
+                    aws: this.requireAws(cloud)
                 })
             case 'eventbridge':
                 return new EventBridgePublisher({
                     config: config.config as EventBridgeConfig,
-                    awsProfile
+                    aws: this.requireAws(cloud)
                 })
             default:
                 throw new Error(`Unknown type "${config.type}"`)
         }
+    }
+
+    private requireAws(cloud: CloudOperationSettings): AwsOperationSettings {
+        const profile = cloud.aws?.profile?.trim();
+        if (!profile) {
+            throw new Error('AWS profile is required. Set cloud.aws.profile before sending events.');
+        }
+        return {
+            profile
+        };
     }
 
 }

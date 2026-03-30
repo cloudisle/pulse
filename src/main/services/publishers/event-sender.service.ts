@@ -99,7 +99,7 @@ export class EventSenderService {
     const publisher = this.factory.create({
       ...inputConfig,
       config: resolvedConfig,
-    });
+    }, input.cloud);
 
     return await publisher.publish(payload);
   }

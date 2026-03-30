@@ -1,5 +1,10 @@
-import {CloudService} from "../cloud.service";
-import {type KinesisConfig, ListenerConfig, OutputConfig} from "../../../shared/models";
+import {
+    AwsOperationSettings,
+    CloudOperationSettings,
+    type KinesisConfig,
+    ListenerConfig,
+    OutputConfig
+} from "../../../shared/models";
 import {KinesisListener} from "../../cloud/kinesis/kinesis-listener";
 import {ConverterFactory} from "./converter";
 import {AggregateFilter, FilterFactory} from "./filter";
@@ -7,21 +12,26 @@ import {DefaultListenerLifecycle, DefaultMessageHandler, Listener, ListenerLifec
 
 export class ListenerFactory {
 
-    constructor(
-        private readonly cloud: CloudService,
-    ) {}
-
-    create(config: OutputConfig): Listener {
-        const awsProfile = this.cloud.get('aws', 'profile') as unknown as string;
+    create(config: OutputConfig, cloud: CloudOperationSettings): Listener {
         switch (config.type) {
             case 'kinesis':
                 return new KinesisListener({
                     config: config.config as KinesisConfig,
-                    awsProfile
+                    aws: this.requireAws(cloud)
                 });
             default:
                 throw new Error(`Unsupported listener type: ${config.type}`)
         }
+    }
+
+    private requireAws(cloud: CloudOperationSettings): AwsOperationSettings {
+        const profile = cloud.aws?.profile?.trim();
+        if (!profile) {
+            throw new Error('AWS profile is required. Set cloud.aws.profile before starting listeners.');
+        }
+        return {
+            profile
+        };
     }
 
 }
@@ -44,7 +54,7 @@ export class ListenerLifecycleFactory {
 
         const converter = this.converterFactory.create(outputConfig.contentType);
         const filter = this.createAggregateFilter(listenerConfig);
-        const listener = this.listenerFactory.create(outputConfig);
+        const listener = this.listenerFactory.create(outputConfig, listenerConfig.cloud);
 
         const handler = new DefaultMessageHandler(listenerConfig, filter, converter);
 
