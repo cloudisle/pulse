@@ -128,6 +128,7 @@ export class DefaultListenerLifecycle implements ListenerLifecycle {
         try {
             await this.listener.start(this.handler);
         } catch (error: any) {
+            console.error("Error starting listener", error);
             await this.stop();
             await this.setState('error');
         }
