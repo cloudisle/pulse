@@ -9,6 +9,8 @@ import SessionView from '@renderer/components/SessionView/SessionView.vue'
 import ProfileEditor from '@renderer/components/ProfileEditor/ProfileEditor.vue'
 import SettingsView from '@renderer/components/Settings/SettingsView.vue'
 import EnvironmentEditor from '@renderer/components/EnvironmentEditor/EnvironmentEditor.vue'
+import TemplateBrowser from '@renderer/components/TemplateBrowser/TemplateBrowser.vue'
+import TemplateEditor from '@renderer/components/TemplateEditor/TemplateEditor.vue'
 
 const uiStore = useUiStore()
 
@@ -43,6 +45,12 @@ function profileIdFromTab(tabId: string): string | undefined {
   return part === 'new' ? undefined : part
 }
   
+function templateIdFromTab(tabId: string): string | undefined {
+  // tabId is "template:new" or "template:<uuid>"
+  const part = tabId.replace(/^template:/, '')
+  return part === 'new' ? undefined : part
+}
+
 function environmentIdFromTab(tabId: string): string | undefined {
   // tabId is "environment:new" or "environment:<uuid>"
   const part = tabId.replace(/^environment:/, '')
@@ -82,6 +90,13 @@ function environmentIdFromTab(tabId: string): string | undefined {
       />
       <SettingsView
         v-else-if="activeTab.type === 'settings'"
+      />
+      <TemplateBrowser
+        v-else-if="activeTab.type === 'template-browser'"
+      />
+      <TemplateEditor
+        v-else-if="activeTab.type === 'template'"
+        :template-id="templateIdFromTab(activeTab.id)"
       />
       <p v-else class="tab-content__placeholder">{{ activeTab.title }} ({{ activeTab.type }})</p>
     </div>
