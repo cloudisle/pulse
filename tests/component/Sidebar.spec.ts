@@ -30,7 +30,8 @@ describe('Sidebar component', () => {
   it('renders all navigation sections when expanded', () => {
     const wrapper = mount(Sidebar, { global: { plugins: [createPinia()] } })
     const titles = wrapper.findAll('.sidebar__section-title').map((el) => el.text())
-    expect(titles).toEqual(['Systems', 'Schemas', 'Environments', 'Profiles', 'Custom Types', 'Sessions', 'Templates'])
+    expect(titles).toEqual(['Systems', 'Schemas', 'Environments', 'Profiles', 'Custom Types', 'Templates'])
+    expect(wrapper.find('[data-testid="sessions-btn"]').exists()).toBe(true)
   })
 
   it('hides navigation when collapsed', async () => {
@@ -165,5 +166,18 @@ describe('Sidebar component', () => {
     expect(uiStore.openTabs).toContainEqual(
       expect.objectContaining({ id: 'schema:new', type: 'schema' })
     )
+  })
+
+  it('opens the sessions tab when the Sessions footer button is clicked', async () => {
+    const pinia = createPinia()
+    const wrapper = mount(Sidebar, { global: { plugins: [pinia] } })
+
+    await wrapper.find('[data-testid="sessions-btn"]').trigger('click')
+
+    const uiStore = useUiStore()
+    expect(uiStore.openTabs).toContainEqual(
+      expect.objectContaining({ id: 'sessions', type: 'sessions', title: 'Sessions' })
+    )
+    expect(uiStore.activeTabId).toBe('sessions')
   })
 })

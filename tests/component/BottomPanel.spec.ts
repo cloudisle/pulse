@@ -9,25 +9,21 @@ describe('BottomPanel component', () => {
     setActivePinia(createPinia())
   })
 
-  it('renders Console and Listeners sub-tabs', () => {
+  it('renders the Console header title', () => {
     const wrapper = mount(BottomPanel, { global: { plugins: [createPinia()] } })
-    const tabs = wrapper.findAll('.bottom-panel__tab').map((el) => el.text())
-    expect(tabs).toContain('Console')
-    expect(tabs).toContain('Listeners')
+    expect(wrapper.find('.bottom-panel__title').exists()).toBe(true)
+    expect(wrapper.find('.bottom-panel__title').text()).toBe('Console')
   })
 
   it('shows console content by default', () => {
     const wrapper = mount(BottomPanel, { global: { plugins: [createPinia()] } })
-    expect(wrapper.find('.bottom-panel__console').exists()).toBe(true)
-    expect(wrapper.find('.bottom-panel__listeners').exists()).toBe(false)
+    expect(wrapper.find('.bottom-panel__content').exists()).toBe(true)
   })
 
-  it('switches to listeners sub-tab on click', async () => {
+  it('renders the resize handle and toggle button', async () => {
     const wrapper = mount(BottomPanel, { global: { plugins: [createPinia()] } })
-    const listenersTab = wrapper.findAll('.bottom-panel__tab').find((el) => el.text() === 'Listeners')
-    await listenersTab!.trigger('click')
-    expect(wrapper.find('.bottom-panel__listeners').exists()).toBe(true)
-    expect(wrapper.find('.bottom-panel__console').exists()).toBe(false)
+    expect(wrapper.find('.bottom-panel__resize-handle').exists()).toBe(true)
+    expect(wrapper.find('.bottom-panel__toggle').exists()).toBe(true)
   })
 
   it('collapses and expands via toggle button', async () => {

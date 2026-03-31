@@ -3,6 +3,8 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import ListenerPanel from '@renderer/components/Listeners/ListenerPanel.vue'
 import { useListenerStore } from '@renderer/stores/listener.store'
+import { useSessionStore } from '@renderer/stores/session.store'
+import { useSystemStore } from '@renderer/stores/system'
 import type { ListenerStatus } from '../../src/shared/models/listener'
 import type { SessionEvent } from '../../src/shared/models/session'
 
@@ -58,6 +60,28 @@ function mountComponent(pinia = createPinia()) {
   return mount(ListenerPanel, { global: { plugins: [pinia] } })
 }
 
+function seedSelectedSession(pinia: ReturnType<typeof createPinia>, overrides: { systemId?: string; sessionId?: string; sessionName?: string } = {}) {
+  setActivePinia(pinia)
+  const systemId = overrides.systemId ?? 'sys-1'
+  const sessionId = overrides.sessionId ?? 'session-1'
+  const sessionName = overrides.sessionName ?? 'Session One'
+
+  const systemStore = useSystemStore()
+  const sessionStore = useSessionStore()
+
+  systemStore.selectedSystemId = systemId
+  sessionStore.sessions = [{
+    id: sessionId,
+    systemId,
+    name: sessionName,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }]
+  sessionStore.selectedSessionId = sessionId
+
+  return { systemStore, sessionStore }
+}
+
 describe('ListenerPanel component', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -66,19 +90,32 @@ describe('ListenerPanel component', () => {
   })
 
   it('renders empty state when no listeners', async () => {
-    const wrapper = mountComponent()
+    const pinia = createPinia()
+    seedSelectedSession(pinia)
+    const wrapper = mountComponent(pinia)
     await flushPromises()
     expect(wrapper.find('[data-testid="listeners-empty"]').exists()).toBe(true)
   })
 
-  it('shows New Listener button', async () => {
+  it('renders a prompt when no session is selected', async () => {
     const wrapper = mountComponent()
+    await flushPromises()
+    expect(wrapper.text()).toContain('Select a session to manage listeners.')
+    expect(wrapper.find('[data-testid="toggle-start-form"]').exists()).toBe(false)
+  })
+
+  it('shows New Listener button', async () => {
+    const pinia = createPinia()
+    seedSelectedSession(pinia)
+    const wrapper = mountComponent(pinia)
     await flushPromises()
     expect(wrapper.find('[data-testid="toggle-start-form"]').exists()).toBe(true)
   })
 
   it('toggles start form on button click', async () => {
-    const wrapper = mountComponent()
+    const pinia = createPinia()
+    seedSelectedSession(pinia)
+    const wrapper = mountComponent(pinia)
     await flushPromises()
     expect(wrapper.find('[data-testid="start-form"]').exists()).toBe(false)
     await wrapper.find('[data-testid="toggle-start-form"]').trigger('click')
@@ -87,16 +124,20 @@ describe('ListenerPanel component', () => {
     expect(wrapper.find('[data-testid="start-form"]').exists()).toBe(false)
   })
 
-  it('start form has output and session selectors', async () => {
-    const wrapper = mountComponent()
+  it('start form has an output selector and no session selector', async () => {
+    const pinia = createPinia()
+    seedSelectedSession(pinia)
+    const wrapper = mountComponent(pinia)
     await flushPromises()
     await wrapper.find('[data-testid="toggle-start-form"]').trigger('click')
     expect(wrapper.find('[data-testid="output-select"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="session-select"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="session-select"]').exists()).toBe(false)
   })
 
   it('shows validation error when start is clicked without output', async () => {
-    const wrapper = mountComponent()
+    const pinia = createPinia()
+    seedSelectedSession(pinia)
+    const wrapper = mountComponent(pinia)
     await flushPromises()
     await wrapper.find('[data-testid="toggle-start-form"]').trigger('click')
     await wrapper.find('[data-testid="start-btn"]').trigger('click')
@@ -107,23 +148,18 @@ describe('ListenerPanel component', () => {
 
   it('calls api.listeners.start when form is submitted with valid data', async () => {
     const mockStart = vi.fn().mockResolvedValue({ listenerId: 'l1', status: 'starting' })
-    mockAppApi({ listeners: { start: mockStart, stop: vi.fn(), status: vi.fn().mockResolvedValue([]) } })
-
-    const pinia = createPinia()
-    const wrapper = mountComponent(pinia)
-
-    const sessionsApi = vi.fn().mockResolvedValue([{ id: 'sess-1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), systemId: 'sys-1' }])
     const systemsApi = vi.fn().mockResolvedValue({
       outputs: [{ id: 'out-1', name: 'My Output', type: 'kinesis', config: {}, contentType: 'json' }],
       inputs: [],
     })
-    ;(window as any).app.api.sessions.list = sessionsApi
-    ;(window as any).app.api.systems.get = systemsApi
+    mockAppApi({
+      listeners: { start: mockStart, stop: vi.fn(), status: vi.fn().mockResolvedValue([]) },
+      api: { systems: { get: systemsApi } }
+    })
 
-    // Set the selected system so validation passes
-    const { useSystemStore } = await import('@renderer/stores/system')
-    const systemStore = useSystemStore()
-    systemStore.selectedSystemId = 'sys-1'
+    const pinia = createPinia()
+    seedSelectedSession(pinia, { systemId: 'sys-1', sessionId: 'sess-1', sessionName: 'Session One' })
+    const wrapper = mountComponent(pinia)
 
     await flushPromises()
     await wrapper.find('[data-testid="toggle-start-form"]').trigger('click')
@@ -132,10 +168,6 @@ describe('ListenerPanel component', () => {
     // Select output
     const outputSelect = wrapper.find('[data-testid="output-select"]')
     await outputSelect.setValue('out-1')
-
-    // Select session
-    const sessionSelect = wrapper.find('[data-testid="session-select"]')
-    await sessionSelect.setValue('sess-1')
 
     await wrapper.find('[data-testid="start-btn"]').trigger('click')
     await flushPromises()
@@ -149,6 +181,7 @@ describe('ListenerPanel component', () => {
 
   it('shows active listeners from store', async () => {
     const pinia = createPinia()
+    seedSelectedSession(pinia)
     const wrapper = mountComponent(pinia)
     const store = useListenerStore()
 
@@ -162,6 +195,7 @@ describe('ListenerPanel component', () => {
 
   it('shows correct status badge class for each state', async () => {
     const pinia = createPinia()
+    seedSelectedSession(pinia)
     const wrapper = mountComponent(pinia)
     const store = useListenerStore()
 
@@ -183,6 +217,7 @@ describe('ListenerPanel component', () => {
     ;(window as any).app.api.listeners.stop = mockStop
 
     const pinia = createPinia()
+    seedSelectedSession(pinia)
     const wrapper = mountComponent(pinia)
     const store = useListenerStore()
 
@@ -197,6 +232,7 @@ describe('ListenerPanel component', () => {
 
   it('stop button is disabled when listener is stopped', async () => {
     const pinia = createPinia()
+    seedSelectedSession(pinia)
     const wrapper = mountComponent(pinia)
     const store = useListenerStore()
 
@@ -210,6 +246,7 @@ describe('ListenerPanel component', () => {
 
   it('shows event stream when listener row is clicked', async () => {
     const pinia = createPinia()
+    seedSelectedSession(pinia)
     const wrapper = mountComponent(pinia)
     const store = useListenerStore()
 
@@ -224,6 +261,7 @@ describe('ListenerPanel component', () => {
 
   it('shows events in the stream for selected listener', async () => {
     const pinia = createPinia()
+    seedSelectedSession(pinia)
     const wrapper = mountComponent(pinia)
     const store = useListenerStore()
 
@@ -242,6 +280,7 @@ describe('ListenerPanel component', () => {
 
   it('expands event payload on click', async () => {
     const pinia = createPinia()
+    seedSelectedSession(pinia)
     const wrapper = mountComponent(pinia)
     const store = useListenerStore()
 
@@ -263,6 +302,7 @@ describe('ListenerPanel component', () => {
 
   it('closes event stream when × button is clicked', async () => {
     const pinia = createPinia()
+    seedSelectedSession(pinia)
     const wrapper = mountComponent(pinia)
     const store = useListenerStore()
 
@@ -391,7 +431,9 @@ describe('ListenerPanel component', () => {
   })
 
   it('add filter button adds a filter row to the form', async () => {
-    const wrapper = mountComponent()
+    const pinia = createPinia()
+    seedSelectedSession(pinia)
+    const wrapper = mountComponent(pinia)
     await flushPromises()
     await wrapper.find('[data-testid="toggle-start-form"]').trigger('click')
 
@@ -402,7 +444,9 @@ describe('ListenerPanel component', () => {
   })
 
   it('delete button removes a filter row', async () => {
-    const wrapper = mountComponent()
+    const pinia = createPinia()
+    seedSelectedSession(pinia)
+    const wrapper = mountComponent(pinia)
     await flushPromises()
     await wrapper.find('[data-testid="toggle-start-form"]').trigger('click')
     await wrapper.find('[data-testid="add-filter-btn"]').trigger('click')
@@ -414,27 +458,25 @@ describe('ListenerPanel component', () => {
     expect(wrapper.find('[data-testid="filter-row-0"]').exists()).toBe(false)
   })
 
-  it('switching filter type from jsonpath to regex changes fields', async () => {
-    const wrapper = mountComponent()
+  it('renders jsonpath filter controls for a new filter row', async () => {
+    const pinia = createPinia()
+    seedSelectedSession(pinia)
+    const wrapper = mountComponent(pinia)
     await flushPromises()
     await wrapper.find('[data-testid="toggle-start-form"]').trigger('click')
     await wrapper.find('[data-testid="add-filter-btn"]').trigger('click')
     await wrapper.vm.$nextTick()
 
-    // Default is jsonpath
+    expect(wrapper.find('[data-testid="filter-type-0"]').exists()).toBe(true)
+    expect((wrapper.find('[data-testid="filter-type-0"]').element as HTMLSelectElement).value).toBe('jsonpath')
     expect(wrapper.find('[data-testid="filter-path-0"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="filter-pattern-0"]').exists()).toBe(false)
-
-    // Switch to regex
-    await wrapper.find('[data-testid="filter-type-0"]').setValue('regex')
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.find('[data-testid="filter-path-0"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="filter-pattern-0"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="filter-operator-0"]').exists()).toBe(true)
   })
 
   it('filter mode buttons toggle between all and any', async () => {
-    const wrapper = mountComponent()
+    const pinia = createPinia()
+    seedSelectedSession(pinia)
+    const wrapper = mountComponent(pinia)
     await flushPromises()
     await wrapper.find('[data-testid="toggle-start-form"]').trigger('click')
 
@@ -447,6 +489,7 @@ describe('ListenerPanel component', () => {
 
   it('shows events count for active listener', async () => {
     const pinia = createPinia()
+    seedSelectedSession(pinia)
     const wrapper = mountComponent(pinia)
     const store = useListenerStore()
 
@@ -455,5 +498,32 @@ describe('ListenerPanel component', () => {
     await wrapper.vm.$nextTick()
 
     expect(wrapper.find('[data-testid="listener-events-l1"]').text()).toContain('5')
+  })
+
+  it('shows and uses the Stop All button for running listeners in the selected session', async () => {
+    const mockStop = vi.fn().mockResolvedValue(undefined)
+    ;(window as any).app.api.listeners.stop = mockStop
+
+    const pinia = createPinia()
+    seedSelectedSession(pinia, { sessionId: 'session-1', sessionName: 'Session One' })
+    const wrapper = mountComponent(pinia)
+    const store = useListenerStore()
+
+    await flushPromises()
+
+    store.activeListeners.set('l1', makeStatus({ listenerId: 'l1', sessionId: 'session-1', status: 'running' }))
+    store.activeListeners.set('l2', makeStatus({ listenerId: 'l2', sessionId: 'session-1', status: 'running' }))
+    store.activeListeners = new Map(store.activeListeners)
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.text()).toContain('Session One')
+    const stopAllButton = wrapper.findAll('button').find((button) => button.text().includes('Stop All'))
+    expect(stopAllButton?.exists()).toBe(true)
+
+    await stopAllButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockStop).toHaveBeenCalledWith('l1')
+    expect(mockStop).toHaveBeenCalledWith('l2')
   })
 })
