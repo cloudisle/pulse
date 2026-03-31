@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { useSessionStore } from './session.store'
+import { useUiStore } from './ui'
 
 export interface SystemDetails {
   id: string
@@ -21,6 +23,11 @@ export const useSystemStore = defineStore('system', () => {
   function selectSystem(id: string, details?: SystemDetails): void {
     selectedSystemId.value = id
     loadedSystem.value = details ?? null
+    // Reset session selection when system changes
+    const sessionStore = useSessionStore()
+    const uiStore = useUiStore()
+    sessionStore.selectSession(null)
+    uiStore.selectSession(null)
   }
 
   return { systems, selectedSystemId, loadedSystem, loadSystems, selectSystem }

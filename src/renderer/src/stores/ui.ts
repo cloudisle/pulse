@@ -16,6 +16,7 @@ export const useUiStore = defineStore('ui', () => {
   const rightSidebarCollapsed = ref(false)
   const rightSidebarWidth = ref(300)
   const stackPreviewOpen = ref(false)
+  const selectedSessionId = ref<string | null>(null)
 
   function openTab(tab: Tab): void {
     const existing = openTabs.value.find((t) => t.id === tab.id)
@@ -66,6 +67,10 @@ export const useUiStore = defineStore('ui', () => {
     stackPreviewOpen.value = false
   }
 
+  function selectSession(id: string | null): void {
+    selectedSessionId.value = id
+  }
+
   return {
     openTabs,
     activeTabId,
@@ -75,6 +80,7 @@ export const useUiStore = defineStore('ui', () => {
     rightSidebarCollapsed,
     rightSidebarWidth,
     stackPreviewOpen,
+    selectedSessionId,
     openTab,
     closeTab,
     setActiveTab,
@@ -84,6 +90,7 @@ export const useUiStore = defineStore('ui', () => {
     toggleRightSidebar,
     setRightSidebarWidth,
     openStackPreview,
-    closeStackPreview
+    closeStackPreview,
+    selectSession
   }
 })

@@ -6,6 +6,7 @@ import SchemaEditor from '@renderer/components/SchemaEditor/SchemaEditor.vue'
 import EventSender from '@renderer/components/EventSender/EventSender.vue'
 import CustomTypeEditor from '@renderer/components/CustomTypeEditor/CustomTypeEditor.vue'
 import SessionView from '@renderer/components/SessionView/SessionView.vue'
+import SessionsView from '@renderer/components/SessionView/SessionsView.vue'
 import ProfileEditor from '@renderer/components/ProfileEditor/ProfileEditor.vue'
 import SettingsView from '@renderer/components/Settings/SettingsView.vue'
 import EnvironmentEditor from '@renderer/components/EnvironmentEditor/EnvironmentEditor.vue'
@@ -87,6 +88,9 @@ function environmentIdFromTab(tabId: string): string | undefined {
       <SessionView
         v-else-if="activeTab.type === 'session'"
         :session-id="sessionIdFromTab(activeTab.id)"
+      />
+      <SessionsView
+        v-else-if="activeTab.type === 'sessions'"
       />
       <SettingsView
         v-else-if="activeTab.type === 'settings'"

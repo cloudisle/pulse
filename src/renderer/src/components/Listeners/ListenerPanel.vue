@@ -4,13 +4,13 @@ import { useListenerStore } from '@renderer/stores/listener.store'
 import { useSystemStore } from '@renderer/stores/system'
 import { useSessionStore } from '@renderer/stores/session.store'
 import { useEnvironmentStore } from '@renderer/stores/environment'
-import type { OutputConfig } from '../../../../shared/models/system'
+import type { OutputConfig } from '@shared/models'
 import type {
   ListenerFilterMode,
   ListenerFilterType,
   JsonPathFilterConfig,
   RegexFilterConfig,
-} from '../../../../shared/models/listener'
+} from '@shared/models'
 import {resolveCloudSettings} from "@renderer/util/cloud";
 
 interface LocalFilter {
@@ -34,7 +34,6 @@ const outputs = ref<OutputConfig[]>([])
 // Form state
 const showForm = ref(false)
 const formOutputId = ref('')
-const formSessionId = ref('')
 const formFilterMode = ref<ListenerFilterMode>('all')
 const formIncludeUnmatched = ref(false)
 const formFilters = ref<LocalFilter[]>([])
@@ -51,6 +50,25 @@ let errorTimeout: ReturnType<typeof setTimeout> | null = null
 // Expanded events
 const expandedEvents = ref<Set<string>>(new Set())
 
+// Track listeners tied to the current session
+const sessionListeners = computed(() => {
+  if (!sessionStore.selectedSessionId) return []
+  return Array.from(listenerStore.activeListeners.values()).filter(
+    (l) => l.sessionId === sessionStore.selectedSessionId
+  )
+})
+
+// Check if all session listeners are running
+const allListenersRunning = computed(() => {
+  if (sessionListeners.value.length === 0) return false
+  return sessionListeners.value.every((l) => l.status === 'running')
+})
+
+// Check if any session listeners are running
+const anyListenerRunning = computed(() => {
+  return sessionListeners.value.some((l) => l.status === 'running')
+})
+
 async function loadOutputs(): Promise<void> {
   const systemId = systemStore.selectedSystemId
   if (!systemId) return
@@ -62,12 +80,6 @@ async function loadOutputs(): Promise<void> {
   } catch {
     outputs.value = []
   }
-}
-
-async function loadSessions(): Promise<void> {
-  const systemId = systemStore.selectedSystemId
-  if (!systemId) return
-  await sessionStore.loadSessions(systemId)
 }
 
 function subscribeChannels(): void {
@@ -97,7 +109,7 @@ function subscribeChannels(): void {
 }
 
 onMounted(async () => {
-  await Promise.all([loadOutputs(), loadSessions()])
+  await loadOutputs()
   await listenerStore.loadStatus()
   subscribeChannels()
 })
@@ -110,12 +122,8 @@ onUnmounted(() => {
 })
 
 watch(() => systemStore.selectedSystemId, async () => {
-  await Promise.all([loadOutputs(), loadSessions()])
+  await loadOutputs()
 })
-
-const activeListenersList = computed(() =>
-  Array.from(listenerStore.activeListeners.values())
-)
 
 function getOutputName(outputId: string): string {
   const output = outputs.value.find((o) => o.id === outputId)
@@ -159,7 +167,7 @@ async function onStartListener(): Promise<void> {
     formError.value = 'Select an output first.'
     return
   }
-  if (!formSessionId.value) {
+  if (!sessionStore.selectedSessionId) {
     formError.value = 'Select a session first.'
     return
   }
@@ -178,7 +186,7 @@ async function onStartListener(): Promise<void> {
     await listenerStore.startListener({
       systemId,
       outputId: formOutputId.value,
-      sessionId: formSessionId.value,
+      sessionId: sessionStore.selectedSessionId,
       environmentId: environmentStore.selectedEnvironmentId ?? undefined,
       filters: filters.length > 0 ? filters : undefined,
       filterMode: formFilterMode.value,
@@ -188,7 +196,6 @@ async function onStartListener(): Promise<void> {
 
     showForm.value = false
     formOutputId.value = ''
-    formSessionId.value = ''
     formFilterMode.value = 'all'
     formIncludeUnmatched.value = false
     formFilters.value = []
@@ -201,6 +208,23 @@ async function onStartListener(): Promise<void> {
 
 async function onStopListener(listenerId: string): Promise<void> {
   await listenerStore.stopListener(listenerId)
+}
+
+async function onStopAllListeners(): Promise<void> {
+  for (const listener of sessionListeners.value) {
+    await listenerStore.stopListener(listener.listenerId)
+  }
+}
+
+async function onStartAllListeners(): Promise<void> {
+  // Start all listeners for the current session that are not already running
+  for (const listener of sessionListeners.value) {
+    if (listener.status !== 'running' && listener.status !== 'starting') {
+      // We need to retrieve the config from somewhere - for now, just stop stopped ones
+      // In a real implementation, you'd store the config with the listener
+      await listenerStore.stopListener(listener.listenerId)
+    }
+  }
 }
 
 function selectListener(listenerId: string): void {
@@ -270,10 +294,39 @@ function statusBadgeClass(status: string): string {
       ⚠ {{ errorNotification }}
     </div>
 
+    <!-- Session info and master controls -->
+    <div v-if="sessionStore.selectedSessionId" class="listener-panel__session-header">
+      <div class="listener-panel__session-info">
+        <span class="listener-panel__session-label">Session:</span>
+        <span class="listener-panel__session-name">
+          {{ sessionStore.selectedSession?.name ?? sessionStore.selectedSessionId?.slice(0, 8) }}
+        </span>
+      </div>
+      <div class="listener-panel__session-controls">
+        <button
+          v-if="anyListenerRunning"
+          class="listener-panel__btn listener-panel__btn--danger"
+          title="Stop all listeners for this session"
+          @click="onStopAllListeners"
+        >⏹ Stop All</button>
+        <button
+          v-else-if="sessionListeners.length > 0"
+          class="listener-panel__btn listener-panel__btn--primary"
+          title="Resume all stopped listeners for this session"
+          disabled
+        >▶ Start All</button>
+      </div>
+    </div>
+
+    <!-- No session selected -->
+    <div v-else class="listener-panel__no-session">
+      <p>Select a session to manage listeners.</p>
+    </div>
+
     <!-- Active listeners section -->
-    <div class="listener-panel__section">
+    <div v-if="sessionStore.selectedSessionId" class="listener-panel__section">
       <div class="listener-panel__section-header">
-        <span class="listener-panel__section-title">Active Listeners</span>
+        <span class="listener-panel__section-title">Listeners ({{ sessionListeners.length }})</span>
         <button
           class="listener-panel__btn listener-panel__btn--ghost"
           data-testid="toggle-start-form"
@@ -282,7 +335,7 @@ function statusBadgeClass(status: string): string {
       </div>
 
       <div
-        v-if="activeListenersList.length === 0"
+        v-if="sessionListeners.length === 0"
         class="listener-panel__empty"
         data-testid="listeners-empty"
       >
@@ -290,7 +343,7 @@ function statusBadgeClass(status: string): string {
       </div>
 
       <div
-        v-for="listener in activeListenersList"
+        v-for="listener in sessionListeners"
         :key="listener.listenerId"
         class="listener-panel__listener-row"
         :class="{ 'listener-panel__listener-row--selected': selectedListenerId === listener.listenerId }"
@@ -323,7 +376,7 @@ function statusBadgeClass(status: string): string {
     </div>
 
     <!-- Start listener form -->
-    <div v-if="showForm" class="listener-panel__form" data-testid="start-form">
+    <div v-if="showForm && sessionStore.selectedSessionId" class="listener-panel__form" data-testid="start-form">
       <div class="listener-panel__form-field">
         <label class="listener-panel__label">Output</label>
         <select
@@ -339,24 +392,7 @@ function statusBadgeClass(status: string): string {
         </select>
       </div>
 
-      <div class="listener-panel__form-field">
-        <label class="listener-panel__label">Session</label>
-        <select
-          class="listener-panel__select"
-          :value="formSessionId"
-          data-testid="session-select"
-          @change="formSessionId = ($event.target as HTMLSelectElement).value"
-        >
-          <option value="" disabled>Select a session…</option>
-          <option
-            v-for="session in sessionStore.sessions"
-            :key="session.id"
-            :value="session.id"
-          >{{ session.name ?? session.id }}</option>
-        </select>
-      </div>
-
-      <!-- Filters section -->
+      <!-- ...existing code... -->
       <div class="listener-panel__form-field">
         <div class="listener-panel__filters-header">
           <span class="listener-panel__label">Filters</span>
@@ -557,6 +593,56 @@ function statusBadgeClass(status: string): string {
   color: #f38ba8;
   font-size: 12px;
   flex-shrink: 0;
+}
+
+.listener-panel__session-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: #313244;
+  border: 1px solid #45475a;
+  border-radius: 4px;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.listener-panel__session-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.listener-panel__session-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #a6adc8;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.listener-panel__session-name {
+  font-size: 12px;
+  color: #cdd6f4;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.listener-panel__session-controls {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.listener-panel__no-session {
+  padding: 20px 12px;
+  text-align: center;
+  color: #585b70;
+  font-size: 13px;
+  font-style: italic;
 }
 
 .listener-panel__section {

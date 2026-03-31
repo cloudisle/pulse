@@ -1,14 +1,21 @@
 <script setup lang="ts">
 import { useEnvironmentStore } from '@renderer/stores/environment'
 import { useProfileStore } from '@renderer/stores/profile'
+import { useSessionStore } from '@renderer/stores/session.store'
 import { useUiStore } from '@renderer/stores/ui'
 
 const environmentStore = useEnvironmentStore()
 const profileStore = useProfileStore()
+const sessionStore = useSessionStore()
 const uiStore = useUiStore()
 
 function openProfileEditor(): void {
   uiStore.openTab({ id: 'profile:new', type: 'profile', title: 'New Profile' })
+}
+
+function selectSession(sessionId: string): void {
+  sessionStore.selectSession(sessionId || null)
+  uiStore.selectSession(sessionId || null)
 }
 </script>
 
@@ -19,6 +26,22 @@ function openProfileEditor(): void {
     </div>
     <div class="top-bar__spacer" />
     <div class="top-bar__right">
+      <div class="top-bar__group">
+        <label class="top-bar__label" for="session-select">Session</label>
+        <select
+          id="session-select"
+          class="top-bar__select"
+          :value="sessionStore.selectedSessionId ?? ''"
+          @change="selectSession(($event.target as HTMLSelectElement).value)"
+        >
+          <option value="">(none)</option>
+          <option
+            v-for="session in sessionStore.sessions"
+            :key="session.id"
+            :value="session.id"
+          >{{ session.name ?? session.id }}</option>
+        </select>
+      </div>
       <div class="top-bar__group">
         <label class="top-bar__label" for="environment-select">Environment</label>
         <select
