@@ -9,6 +9,7 @@ function makeListenerConfig(overrides: Partial<ListenerConfig> = {}): ListenerCo
     systemId: 'sys-1',
     outputId: 'output-1',
     sessionId: 'session-1',
+    cloud: {},
     ...overrides
   }
 }
