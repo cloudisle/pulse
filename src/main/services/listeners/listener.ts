@@ -130,7 +130,8 @@ export class DefaultListenerLifecycle implements ListenerLifecycle {
         } catch (error: any) {
             console.error("Error starting listener", error);
             await this.stop();
-            await this.setState('error');
+            await this.setState('error', error?.message ?? String(error));
+            return;
         }
 
         await this.setState('running');
@@ -148,7 +149,7 @@ export class DefaultListenerLifecycle implements ListenerLifecycle {
         return this._state;
     }
 
-    private async setState(s: ListenerLifecycleState) {
+    private async setState(s: ListenerLifecycleState, error?: string) {
         const sessionId = this.config.sessionId;
         const previousState = this._state;
 
@@ -158,7 +159,8 @@ export class DefaultListenerLifecycle implements ListenerLifecycle {
             sessionId,
             previousState,
             state: s,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            error
         });
 
         const level = s === 'error' ? 'error' : 'info';

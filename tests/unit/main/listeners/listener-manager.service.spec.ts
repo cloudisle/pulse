@@ -117,12 +117,19 @@ describe('ListenerManagerService', () => {
   it('returns listenerId and current tracked status payload', async () => {
     const result = await service.startListener(makeListenerConfig(), makeOutputConfig())
 
-    expect(result).toEqual({ listenerId: 'listener-1', status: 'error' })
+    expect(result).toEqual({ listenerId: 'listener-1', status: 'starting' })
   })
 
-  it('returns empty status list because no listener entries are currently added', async () => {
+  it('tracks listeners in status list once started', async () => {
     await service.startListener(makeListenerConfig(), makeOutputConfig())
-    expect(service.getStatus()).toEqual([])
+    expect(service.getStatus()).toEqual([
+      expect.objectContaining({
+        listenerId: 'listener-1',
+        outputId: 'output-1',
+        sessionId: 'session-1',
+        status: expect.any(String),
+      })
+    ])
   })
 
   it('stopListener is a no-op for unknown ids', async () => {
@@ -130,7 +137,17 @@ describe('ListenerManagerService', () => {
     expect(lifecycle.stop).not.toHaveBeenCalled()
   })
 
-  it('stopAll resolves cleanly even with no tracked listeners', async () => {
+  it('stopListener stops a tracked listener', async () => {
+    await service.startListener(makeListenerConfig(), makeOutputConfig())
+    await service.stopListener('listener-1')
+
+    expect(lifecycle.stop).toHaveBeenCalledTimes(1)
+  })
+
+  it('stopAll stops all tracked listeners', async () => {
+    await service.startListener(makeListenerConfig(), makeOutputConfig())
+
     await expect(service.stopAll()).resolves.toBeUndefined()
+    expect(lifecycle.stop).toHaveBeenCalledTimes(1)
   })
 })

@@ -52,20 +52,40 @@ export class ListenerManagerService {
     });
 
     const listenerId = lifecycle.listener.id;
+    const startedAt = new Date().toISOString();
+
+    this.listeners.set(listenerId, {
+      listener: lifecycle,
+      status: {
+        listenerId,
+        outputId: listenerConfig.outputId,
+        sessionId: listenerConfig.sessionId,
+        status: 'starting',
+        eventsReceived: 0,
+        startedAt,
+      }
+    });
+
     await log.info(`Starting listener ${listenerId} for output ${listenerConfig.outputId}`, {
       sessionId: listenerConfig.sessionId
     });
 
     const postStart = () => {
       const entry = this.listeners.get(listenerId)
-      if (entry) entry.status.status = entry.listener.state
+      if (entry) {
+        entry.status.status = entry.listener.state
+        if (entry.listener.state === 'error') {
+          entry.status.lastError = entry.status.lastError ?? 'Listener failed to start.'
+          entry.status.stoppedAt = new Date().toISOString()
+        }
+      }
     }
 
     lifecycle.start()
         .then(postStart)
         .catch(postStart);
 
-    return { listenerId, status: this.listeners.get(listenerId)?.listener.state || 'error' }
+    return { listenerId, status: this.listeners.get(listenerId)?.status.status || 'error' }
   }
 
   /**
@@ -80,6 +100,8 @@ export class ListenerManagerService {
     const lifecycle = entry.listener;
 
     await lifecycle.stop();
+    entry.status.status = lifecycle.state
+    entry.status.stoppedAt = new Date().toISOString()
   }
 
   /** Returns the current status of all tracked listeners. */

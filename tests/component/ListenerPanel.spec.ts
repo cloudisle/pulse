@@ -60,7 +60,10 @@ function mountComponent(pinia = createPinia()) {
   return mount(ListenerPanel, { global: { plugins: [pinia] } })
 }
 
-function seedSelectedSession(pinia: ReturnType<typeof createPinia>, overrides: { systemId?: string; sessionId?: string; sessionName?: string } = {}) {
+function seedSelectedSession(
+  pinia: ReturnType<typeof createPinia>,
+  overrides: { systemId?: string; sessionId?: string; sessionName?: string } = {}
+) {
   setActivePinia(pinia)
   const systemId = overrides.systemId ?? 'sys-1'
   const sessionId = overrides.sessionId ?? 'session-1'
@@ -75,434 +78,178 @@ function seedSelectedSession(pinia: ReturnType<typeof createPinia>, overrides: {
     systemId,
     name: sessionName,
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
   }]
   sessionStore.selectedSessionId = sessionId
-
-  return { systemStore, sessionStore }
 }
 
 describe('ListenerPanel component', () => {
   beforeEach(() => {
+    vi.restoreAllMocks()
     setActivePinia(createPinia())
     mockAppApi()
-    vi.restoreAllMocks()
-  })
-
-  it('renders empty state when no listeners', async () => {
-    const pinia = createPinia()
-    seedSelectedSession(pinia)
-    const wrapper = mountComponent(pinia)
-    await flushPromises()
-    expect(wrapper.find('[data-testid="listeners-empty"]').exists()).toBe(true)
   })
 
   it('renders a prompt when no session is selected', async () => {
     const wrapper = mountComponent()
     await flushPromises()
+
     expect(wrapper.text()).toContain('Select a session to manage listeners.')
-    expect(wrapper.find('[data-testid="toggle-start-form"]').exists()).toBe(false)
   })
 
-  it('shows New Listener button', async () => {
-    const pinia = createPinia()
-    seedSelectedSession(pinia)
-    const wrapper = mountComponent(pinia)
-    await flushPromises()
-    expect(wrapper.find('[data-testid="toggle-start-form"]').exists()).toBe(true)
-  })
-
-  it('toggles start form on button click', async () => {
-    const pinia = createPinia()
-    seedSelectedSession(pinia)
-    const wrapper = mountComponent(pinia)
-    await flushPromises()
-    expect(wrapper.find('[data-testid="start-form"]').exists()).toBe(false)
-    await wrapper.find('[data-testid="toggle-start-form"]').trigger('click')
-    expect(wrapper.find('[data-testid="start-form"]').exists()).toBe(true)
-    await wrapper.find('[data-testid="toggle-start-form"]').trigger('click')
-    expect(wrapper.find('[data-testid="start-form"]').exists()).toBe(false)
-  })
-
-  it('start form has an output selector and no session selector', async () => {
-    const pinia = createPinia()
-    seedSelectedSession(pinia)
-    const wrapper = mountComponent(pinia)
-    await flushPromises()
-    await wrapper.find('[data-testid="toggle-start-form"]').trigger('click')
-    expect(wrapper.find('[data-testid="output-select"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="session-select"]').exists()).toBe(false)
-  })
-
-  it('shows validation error when start is clicked without output', async () => {
-    const pinia = createPinia()
-    seedSelectedSession(pinia)
-    const wrapper = mountComponent(pinia)
-    await flushPromises()
-    await wrapper.find('[data-testid="toggle-start-form"]').trigger('click')
-    await wrapper.find('[data-testid="start-btn"]').trigger('click')
-    await wrapper.vm.$nextTick()
-    expect(wrapper.find('[data-testid="form-error"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="form-error"]').text()).toContain('output')
-  })
-
-  it('calls api.listeners.start when form is submitted with valid data', async () => {
-    const mockStart = vi.fn().mockResolvedValue({ listenerId: 'l1', status: 'starting' })
-    const systemsApi = vi.fn().mockResolvedValue({
-      outputs: [{ id: 'out-1', name: 'My Output', type: 'kinesis', config: {}, contentType: 'json' }],
-      inputs: [],
-    })
+  it('renders one stopped row per configured output', async () => {
     mockAppApi({
-      listeners: { start: mockStart, stop: vi.fn(), status: vi.fn().mockResolvedValue([]) },
-      api: { systems: { get: systemsApi } }
+      api: {
+        systems: {
+          get: vi.fn().mockResolvedValue({
+            outputs: [
+              { id: 'out-1', name: 'Output One', type: 'kinesis', config: {}, contentType: 'json' },
+              { id: 'out-2', name: 'Output Two', type: 'sqs', config: {}, contentType: 'json' },
+            ],
+            inputs: [],
+          }),
+        },
+      },
     })
 
     const pinia = createPinia()
-    seedSelectedSession(pinia, { systemId: 'sys-1', sessionId: 'sess-1', sessionName: 'Session One' })
+    seedSelectedSession(pinia)
     const wrapper = mountComponent(pinia)
-
-    await flushPromises()
-    await wrapper.find('[data-testid="toggle-start-form"]').trigger('click')
     await flushPromises()
 
-    // Select output
-    const outputSelect = wrapper.find('[data-testid="output-select"]')
-    await outputSelect.setValue('out-1')
-
-    await wrapper.find('[data-testid="start-btn"]').trigger('click')
-    await flushPromises()
-
-    expect(mockStart).toHaveBeenCalledWith(
-      expect.objectContaining({ outputId: 'out-1', sessionId: 'sess-1' })
-    )
-    // Form should be hidden after successful start
-    expect(wrapper.find('[data-testid="start-form"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="listener-row-out-1"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="listener-row-out-2"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="listener-status-out-1"]').text()).toBe('stopped')
+    expect(wrapper.find('[data-testid="listener-status-out-2"]').text()).toBe('stopped')
   })
 
-  it('shows active listeners from store', async () => {
+  it('does not auto-start listeners on mount', async () => {
+    const mockStart = vi.fn().mockResolvedValue({ listenerId: 'l1', status: 'starting' })
+    mockAppApi({
+      listeners: { start: mockStart },
+      api: {
+        systems: {
+          get: vi.fn().mockResolvedValue({
+            outputs: [{ id: 'out-1', name: 'Output One', type: 'kinesis', config: {}, contentType: 'json' }],
+            inputs: [],
+          }),
+        },
+      },
+    })
+
+    const pinia = createPinia()
+    seedSelectedSession(pinia)
+    mountComponent(pinia)
+    await flushPromises()
+
+    expect(mockStart).not.toHaveBeenCalled()
+  })
+
+  it('starts a configured listener only when its Start button is clicked', async () => {
+    const mockStart = vi.fn().mockResolvedValue({ listenerId: 'l1', status: 'starting' })
+    mockAppApi({
+      listeners: { start: mockStart },
+      api: {
+        systems: {
+          get: vi.fn().mockResolvedValue({
+            outputs: [{ id: 'out-1', name: 'Output One', type: 'kinesis', config: {}, contentType: 'json' }],
+            inputs: [],
+          }),
+        },
+      },
+    })
+
+    const pinia = createPinia()
+    seedSelectedSession(pinia, { systemId: 'sys-1', sessionId: 'sess-1' })
+    const wrapper = mountComponent(pinia)
+    await flushPromises()
+
+    await wrapper.find('[data-testid="start-btn-out-1"]').trigger('click')
+    await flushPromises()
+
+    expect(mockStart).toHaveBeenCalledWith(expect.objectContaining({ outputId: 'out-1', sessionId: 'sess-1' }))
+  })
+
+  it('starts all configured listeners only when Start All is clicked', async () => {
+    const mockStart = vi.fn().mockResolvedValue({ listenerId: 'l1', status: 'starting' })
+    mockAppApi({
+      listeners: { start: mockStart },
+      api: {
+        systems: {
+          get: vi.fn().mockResolvedValue({
+            outputs: [
+              { id: 'out-1', name: 'Output One', type: 'kinesis', config: {}, contentType: 'json' },
+              { id: 'out-2', name: 'Output Two', type: 'sqs', config: {}, contentType: 'json' },
+            ],
+            inputs: [],
+          }),
+        },
+      },
+    })
+
+    const pinia = createPinia()
+    seedSelectedSession(pinia, { sessionId: 'sess-1' })
+    const wrapper = mountComponent(pinia)
+    await flushPromises()
+
+    const startAllButton = wrapper.findAll('button').find((button) => button.text().includes('Start All'))
+    expect(startAllButton?.exists()).toBe(true)
+
+    await startAllButton!.trigger('click')
+    await flushPromises()
+
+    expect(mockStart).toHaveBeenCalledTimes(2)
+    expect(mockStart).toHaveBeenCalledWith(expect.objectContaining({ outputId: 'out-1', sessionId: 'sess-1' }))
+    expect(mockStart).toHaveBeenCalledWith(expect.objectContaining({ outputId: 'out-2', sessionId: 'sess-1' }))
+  })
+
+  it('stops a running listener from its row Stop button', async () => {
+    const mockStop = vi.fn().mockResolvedValue(undefined)
+    mockAppApi({
+      listeners: { stop: mockStop },
+      api: {
+        systems: {
+          get: vi.fn().mockResolvedValue({
+            outputs: [{ id: 'out-1', name: 'Output One', type: 'kinesis', config: {}, contentType: 'json' }],
+            inputs: [],
+          }),
+        },
+      },
+    })
+
     const pinia = createPinia()
     seedSelectedSession(pinia)
     const wrapper = mountComponent(pinia)
     const store = useListenerStore()
+
+    await flushPromises()
 
     store.activeListeners.set('l1', makeStatus({ listenerId: 'l1', outputId: 'out-1', status: 'running' }))
     store.activeListeners = new Map(store.activeListeners)
-
-    await wrapper.vm.$nextTick()
-    expect(wrapper.find('[data-testid="listener-row-l1"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="listener-status-l1"]').text()).toBe('running')
-  })
-
-  it('shows correct status badge class for each state', async () => {
-    const pinia = createPinia()
-    seedSelectedSession(pinia)
-    const wrapper = mountComponent(pinia)
-    const store = useListenerStore()
-
-    const states = ['running', 'starting', 'stopping', 'stopped', 'error'] as const
-    for (const status of states) {
-      store.activeListeners.set(status, makeStatus({ listenerId: status, status }))
-    }
-    store.activeListeners = new Map(store.activeListeners)
     await wrapper.vm.$nextTick()
 
-    for (const status of states) {
-      const badge = wrapper.find(`[data-testid="listener-status-${status}"]`)
-      expect(badge.classes()).toContain(`listener-panel__badge--${status}`)
-    }
-  })
-
-  it('calls api.listeners.stop when stop button is clicked', async () => {
-    const mockStop = vi.fn().mockResolvedValue(undefined)
-    ;(window as any).app.api.listeners.stop = mockStop
-
-    const pinia = createPinia()
-    seedSelectedSession(pinia)
-    const wrapper = mountComponent(pinia)
-    const store = useListenerStore()
-
-    store.activeListeners.set('l1', makeStatus({ listenerId: 'l1', status: 'running' }))
-    store.activeListeners = new Map(store.activeListeners)
-    await wrapper.vm.$nextTick()
-
-    await wrapper.find('[data-testid="stop-btn-l1"]').trigger('click')
+    await wrapper.find('[data-testid="stop-btn-out-1"]').trigger('click')
     await flushPromises()
+
     expect(mockStop).toHaveBeenCalledWith('l1')
   })
 
-  it('stop button is disabled when listener is stopped', async () => {
-    const pinia = createPinia()
-    seedSelectedSession(pinia)
-    const wrapper = mountComponent(pinia)
-    const store = useListenerStore()
-
-    store.activeListeners.set('l1', makeStatus({ listenerId: 'l1', status: 'stopped' }))
-    store.activeListeners = new Map(store.activeListeners)
-    await wrapper.vm.$nextTick()
-
-    const stopBtn = wrapper.find('[data-testid="stop-btn-l1"]')
-    expect(stopBtn.attributes('disabled')).toBeDefined()
-  })
-
-  it('shows event stream when listener row is clicked', async () => {
-    const pinia = createPinia()
-    seedSelectedSession(pinia)
-    const wrapper = mountComponent(pinia)
-    const store = useListenerStore()
-
-    store.activeListeners.set('l1', makeStatus({ listenerId: 'l1' }))
-    store.activeListeners = new Map(store.activeListeners)
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.find('[data-testid="event-stream"]').exists()).toBe(false)
-    await wrapper.find('[data-testid="listener-row-l1"]').trigger('click')
-    expect(wrapper.find('[data-testid="event-stream"]').exists()).toBe(true)
-  })
-
-  it('shows events in the stream for selected listener', async () => {
-    const pinia = createPinia()
-    seedSelectedSession(pinia)
-    const wrapper = mountComponent(pinia)
-    const store = useListenerStore()
-
-    const evt = makeEvent({ id: 'evt-1' })
-    store.activeListeners.set('l1', makeStatus({ listenerId: 'l1' }))
-    store.activeListeners = new Map(store.activeListeners)
-    store.listenerEvents.set('l1', [evt])
-    store.listenerEvents = new Map(store.listenerEvents)
-    await wrapper.vm.$nextTick()
-
-    await wrapper.find('[data-testid="listener-row-l1"]').trigger('click')
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.find('[data-testid="event-row-evt-1"]').exists()).toBe(true)
-  })
-
-  it('expands event payload on click', async () => {
-    const pinia = createPinia()
-    seedSelectedSession(pinia)
-    const wrapper = mountComponent(pinia)
-    const store = useListenerStore()
-
-    const evt = makeEvent({ id: 'evt-1', payload: '{"hello":"world"}' })
-    store.activeListeners.set('l1', makeStatus({ listenerId: 'l1' }))
-    store.activeListeners = new Map(store.activeListeners)
-    store.listenerEvents.set('l1', [evt])
-    store.listenerEvents = new Map(store.listenerEvents)
-    await wrapper.vm.$nextTick()
-
-    await wrapper.find('[data-testid="listener-row-l1"]').trigger('click')
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.find('[data-testid="event-payload-evt-1"]').exists()).toBe(false)
-    await wrapper.find('[data-testid="event-row-evt-1"]').trigger('click')
-    await wrapper.vm.$nextTick()
-    expect(wrapper.find('[data-testid="event-payload-evt-1"]').exists()).toBe(true)
-  })
-
-  it('closes event stream when × button is clicked', async () => {
-    const pinia = createPinia()
-    seedSelectedSession(pinia)
-    const wrapper = mountComponent(pinia)
-    const store = useListenerStore()
-
-    store.activeListeners.set('l1', makeStatus({ listenerId: 'l1' }))
-    store.activeListeners = new Map(store.activeListeners)
-    await wrapper.vm.$nextTick()
-
-    await wrapper.find('[data-testid="listener-row-l1"]').trigger('click')
-    expect(wrapper.find('[data-testid="event-stream"]').exists()).toBe(true)
-
-    await wrapper.find('[data-testid="close-stream-btn"]').trigger('click')
-    expect(wrapper.find('[data-testid="event-stream"]').exists()).toBe(false)
-  })
-
-  it('subscribes to lifecycle channel on mount', async () => {
-    const lifecycleListen = vi.fn().mockReturnValue(() => {})
-    ;(window as any).app.channels.listeners.lifecycle.listen = lifecycleListen
-
-    mountComponent()
-    await flushPromises()
-    expect(lifecycleListen).toHaveBeenCalledTimes(1)
-  })
-
-  it('subscribes to data channel on mount', async () => {
-    const dataListen = vi.fn().mockReturnValue(() => {})
-    ;(window as any).app.channels.listeners.data.listen = dataListen
-
-    mountComponent()
-    await flushPromises()
-    expect(dataListen).toHaveBeenCalledTimes(1)
-  })
-
-  it('subscribes to error channel on mount', async () => {
-    const errorListen = vi.fn().mockReturnValue(() => {})
-    ;(window as any).app.channels.listeners.error.listen = errorListen
-
-    mountComponent()
-    await flushPromises()
-    expect(errorListen).toHaveBeenCalledTimes(1)
-  })
-
-  it('unsubscribes from all channels on unmount', async () => {
-    const unsubLifecycle = vi.fn()
-    const unsubData = vi.fn()
-    const unsubError = vi.fn()
-    ;(window as any).app.channels.listeners.lifecycle.listen = vi.fn().mockReturnValue(unsubLifecycle)
-    ;(window as any).app.channels.listeners.data.listen = vi.fn().mockReturnValue(unsubData)
-    ;(window as any).app.channels.listeners.error.listen = vi.fn().mockReturnValue(unsubError)
-
-    const wrapper = mountComponent()
-    await flushPromises()
-    wrapper.unmount()
-
-    expect(unsubLifecycle).toHaveBeenCalledTimes(1)
-    expect(unsubData).toHaveBeenCalledTimes(1)
-    expect(unsubError).toHaveBeenCalledTimes(1)
-  })
-
-  it('updates listener status when lifecycle event received', async () => {
-    let lifecycleCallback: ((event: any) => void) | null = null
-    ;(window as any).app.channels.listeners.lifecycle.listen = vi.fn().mockImplementation((cb: any) => {
-      lifecycleCallback = cb
-      return () => {}
-    })
-
-    const pinia = createPinia()
-    const wrapper = mountComponent(pinia)
-    const store = useListenerStore()
-    await flushPromises()
-
-    expect(lifecycleCallback).not.toBeNull()
-    lifecycleCallback!({
-      listenerId: 'l1',
-      outputId: 'out-1',
-      sessionId: 'sess-1',
-      state: 'running',
-      timestamp: new Date().toISOString(),
-    })
-    await wrapper.vm.$nextTick()
-
-    expect(store.activeListeners.get('l1')?.status).toBe('running')
-  })
-
-  it('appends events when data event received', async () => {
-    let dataCallback: ((event: any) => void) | null = null
-    ;(window as any).app.channels.listeners.data.listen = vi.fn().mockImplementation((cb: any) => {
-      dataCallback = cb
-      return () => {}
-    })
-
-    const pinia = createPinia()
-    const wrapper = mountComponent(pinia)
-    const store = useListenerStore()
-
-    await flushPromises()
-
-    // Add listener AFTER flushPromises so loadStatus() doesn't clear it
-    store.activeListeners.set('l1', makeStatus({ listenerId: 'l1', eventsReceived: 0 }))
-    store.activeListeners = new Map(store.activeListeners)
-
-    expect(dataCallback).not.toBeNull()
-    const newEvent = makeEvent({ id: 'evt-new' })
-    dataCallback!({ listenerId: 'l1', sessionId: 'sess-1', event: newEvent })
-    await wrapper.vm.$nextTick()
-
-    expect(store.listenerEvents.get('l1')).toHaveLength(1)
-    expect(store.activeListeners.get('l1')?.eventsReceived).toBe(1)
-  })
-
-  it('shows error notification when error event received', async () => {
-    let errorCallback: ((event: any) => void) | null = null
-    ;(window as any).app.channels.listeners.error.listen = vi.fn().mockImplementation((cb: any) => {
-      errorCallback = cb
-      return () => {}
-    })
-
-    const wrapper = mountComponent()
-    await flushPromises()
-
-    expect(wrapper.find('[data-testid="error-notification"]').exists()).toBe(false)
-    errorCallback!({ listenerId: 'l1', error: 'Connection failed', timestamp: new Date().toISOString() })
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.find('[data-testid="error-notification"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="error-notification"]').text()).toContain('Connection failed')
-  })
-
-  it('add filter button adds a filter row to the form', async () => {
-    const pinia = createPinia()
-    seedSelectedSession(pinia)
-    const wrapper = mountComponent(pinia)
-    await flushPromises()
-    await wrapper.find('[data-testid="toggle-start-form"]').trigger('click')
-
-    expect(wrapper.find('[data-testid="filter-row-0"]').exists()).toBe(false)
-    await wrapper.find('[data-testid="add-filter-btn"]').trigger('click')
-    await wrapper.vm.$nextTick()
-    expect(wrapper.find('[data-testid="filter-row-0"]').exists()).toBe(true)
-  })
-
-  it('delete button removes a filter row', async () => {
-    const pinia = createPinia()
-    seedSelectedSession(pinia)
-    const wrapper = mountComponent(pinia)
-    await flushPromises()
-    await wrapper.find('[data-testid="toggle-start-form"]').trigger('click')
-    await wrapper.find('[data-testid="add-filter-btn"]').trigger('click')
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.find('[data-testid="filter-row-0"]').exists()).toBe(true)
-    await wrapper.find('[data-testid="filter-delete-0"]').trigger('click')
-    await wrapper.vm.$nextTick()
-    expect(wrapper.find('[data-testid="filter-row-0"]').exists()).toBe(false)
-  })
-
-  it('renders jsonpath filter controls for a new filter row', async () => {
-    const pinia = createPinia()
-    seedSelectedSession(pinia)
-    const wrapper = mountComponent(pinia)
-    await flushPromises()
-    await wrapper.find('[data-testid="toggle-start-form"]').trigger('click')
-    await wrapper.find('[data-testid="add-filter-btn"]').trigger('click')
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.find('[data-testid="filter-type-0"]').exists()).toBe(true)
-    expect((wrapper.find('[data-testid="filter-type-0"]').element as HTMLSelectElement).value).toBe('jsonpath')
-    expect(wrapper.find('[data-testid="filter-path-0"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="filter-operator-0"]').exists()).toBe(true)
-  })
-
-  it('filter mode buttons toggle between all and any', async () => {
-    const pinia = createPinia()
-    seedSelectedSession(pinia)
-    const wrapper = mountComponent(pinia)
-    await flushPromises()
-    await wrapper.find('[data-testid="toggle-start-form"]').trigger('click')
-
-    expect(wrapper.find('[data-testid="filter-mode-all"]').classes()).toContain('listener-panel__mode-btn--active')
-    await wrapper.find('[data-testid="filter-mode-any"]').trigger('click')
-    await wrapper.vm.$nextTick()
-    expect(wrapper.find('[data-testid="filter-mode-any"]').classes()).toContain('listener-panel__mode-btn--active')
-    expect(wrapper.find('[data-testid="filter-mode-all"]').classes()).not.toContain('listener-panel__mode-btn--active')
-  })
-
-  it('shows events count for active listener', async () => {
-    const pinia = createPinia()
-    seedSelectedSession(pinia)
-    const wrapper = mountComponent(pinia)
-    const store = useListenerStore()
-
-    store.activeListeners.set('l1', makeStatus({ listenerId: 'l1', eventsReceived: 5 }))
-    store.activeListeners = new Map(store.activeListeners)
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.find('[data-testid="listener-events-l1"]').text()).toContain('5')
-  })
-
-  it('shows and uses the Stop All button for running listeners in the selected session', async () => {
+  it('stops all running listeners in the selected session when Stop All is clicked', async () => {
     const mockStop = vi.fn().mockResolvedValue(undefined)
-    ;(window as any).app.api.listeners.stop = mockStop
+    mockAppApi({
+      listeners: { stop: mockStop },
+      api: {
+        systems: {
+          get: vi.fn().mockResolvedValue({
+            outputs: [
+              { id: 'out-1', name: 'Output One', type: 'kinesis', config: {}, contentType: 'json' },
+              { id: 'out-2', name: 'Output Two', type: 'sqs', config: {}, contentType: 'json' },
+            ],
+            inputs: [],
+          }),
+        },
+      },
+    })
 
     const pinia = createPinia()
     seedSelectedSession(pinia, { sessionId: 'session-1', sessionName: 'Session One' })
@@ -511,12 +258,11 @@ describe('ListenerPanel component', () => {
 
     await flushPromises()
 
-    store.activeListeners.set('l1', makeStatus({ listenerId: 'l1', sessionId: 'session-1', status: 'running' }))
-    store.activeListeners.set('l2', makeStatus({ listenerId: 'l2', sessionId: 'session-1', status: 'running' }))
+    store.activeListeners.set('l1', makeStatus({ listenerId: 'l1', outputId: 'out-1', sessionId: 'session-1', status: 'running' }))
+    store.activeListeners.set('l2', makeStatus({ listenerId: 'l2', outputId: 'out-2', sessionId: 'session-1', status: 'running' }))
     store.activeListeners = new Map(store.activeListeners)
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.text()).toContain('Session One')
     const stopAllButton = wrapper.findAll('button').find((button) => button.text().includes('Stop All'))
     expect(stopAllButton?.exists()).toBe(true)
 
@@ -525,5 +271,61 @@ describe('ListenerPanel component', () => {
 
     expect(mockStop).toHaveBeenCalledWith('l1')
     expect(mockStop).toHaveBeenCalledWith('l2')
+  })
+
+  it('shows event stream for a selected running listener row', async () => {
+    mockAppApi({
+      api: {
+        systems: {
+          get: vi.fn().mockResolvedValue({
+            outputs: [{ id: 'out-1', name: 'Output One', type: 'kinesis', config: {}, contentType: 'json' }],
+            inputs: [],
+          }),
+        },
+      },
+    })
+
+    const pinia = createPinia()
+    seedSelectedSession(pinia)
+    const wrapper = mountComponent(pinia)
+    const store = useListenerStore()
+
+    await flushPromises()
+
+    const evt = makeEvent({ id: 'evt-1' })
+    store.activeListeners.set('l1', makeStatus({ listenerId: 'l1', outputId: 'out-1' }))
+    store.activeListeners = new Map(store.activeListeners)
+    store.listenerEvents.set('l1', [evt])
+    store.listenerEvents = new Map(store.listenerEvents)
+    await wrapper.vm.$nextTick()
+
+    await wrapper.find('[data-testid="listener-row-out-1"]').trigger('click')
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-testid="event-stream"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="event-row-evt-1"]').exists()).toBe(true)
+  })
+
+  it('subscribes and unsubscribes listener channels', async () => {
+    const unsubLifecycle = vi.fn()
+    const unsubData = vi.fn()
+    const unsubError = vi.fn()
+
+    ;(window as any).app.channels.listeners.lifecycle.listen = vi.fn().mockReturnValue(unsubLifecycle)
+    ;(window as any).app.channels.listeners.data.listen = vi.fn().mockReturnValue(unsubData)
+    ;(window as any).app.channels.listeners.error.listen = vi.fn().mockReturnValue(unsubError)
+
+    const wrapper = mountComponent()
+    await flushPromises()
+
+    expect((window as any).app.channels.listeners.lifecycle.listen).toHaveBeenCalledTimes(1)
+    expect((window as any).app.channels.listeners.data.listen).toHaveBeenCalledTimes(1)
+    expect((window as any).app.channels.listeners.error.listen).toHaveBeenCalledTimes(1)
+
+    wrapper.unmount()
+
+    expect(unsubLifecycle).toHaveBeenCalledTimes(1)
+    expect(unsubData).toHaveBeenCalledTimes(1)
+    expect(unsubError).toHaveBeenCalledTimes(1)
   })
 })

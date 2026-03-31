@@ -1,24 +1,11 @@
 <script setup lang="ts">
-import {ref, computed, onMounted, onUnmounted, watch, toRaw} from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useListenerStore } from '@renderer/stores/listener.store'
 import { useSystemStore } from '@renderer/stores/system'
 import { useSessionStore } from '@renderer/stores/session.store'
 import { useEnvironmentStore } from '@renderer/stores/environment'
-import type { OutputConfig } from '@shared/models'
-import type {
-  ListenerFilterMode,
-  ListenerFilterType,
-  JsonPathFilterConfig,
-  RegexFilterConfig,
-} from '@shared/models'
-import {resolveCloudSettings} from "@renderer/util/cloud";
-
-interface LocalFilter {
-  _id: string
-  type: ListenerFilterType
-  enabled: boolean
-  config: JsonPathFilterConfig | RegexFilterConfig
-}
+import type { OutputConfig, ListenerLifecycleState, ListenerStatus } from '@shared/models'
+import { resolveCloudSettings } from '@renderer/util/cloud'
 
 const listenerStore = useListenerStore()
 const systemStore = useSystemStore()
@@ -30,15 +17,8 @@ let unsubData: (() => void) | null = null
 let unsubError: (() => void) | null = null
 
 const outputs = ref<OutputConfig[]>([])
-
-// Form state
-const showForm = ref(false)
-const formOutputId = ref('')
-const formFilterMode = ref<ListenerFilterMode>('all')
-const formIncludeUnmatched = ref(false)
-const formFilters = ref<LocalFilter[]>([])
-const formError = ref('')
-const formStarting = ref(false)
+const bulkStarting = ref(false)
+const startingOutputIds = ref<Set<string>>(new Set())
 
 // Selected listener for event stream
 const selectedListenerId = ref<string | null>(null)
@@ -50,23 +30,83 @@ let errorTimeout: ReturnType<typeof setTimeout> | null = null
 // Expanded events
 const expandedEvents = ref<Set<string>>(new Set())
 
+interface SidebarListenerRow {
+  key: string
+  outputId: string
+  listenerId: string | null
+  status: ListenerLifecycleState
+  eventsReceived: number
+  startedAt?: string
+}
+
 // Track listeners tied to the current session
-const sessionListeners = computed(() => {
+const activeSessionListeners = computed(() => {
   if (!sessionStore.selectedSessionId) return []
   return Array.from(listenerStore.activeListeners.values()).filter(
     (l) => l.sessionId === sessionStore.selectedSessionId
   )
 })
 
+function statusPriority(status: ListenerLifecycleState): number {
+  switch (status) {
+    case 'running': return 5
+    case 'starting': return 4
+    case 'stopping': return 3
+    case 'error': return 2
+    case 'stopped': return 1
+    default: return 0
+  }
+}
+
+function pickPreferredListener(current: ListenerStatus, next: ListenerStatus): ListenerStatus {
+  const currentPriority = statusPriority(current.status)
+  const nextPriority = statusPriority(next.status)
+  if (nextPriority > currentPriority) return next
+  if (nextPriority < currentPriority) return current
+
+  const currentStartedAt = current.startedAt ?? ''
+  const nextStartedAt = next.startedAt ?? ''
+  return nextStartedAt > currentStartedAt ? next : current
+}
+
+const activeListenersByOutput = computed(() => {
+  const byOutput = new Map<string, ListenerStatus>()
+
+  for (const listener of activeSessionListeners.value) {
+    const existing = byOutput.get(listener.outputId)
+    if (!existing) {
+      byOutput.set(listener.outputId, listener)
+      continue
+    }
+    byOutput.set(listener.outputId, pickPreferredListener(existing, listener))
+  }
+
+  return byOutput
+})
+
+const configuredListeners = computed<SidebarListenerRow[]>(() => {
+  return outputs.value.map((output) => {
+    const active = activeListenersByOutput.value.get(output.id)
+    return {
+      key: output.id,
+      outputId: output.id,
+      listenerId: active?.listenerId ?? null,
+      status: active?.status ?? 'stopped',
+      eventsReceived: active?.eventsReceived ?? 0,
+      startedAt: active?.startedAt,
+    }
+  })
+})
+
 // Check if all session listeners are running
 const allListenersRunning = computed(() => {
-  if (sessionListeners.value.length === 0) return false
-  return sessionListeners.value.every((l) => l.status === 'running')
+  if (configuredListeners.value.length === 0) return false
+  return configuredListeners.value.every((l) => l.status === 'running')
 })
 
 // Check if any session listeners are running
 const anyListenerRunning = computed(() => {
-  return sessionListeners.value.some((l) => l.status === 'running')
+  return configuredListeners.value.some((l) => l.status === 'running' || l.status === 'starting')
 })
 
 async function loadOutputs(): Promise<void> {
@@ -125,84 +165,58 @@ watch(() => systemStore.selectedSystemId, async () => {
   await loadOutputs()
 })
 
+watch(configuredListeners, () => {
+  if (!selectedListenerId.value) return
+  const stillExists = configuredListeners.value.some((listener) => listener.listenerId === selectedListenerId.value)
+  if (!stillExists) {
+    selectedListenerId.value = null
+  }
+})
+
 function getOutputName(outputId: string): string {
   const output = outputs.value.find((o) => o.id === outputId)
   return output?.name ?? outputId
 }
 
-function addFilter(): void {
-  formFilters.value.push({
-    _id: Math.random().toString(36).slice(2),
-    type: 'jsonpath',
-    enabled: true,
-    config: { path: '', operator: 'equals', value: '' } as JsonPathFilterConfig,
-  })
-}
-
-function removeFilter(idx: number): void {
-  formFilters.value.splice(idx, 1)
-}
-
-function setFilterType(idx: number, type: ListenerFilterType): void {
-  const f = formFilters.value[idx]
-  if (!f) return
-  f.type = type
-  if (type === 'jsonpath') {
-    f.config = { path: '', operator: 'equals', value: '' } as JsonPathFilterConfig
+function setOutputStarting(outputId: string, starting: boolean): void {
+  if (starting) {
+    startingOutputIds.value.add(outputId)
   } else {
-    f.config = { pattern: '', flags: '', targetPath: '' } as RegexFilterConfig
+    startingOutputIds.value.delete(outputId)
   }
+  startingOutputIds.value = new Set(startingOutputIds.value)
 }
 
-function isJsonPathConfig(config: JsonPathFilterConfig | RegexFilterConfig): config is JsonPathFilterConfig {
-  return 'path' in config
-}
-
-function isRegexConfig(config: JsonPathFilterConfig | RegexFilterConfig): config is RegexFilterConfig {
-  return 'pattern' in config
-}
-
-async function onStartListener(): Promise<void> {
-  if (!formOutputId.value) {
-    formError.value = 'Select an output first.'
+async function onStartListener(outputId: string): Promise<void> {
+  if (startingOutputIds.value.has(outputId)) {
     return
   }
   if (!sessionStore.selectedSessionId) {
-    formError.value = 'Select a session first.'
+    errorNotification.value = 'Select a session first.'
     return
   }
   const systemId = systemStore.selectedSystemId
   if (!systemId) {
-    formError.value = 'No system selected.'
+    errorNotification.value = 'No system selected.'
     return
   }
-
-  formError.value = ''
-  formStarting.value = true
+  setOutputStarting(outputId, true)
 
   try {
-    const filters = formFilters.value.map(({ _id, ...f }) => f)
-
     await listenerStore.startListener({
       systemId,
-      outputId: formOutputId.value,
+      outputId,
       sessionId: sessionStore.selectedSessionId,
       environmentId: environmentStore.selectedEnvironmentId ?? undefined,
-      filters: filters.length > 0 ? filters : undefined,
-      filterMode: formFilterMode.value,
-      includeUnmatched: formIncludeUnmatched.value,
-      cloud: toRaw(resolveCloudSettings()),
+      cloud: resolveCloudSettings(),
     })
 
-    showForm.value = false
-    formOutputId.value = ''
-    formFilterMode.value = 'all'
-    formIncludeUnmatched.value = false
-    formFilters.value = []
+    // Reload to immediately reflect listener ids/status without waiting for lifecycle events.
+    await listenerStore.loadStatus()
   } catch (err: any) {
-    formError.value = err?.message ?? 'Failed to start listener.'
+    errorNotification.value = err?.message ?? 'Failed to start listener.'
   } finally {
-    formStarting.value = false
+    setOutputStarting(outputId, false)
   }
 }
 
@@ -211,19 +225,22 @@ async function onStopListener(listenerId: string): Promise<void> {
 }
 
 async function onStopAllListeners(): Promise<void> {
-  for (const listener of sessionListeners.value) {
+  for (const listener of activeSessionListeners.value) {
+    if (listener.status === 'stopped' || listener.status === 'error') continue
     await listenerStore.stopListener(listener.listenerId)
   }
 }
 
 async function onStartAllListeners(): Promise<void> {
-  // Start all listeners for the current session that are not already running
-  for (const listener of sessionListeners.value) {
-    if (listener.status !== 'running' && listener.status !== 'starting') {
-      // We need to retrieve the config from somewhere - for now, just stop stopped ones
-      // In a real implementation, you'd store the config with the listener
-      await listenerStore.stopListener(listener.listenerId)
+  bulkStarting.value = true
+  try {
+    for (const listener of configuredListeners.value) {
+      if (listener.status !== 'running' && listener.status !== 'starting') {
+        await onStartListener(listener.outputId)
+      }
     }
+  } finally {
+    bulkStarting.value = false
   }
 }
 
@@ -304,16 +321,16 @@ function statusBadgeClass(status: string): string {
       </div>
       <div class="listener-panel__session-controls">
         <button
-          v-if="anyListenerRunning"
           class="listener-panel__btn listener-panel__btn--danger"
           title="Stop all listeners for this session"
+          :disabled="!anyListenerRunning"
           @click="onStopAllListeners"
         >⏹ Stop All</button>
         <button
-          v-else-if="sessionListeners.length > 0"
           class="listener-panel__btn listener-panel__btn--primary"
-          title="Resume all stopped listeners for this session"
-          disabled
+          title="Start all listeners for this session"
+          :disabled="allListenersRunning || configuredListeners.length === 0 || bulkStarting"
+          @click="onStartAllListeners"
         >▶ Start All</button>
       </div>
     </div>
@@ -326,206 +343,56 @@ function statusBadgeClass(status: string): string {
     <!-- Active listeners section -->
     <div v-if="sessionStore.selectedSessionId" class="listener-panel__section">
       <div class="listener-panel__section-header">
-        <span class="listener-panel__section-title">Listeners ({{ sessionListeners.length }})</span>
-        <button
-          class="listener-panel__btn listener-panel__btn--ghost"
-          data-testid="toggle-start-form"
-          @click="showForm = !showForm"
-        >{{ showForm ? '× Cancel' : '+ New Listener' }}</button>
+        <span class="listener-panel__section-title">Listeners ({{ configuredListeners.length }})</span>
       </div>
 
       <div
-        v-if="sessionListeners.length === 0"
+        v-if="configuredListeners.length === 0"
         class="listener-panel__empty"
         data-testid="listeners-empty"
       >
-        No active listeners.
+        No configured listener outputs.
       </div>
 
       <div
-        v-for="listener in sessionListeners"
-        :key="listener.listenerId"
+        v-for="listener in configuredListeners"
+        :key="listener.key"
         class="listener-panel__listener-row"
-        :class="{ 'listener-panel__listener-row--selected': selectedListenerId === listener.listenerId }"
-        :data-testid="`listener-row-${listener.listenerId}`"
-        @click="selectListener(listener.listenerId)"
+        :class="{ 'listener-panel__listener-row--selected': listener.listenerId && selectedListenerId === listener.listenerId }"
+        :data-testid="`listener-row-${listener.key}`"
+        @click="listener.listenerId ? selectListener(listener.listenerId) : null"
       >
         <span
           class="listener-panel__listener-output"
-          :data-testid="`listener-output-${listener.listenerId}`"
+          :data-testid="`listener-output-${listener.key}`"
         >{{ getOutputName(listener.outputId) }}</span>
         <span
           class="listener-panel__badge"
           :class="statusBadgeClass(listener.status)"
-          :data-testid="`listener-status-${listener.listenerId}`"
+          :data-testid="`listener-status-${listener.key}`"
         >{{ listener.status }}</span>
         <span
           class="listener-panel__events-count"
-          :data-testid="`listener-events-${listener.listenerId}`"
+          :data-testid="`listener-events-${listener.key}`"
         >{{ listener.eventsReceived }} events</span>
         <span v-if="listener.startedAt" class="listener-panel__start-time">
           {{ formatTimestamp(listener.startedAt) }}
         </span>
         <button
+          v-if="listener.listenerId && (listener.status === 'running' || listener.status === 'starting' || listener.status === 'stopping')"
           class="listener-panel__btn listener-panel__btn--danger"
-          :data-testid="`stop-btn-${listener.listenerId}`"
-          :disabled="listener.status === 'stopped' || listener.status === 'stopping' || listener.status === 'error'"
+          :data-testid="`stop-btn-${listener.key}`"
+          :disabled="listener.status === 'stopping'"
           @click.stop="onStopListener(listener.listenerId)"
         >Stop</button>
+        <button
+          v-else
+          class="listener-panel__btn listener-panel__btn--primary"
+          :data-testid="`start-btn-${listener.key}`"
+          :disabled="startingOutputIds.has(listener.outputId) || bulkStarting"
+          @click.stop="onStartListener(listener.outputId)"
+        >{{ startingOutputIds.has(listener.outputId) ? 'Starting…' : 'Start' }}</button>
       </div>
-    </div>
-
-    <!-- Start listener form -->
-    <div v-if="showForm && sessionStore.selectedSessionId" class="listener-panel__form" data-testid="start-form">
-      <div class="listener-panel__form-field">
-        <label class="listener-panel__label">Output</label>
-        <select
-          class="listener-panel__select"
-          :value="formOutputId"
-          data-testid="output-select"
-          @change="formOutputId = ($event.target as HTMLSelectElement).value"
-        >
-          <option value="" disabled>Select an output…</option>
-          <option v-for="output in outputs" :key="output.id" :value="output.id">
-            {{ output.name }} ({{ output.type }})
-          </option>
-        </select>
-      </div>
-
-      <!-- ...existing code... -->
-      <div class="listener-panel__form-field">
-        <div class="listener-panel__filters-header">
-          <span class="listener-panel__label">Filters</span>
-          <div class="listener-panel__filter-mode-group">
-            <button
-              class="listener-panel__mode-btn"
-              :class="{ 'listener-panel__mode-btn--active': formFilterMode === 'all' }"
-              data-testid="filter-mode-all"
-              @click="formFilterMode = 'all'"
-            >All</button>
-            <button
-              class="listener-panel__mode-btn"
-              :class="{ 'listener-panel__mode-btn--active': formFilterMode === 'any' }"
-              data-testid="filter-mode-any"
-              @click="formFilterMode = 'any'"
-            >Any</button>
-          </div>
-          <label class="listener-panel__toggle-label">
-            <input
-              type="checkbox"
-              :checked="formIncludeUnmatched"
-              data-testid="include-unmatched"
-              @change="formIncludeUnmatched = ($event.target as HTMLInputElement).checked"
-            />
-            Include unmatched
-          </label>
-          <button
-            class="listener-panel__btn listener-panel__btn--ghost"
-            data-testid="add-filter-btn"
-            @click="addFilter"
-          >+ Add Filter</button>
-        </div>
-
-        <div
-          v-for="(filter, idx) in formFilters"
-          :key="filter._id"
-          class="listener-panel__filter-row"
-          :data-testid="`filter-row-${idx}`"
-        >
-          <select
-            class="listener-panel__select listener-panel__select--small"
-            :value="filter.type"
-            :data-testid="`filter-type-${idx}`"
-            @change="setFilterType(idx, ($event.target as HTMLSelectElement).value as ListenerFilterType)"
-          >
-            <option value="jsonpath">JSONPath</option>
-            <option value="regex">Regex</option>
-          </select>
-
-          <!-- JSONPath filter fields -->
-          <template v-if="filter.type === 'jsonpath' && isJsonPathConfig(filter.config)">
-            <input
-              class="listener-panel__input"
-              placeholder="$.path"
-              :value="filter.config.path"
-              :data-testid="`filter-path-${idx}`"
-              @input="(filter.config as JsonPathFilterConfig).path = ($event.target as HTMLInputElement).value"
-            />
-            <select
-              class="listener-panel__select listener-panel__select--small"
-              :value="filter.config.operator"
-              :data-testid="`filter-operator-${idx}`"
-              @change="(filter.config as JsonPathFilterConfig).operator = ($event.target as HTMLSelectElement).value as any"
-            >
-              <option value="equals">equals</option>
-              <option value="notEquals">not equals</option>
-              <option value="contains">contains</option>
-              <option value="exists">exists</option>
-            </select>
-            <input
-              v-if="filter.config.operator !== 'exists'"
-              class="listener-panel__input"
-              placeholder="value"
-              :value="filter.config.value"
-              :data-testid="`filter-value-${idx}`"
-              @input="(filter.config as JsonPathFilterConfig).value = ($event.target as HTMLInputElement).value"
-            />
-          </template>
-
-          <!-- Regex filter fields -->
-          <template v-else-if="filter.type === 'regex' && isRegexConfig(filter.config)">
-            <input
-              class="listener-panel__input"
-              placeholder="pattern"
-              :value="filter.config.pattern"
-              :data-testid="`filter-pattern-${idx}`"
-              @input="(filter.config as RegexFilterConfig).pattern = ($event.target as HTMLInputElement).value"
-            />
-            <input
-              class="listener-panel__input listener-panel__input--small"
-              placeholder="flags (e.g. i)"
-              :value="filter.config.flags"
-              :data-testid="`filter-flags-${idx}`"
-              @input="(filter.config as RegexFilterConfig).flags = ($event.target as HTMLInputElement).value"
-            />
-            <input
-              class="listener-panel__input"
-              placeholder="target path (optional)"
-              :value="filter.config.targetPath"
-              :data-testid="`filter-target-${idx}`"
-              @input="(filter.config as RegexFilterConfig).targetPath = ($event.target as HTMLInputElement).value"
-            />
-          </template>
-
-          <label class="listener-panel__toggle-label listener-panel__toggle-label--sm">
-            <input
-              type="checkbox"
-              :checked="filter.enabled"
-              :data-testid="`filter-enabled-${idx}`"
-              @change="filter.enabled = ($event.target as HTMLInputElement).checked"
-            />
-            On
-          </label>
-          <button
-            class="listener-panel__btn listener-panel__btn--icon-danger"
-            :data-testid="`filter-delete-${idx}`"
-            @click="removeFilter(idx)"
-          >×</button>
-        </div>
-      </div>
-
-      <p
-        v-if="formError"
-        class="listener-panel__form-error"
-        data-testid="form-error"
-      >{{ formError }}</p>
-
-      <button
-        class="listener-panel__btn listener-panel__btn--primary"
-        :disabled="formStarting"
-        data-testid="start-btn"
-        @click="onStartListener"
-      >{{ formStarting ? 'Starting…' : 'Start Listener' }}</button>
     </div>
 
     <!-- Event stream for selected listener -->
