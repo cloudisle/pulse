@@ -9,6 +9,7 @@ function makeListenerConfig(overrides: Partial<ListenerConfig> = {}): ListenerCo
     systemId: 'sys-1',
     outputId: 'output-1',
     sessionId: 'session-1',
+    cloud: {},
     ...overrides
   }
 }
@@ -46,21 +47,17 @@ function makeEnvironment(overrides: Partial<Environment> = {}): Environment {
 }
 
 describe('ListenerManagerService', () => {
-  let create: ReturnType<typeof vi.fn>
+  let create: any
   let replaceVariablesInObjectSpy: ReturnType<typeof vi.spyOn>
-  let start: ReturnType<typeof vi.fn>
-  let stop: ReturnType<typeof vi.fn>
   let lifecycle: ListenerLifecycle
   let service: ListenerManagerService
+  let sentValueIndex: { hydrateFromSessionStorage: ReturnType<typeof vi.fn> }
 
   afterEach(() => {
     vi.restoreAllMocks()
   })
 
   beforeEach(() => {
-    start = vi.fn().mockResolvedValue(undefined)
-    stop = vi.fn().mockResolvedValue(undefined)
-
     let state: ListenerLifecycle['state'] = 'stopped'
     lifecycle = {
       listener: { id: 'listener-1', start: vi.fn(), stop: vi.fn() },
@@ -69,11 +66,9 @@ describe('ListenerManagerService', () => {
       },
       start: vi.fn(async () => {
         state = 'running'
-        await start()
       }),
       stop: vi.fn(async () => {
         state = 'stopped'
-        await stop()
       })
     }
 
@@ -82,7 +77,11 @@ describe('ListenerManagerService', () => {
       .spyOn(VariableReplacementService.prototype, 'replaceVariablesInObject')
       .mockImplementation((obj: unknown) => obj)
 
-    service = new ListenerManagerService({ create } as any)
+    sentValueIndex = {
+      hydrateFromSessionStorage: vi.fn().mockResolvedValue(undefined)
+    }
+
+    service = new ListenerManagerService({ create } as any, sentValueIndex as any)
   })
 
   it('resolves output variables and passes transformed config into lifecycle factory', async () => {
@@ -107,6 +106,56 @@ describe('ListenerManagerService', () => {
     })
   })
 
+  it('applies output listener defaults when start config omits filter settings', async () => {
+    const output = makeOutputConfig({
+      listenerDefaults: {
+        filterMode: 'any',
+        includeUnmatched: true,
+        filters: [
+          {
+            type: 'sessionCorrelation',
+            config: {
+              sentPath: '$.id',
+              receivedPath: '$.eventId',
+              includeHistoricalSent: true
+            }
+          }
+        ]
+      }
+    })
+
+    await service.startListener(makeListenerConfig(), output)
+
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({
+      listenerConfig: expect.objectContaining({
+        filterMode: 'any',
+        includeUnmatched: true,
+        filters: expect.any(Array)
+      })
+    }))
+  })
+
+  it('hydrates historical sent values when correlation filter requests it', async () => {
+    const output = makeOutputConfig({
+      listenerDefaults: {
+        filters: [
+          {
+            type: 'sessionCorrelation',
+            config: {
+              sentPath: '$.id',
+              receivedPath: '$.eventId',
+              includeHistoricalSent: true
+            }
+          }
+        ]
+      }
+    })
+
+    await service.startListener(makeListenerConfig(), output)
+
+    expect(sentValueIndex.hydrateFromSessionStorage).toHaveBeenCalledWith('sys-1', 'session-1')
+  })
+
   it('starts lifecycle asynchronously after create()', async () => {
     await service.startListener(makeListenerConfig(), makeOutputConfig())
     await new Promise((resolve) => setTimeout(resolve, 0))
@@ -117,12 +166,19 @@ describe('ListenerManagerService', () => {
   it('returns listenerId and current tracked status payload', async () => {
     const result = await service.startListener(makeListenerConfig(), makeOutputConfig())
 
-    expect(result).toEqual({ listenerId: 'listener-1', status: 'error' })
+    expect(result).toEqual({ listenerId: 'listener-1', status: 'starting' })
   })
 
-  it('returns empty status list because no listener entries are currently added', async () => {
+  it('tracks listeners in status list once started', async () => {
     await service.startListener(makeListenerConfig(), makeOutputConfig())
-    expect(service.getStatus()).toEqual([])
+    expect(service.getStatus()).toEqual([
+      expect.objectContaining({
+        listenerId: 'listener-1',
+        outputId: 'output-1',
+        sessionId: 'session-1',
+        status: expect.any(String),
+      })
+    ])
   })
 
   it('stopListener is a no-op for unknown ids', async () => {
@@ -130,7 +186,17 @@ describe('ListenerManagerService', () => {
     expect(lifecycle.stop).not.toHaveBeenCalled()
   })
 
-  it('stopAll resolves cleanly even with no tracked listeners', async () => {
+  it('stopListener stops a tracked listener', async () => {
+    await service.startListener(makeListenerConfig(), makeOutputConfig())
+    await service.stopListener('listener-1')
+
+    expect(lifecycle.stop).toHaveBeenCalledTimes(1)
+  })
+
+  it('stopAll stops all tracked listeners', async () => {
+    await service.startListener(makeListenerConfig(), makeOutputConfig())
+
     await expect(service.stopAll()).resolves.toBeUndefined()
+    expect(lifecycle.stop).toHaveBeenCalledTimes(1)
   })
 })

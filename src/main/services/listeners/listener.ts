@@ -85,6 +85,8 @@ export class DefaultMessageHandler implements MessageHandler {
             status: 'success',
         }
 
+        await App.api.sessions.addEvent(this.config.systemId, sessionId, sessionEvent);
+
         await App.channels.listeners.data.send({
             listenerId,
             sessionId,
@@ -128,8 +130,10 @@ export class DefaultListenerLifecycle implements ListenerLifecycle {
         try {
             await this.listener.start(this.handler);
         } catch (error: any) {
+            console.error("Error starting listener", error);
             await this.stop();
-            await this.setState('error');
+            await this.setState('error', error?.message ?? String(error));
+            return;
         }
 
         await this.setState('running');
@@ -147,7 +151,7 @@ export class DefaultListenerLifecycle implements ListenerLifecycle {
         return this._state;
     }
 
-    private async setState(s: ListenerLifecycleState) {
+    private async setState(s: ListenerLifecycleState, error?: string) {
         const sessionId = this.config.sessionId;
         const previousState = this._state;
 
@@ -157,11 +161,18 @@ export class DefaultListenerLifecycle implements ListenerLifecycle {
             sessionId,
             previousState,
             state: s,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            error
         });
 
         const level = s === 'error' ? 'error' : 'info';
-        await DefaultListenerLifecycle.log.log(level, `Listener ${this.listener.id} state changed to ${s}`, { sessionId });
+        let message = `Listener ${this.listener.id} state changed to ${s}`;
+
+        if (error) {
+            message += `: ${error}`;
+        }
+
+        await DefaultListenerLifecycle.log.log(level, message, { sessionId });
 
         this._state = s;
     }

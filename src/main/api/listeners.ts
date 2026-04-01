@@ -2,6 +2,7 @@ import { StorageService, StoragePaths } from '../services/storage'
 import { SettingsService } from '../services/settings.service'
 import { ListenerManagerService } from '../services/listeners/listener-manager.service'
 import type { ListenerConfig, ListenerStartResult, ListenerStatus, System } from '../../shared/models'
+import type { Environment } from '../../shared/models'
 import {app} from "electron";
 
 let quitting = false;
@@ -43,7 +44,15 @@ export class ListenersApi {
       throw new Error(`Output not found: ${config.outputId}`)
     }
 
-    return manager.startListener(config, outputConfig)
+    let environment: Environment | undefined
+    if (config.environmentId) {
+      const env = await this.storage.read<Environment>(
+        StoragePaths.environment(dataDir, config.systemId, config.environmentId)
+      )
+      if (env !== null) environment = env
+    }
+
+    return manager.startListener(config, outputConfig, environment)
   }
 
   async stop(listenerId: string): Promise<void> {

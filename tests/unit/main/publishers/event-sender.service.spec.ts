@@ -90,6 +90,7 @@ describe('EventSenderService', () => {
   let mockKinesisPublish: ReturnType<typeof vi.fn>
   let mockSqsPublish: ReturnType<typeof vi.fn>
   let mockEventBridgePublish: ReturnType<typeof vi.fn>
+  let sentValueIndex: any
 
   beforeEach(() => {
     mockKinesisPublish = vi.fn()
@@ -120,7 +121,11 @@ describe('EventSenderService', () => {
       })
     }
 
-    service = new EventSenderService(storage, settings, factory as any)
+    sentValueIndex = {
+      recordSentPayload: vi.fn()
+    }
+
+    service = new EventSenderService(storage, settings, factory as any, sentValueIndex)
   })
 
   describe('Kinesis', () => {

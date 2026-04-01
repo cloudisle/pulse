@@ -13,7 +13,10 @@ export const useUiStore = defineStore('ui', () => {
   const sidebarCollapsed = ref(false)
   const bottomPanelCollapsed = ref(false)
   const bottomPanelHeight = ref(200)
+  const rightSidebarCollapsed = ref(false)
+  const rightSidebarWidth = ref(300)
   const stackPreviewOpen = ref(false)
+  const selectedSessionId = ref<string | null>(null)
 
   function openTab(tab: Tab): void {
     const existing = openTabs.value.find((t) => t.id === tab.id)
@@ -48,6 +51,14 @@ export const useUiStore = defineStore('ui', () => {
     bottomPanelHeight.value = height
   }
 
+  function toggleRightSidebar(): void {
+    rightSidebarCollapsed.value = !rightSidebarCollapsed.value
+  }
+
+  function setRightSidebarWidth(width: number): void {
+    rightSidebarWidth.value = width
+  }
+
   function openStackPreview(): void {
     stackPreviewOpen.value = true
   }
@@ -56,20 +67,30 @@ export const useUiStore = defineStore('ui', () => {
     stackPreviewOpen.value = false
   }
 
+  function selectSession(id: string | null): void {
+    selectedSessionId.value = id
+  }
+
   return {
     openTabs,
     activeTabId,
     sidebarCollapsed,
     bottomPanelCollapsed,
     bottomPanelHeight,
+    rightSidebarCollapsed,
+    rightSidebarWidth,
     stackPreviewOpen,
+    selectedSessionId,
     openTab,
     closeTab,
     setActiveTab,
     toggleSidebar,
     toggleBottomPanel,
     setBottomPanelHeight,
+    toggleRightSidebar,
+    setRightSidebarWidth,
     openStackPreview,
-    closeStackPreview
+    closeStackPreview,
+    selectSession
   }
 })

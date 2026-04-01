@@ -21,8 +21,7 @@ const sectionExpanded = ref({
   environments: true,
   profiles: true,
   templates: true,
-  customTypes: true,
-  sessions: true
+  customTypes: true
 })
 
 interface CustomTypeItem {
@@ -133,12 +132,12 @@ function openSettingsTab(): void {
   uiStore.openTab({ id: 'settings', type: 'settings', title: 'Settings' })
 }
 
-function openEventSender(): void {
-  uiStore.openTab({ id: 'event-sender', type: 'event-sender', title: 'Send Event' })
+function openSessionsTab(): void {
+  uiStore.openTab({ id: 'sessions', type: 'sessions', title: 'Sessions' })
 }
 
-function openSessionTab(id: string, name: string): void {
-  uiStore.openTab({ id: `session:${id}`, type: 'session', title: name })
+function openEventSender(): void {
+  uiStore.openTab({ id: 'event-sender', type: 'event-sender', title: 'Send Event' })
 }
 
 function showContextMenu(
@@ -350,31 +349,6 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
         </ul>
       </section>
       
-      <!-- Sessions -->
-      <section class="sidebar__section">
-        <div class="sidebar__section-header">
-          <button
-            class="sidebar__section-toggle"
-            :aria-expanded="sectionExpanded.sessions"
-            @click="sectionExpanded.sessions = !sectionExpanded.sessions"
-          >
-            {{ sectionExpanded.sessions ? '▾' : '▸' }}
-          </button>
-          <h3 class="sidebar__section-title">Sessions</h3>
-        </div>
-        <ul v-if="sectionExpanded.sessions" class="sidebar__list" data-testid="sessions-list">
-          <li v-if="sessionStore.sessions.length === 0" class="sidebar__empty">No sessions</li>
-          <li
-            v-for="session in sessionStore.sessions"
-            :key="session.id"
-            class="sidebar__item"
-            :data-testid="`session-item-${session.id}`"
-            @click="openSessionTab(session.id, session.name ?? session.id)"
-          >
-            {{ session.name ?? session.id }}
-          </li>
-        </ul>
-      </section>
 
       <!-- Templates -->
       <section class="sidebar__section">
@@ -417,6 +391,14 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
 
     <!-- Settings button -->
     <div v-if="!uiStore.sidebarCollapsed" class="sidebar__footer">
+      <button
+        class="sidebar__settings-btn"
+        title="Open sessions"
+        data-testid="sessions-btn"
+        @click="openSessionsTab"
+      >
+        📋 Sessions
+      </button>
       <button
         class="sidebar__settings-btn"
         title="Open settings"

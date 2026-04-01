@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import TopBar from '@renderer/components/TopBar.vue'
 import { useEnvironmentStore } from '@renderer/stores/environment'
 import { useProfileStore } from '@renderer/stores/profile'
+import { useSessionStore } from '@renderer/stores/session.store'
 import { useUiStore } from '@renderer/stores/ui'
 
 describe('TopBar component', () => {
@@ -11,22 +12,55 @@ describe('TopBar component', () => {
     setActivePinia(createPinia())
   })
 
-  it('renders environment and profiles controls in the right section', async () => {
+  it('renders session, environment and profiles controls in the right section', async () => {
     const pinia = createPinia()
     const wrapper = mount(TopBar, { global: { plugins: [pinia] } })
     const environmentStore = useEnvironmentStore()
     const profileStore = useProfileStore()
+    const sessionStore = useSessionStore()
 
+    sessionStore.sessions = [{ id: 'sess-1', systemId: 'sys-1', name: 'Session One', createdAt: '', updatedAt: '' }]
     environmentStore.environments = [{ id: 'env-dev', name: 'Development' }]
     profileStore.setProfiles([{ id: 'profile-1', name: 'Default' }])
     await wrapper.vm.$nextTick()
 
     const rightSection = wrapper.find('.top-bar__right')
     expect(rightSection.exists()).toBe(true)
+    expect(rightSection.find('#session-select').exists()).toBe(true)
     expect(rightSection.find('#environment-select').exists()).toBe(true)
 
     const labels = rightSection.findAll('.top-bar__label').map((el) => el.text())
-    expect(labels).toEqual(['Environment', 'Profiles'])
+    expect(labels).toEqual(['Session', 'Environment', 'Profiles'])
+  })
+
+  it('updates selected session in both session and ui stores on dropdown change', async () => {
+    const pinia = createPinia()
+    const wrapper = mount(TopBar, { global: { plugins: [pinia] } })
+    const sessionStore = useSessionStore()
+    const uiStore = useUiStore()
+
+    sessionStore.sessions = [
+      { id: 'sess-1', systemId: 'sys-1', name: 'Session One', createdAt: '', updatedAt: '' },
+      { id: 'sess-2', systemId: 'sys-1', name: 'Session Two', createdAt: '', updatedAt: '' }
+    ]
+    await wrapper.vm.$nextTick()
+
+    await wrapper.find('#session-select').setValue('sess-2')
+    expect(sessionStore.selectedSessionId).toBe('sess-2')
+    expect(uiStore.selectedSessionId).toBe('sess-2')
+  })
+
+  it('shows the (none) option as the first option in the session dropdown', async () => {
+    const pinia = createPinia()
+    const wrapper = mount(TopBar, { global: { plugins: [pinia] } })
+    const sessionStore = useSessionStore()
+
+    sessionStore.sessions = [{ id: 'sess-1', systemId: 'sys-1', name: 'Session One', createdAt: '', updatedAt: '' }]
+    await wrapper.vm.$nextTick()
+
+    const options = wrapper.find('#session-select').findAll('option')
+    expect(options[0].element.value).toBe('')
+    expect(options[0].text()).toBe('(none)')
   })
 
   it('updates selected environment on dropdown change', async () => {

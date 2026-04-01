@@ -22,6 +22,7 @@ vi.mock('../../src/app', () => ({
     },
     api: {
       sessions: {
+        addEvent: vi.fn(),
         addLog: vi.fn()
       }
     }

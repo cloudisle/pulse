@@ -9,6 +9,7 @@ import type { SendEventInput, SendEventResult } from '../../../shared/models'
 import { PublisherFactory } from "./factory";
 import { PublishResult } from "./publisher";
 import {logger} from "../../util/log";
+import { SessionSentValueIndexService } from '../listeners/session-sent-value-index.service';
 
 const log = logger('event-sender.service');
 
@@ -20,6 +21,7 @@ export class EventSenderService {
     private readonly storage: StorageService,
     private readonly settings: SettingsService,
     private readonly factory: PublisherFactory,
+    private readonly sentValueIndex: SessionSentValueIndexService,
   ) {
     this.variables = new VariableReplacementService();
   }
@@ -82,6 +84,10 @@ export class EventSenderService {
       StoragePaths.sessionEvent(dataDir, systemId, input.sessionId, eventId),
       sessionEvent
     )
+
+    if (status === 'success') {
+      this.sentValueIndex.recordSentPayload(systemId, input.sessionId, input.event.payload)
+    }
 
     // 5. Return SendEventResult
     return {

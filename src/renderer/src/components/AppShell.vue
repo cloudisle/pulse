@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import TopBar from '@renderer/components/TopBar.vue'
 import Sidebar from '@renderer/components/Sidebar.vue'
+import RightSidebar from '@renderer/components/RightSidebar.vue'
 import TabBar from '@renderer/components/TabBar.vue'
 import TabContent from '@renderer/components/TabContent.vue'
 import BottomPanel from '@renderer/components/BottomPanel.vue'
@@ -20,6 +21,7 @@ const uiStore = useUiStore()
         <TabBar />
         <TabContent />
       </main>
+      <RightSidebar />
     </div>
     <BottomPanel />
     <StatusBar />

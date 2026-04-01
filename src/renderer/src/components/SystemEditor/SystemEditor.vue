@@ -3,6 +3,7 @@ import {ref, reactive, onMounted, computed, toRaw} from 'vue'
 import { useUiStore } from '@renderer/stores/ui'
 import { useSystemStore } from '@renderer/stores/system'
 import type { InputType, OutputType } from '../../../../shared/models/system'
+import type { ListenerFilterMode } from '../../../../shared/models/listener'
 
 const props = defineProps<{
   systemId?: string
@@ -29,6 +30,12 @@ interface OutputRow {
   type: OutputType
   config: Record<string, string>
   contentType: 'string' | 'json'
+  listenerDefaults: {
+    sentPath: string
+    receivedPath: string
+    filterMode: ListenerFilterMode
+    includeHistoricalSent: boolean
+  }
 }
 
 const inputs = reactive<InputRow[]>([])
@@ -81,7 +88,18 @@ function removeInput(index: number): void {
 
 function addOutput(): void {
   const type: OutputType = 'kinesis'
-  outputs.push({ name: '', type, config: defaultOutputConfig(type), contentType: 'json' })
+  outputs.push({
+    name: '',
+    type,
+    config: defaultOutputConfig(type),
+    contentType: 'json',
+    listenerDefaults: {
+      sentPath: '$.id',
+      receivedPath: '$.eventId',
+      filterMode: 'all',
+      includeHistoricalSent: true,
+    }
+  })
 }
 
 function removeOutput(index: number): void {
@@ -114,7 +132,14 @@ onMounted(async () => {
         config: Object.fromEntries(
           OUTPUT_CONFIG_FIELDS[out.type as OutputType].map((f: string) => [f, out.config[f] ?? ''])
         ),
-        contentType: out.contentType ?? 'json'
+        contentType: out.contentType ?? 'json',
+        listenerDefaults: {
+          sentPath: out.listenerDefaults?.filters?.find((f: any) => f.type === 'sessionCorrelation')?.config?.sentPath ?? '$.id',
+          receivedPath: out.listenerDefaults?.filters?.find((f: any) => f.type === 'sessionCorrelation')?.config?.receivedPath ?? '$.eventId',
+          filterMode: out.listenerDefaults?.filterMode ?? 'all',
+          includeHistoricalSent:
+            out.listenerDefaults?.filters?.find((f: any) => f.type === 'sessionCorrelation')?.config?.includeHistoricalSent !== false,
+        }
       }))
     )
   } catch {
@@ -147,7 +172,20 @@ async function save(): Promise<void> {
         name: row.name,
         type: row.type,
         config: toRaw(row.config),
-        contentType: row.contentType
+        contentType: row.contentType,
+        listenerDefaults: {
+          filterMode: row.listenerDefaults.filterMode,
+          filters: [
+            {
+              type: 'sessionCorrelation',
+              config: {
+                sentPath: row.listenerDefaults.sentPath,
+                receivedPath: row.listenerDefaults.receivedPath,
+                includeHistoricalSent: row.listenerDefaults.includeHistoricalSent,
+              }
+            }
+          ]
+        }
       }))
       await api.systems.update(props.systemId, {
         name: name.value.trim(),
@@ -169,7 +207,20 @@ async function save(): Promise<void> {
         name: row.name,
         type: row.type,
         config: toRaw(row.config),
-        contentType: row.contentType
+        contentType: row.contentType,
+        listenerDefaults: {
+          filterMode: row.listenerDefaults.filterMode,
+          filters: [
+            {
+              type: 'sessionCorrelation',
+              config: {
+                sentPath: row.listenerDefaults.sentPath,
+                receivedPath: row.listenerDefaults.receivedPath,
+                includeHistoricalSent: row.listenerDefaults.includeHistoricalSent,
+              }
+            }
+          ]
+        }
       }))
       await api.systems.create({
         name: name.value.trim(),
@@ -353,6 +404,27 @@ async function deleteSystem(): Promise<void> {
               :placeholder="`e.g. {{ ${field} }}`"
             />
           </div>
+        </div>
+        <div class="system-editor__listener-defaults">
+          <div class="system-editor__field system-editor__field--inline">
+            <label class="system-editor__label">Default Filter Mode</label>
+            <select v-model="row.listenerDefaults.filterMode" class="system-editor__select">
+              <option value="all">all</option>
+              <option value="any">any</option>
+            </select>
+          </div>
+          <div class="system-editor__field system-editor__field--inline">
+            <label class="system-editor__label">Sent Path</label>
+            <input v-model="row.listenerDefaults.sentPath" class="system-editor__input" type="text" placeholder="$.id" />
+          </div>
+          <div class="system-editor__field system-editor__field--inline">
+            <label class="system-editor__label">Received Path</label>
+            <input v-model="row.listenerDefaults.receivedPath" class="system-editor__input" type="text" placeholder="$.eventId" />
+          </div>
+          <label class="system-editor__toggle-label">
+            <input v-model="row.listenerDefaults.includeHistoricalSent" type="checkbox" />
+            Include sent events already in this session
+          </label>
         </div>
       </div>
       <p v-if="outputs.length === 0" class="system-editor__empty">No outputs configured.</p>
@@ -543,6 +615,23 @@ async function deleteSystem(): Promise<void> {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.system-editor__listener-defaults {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #313244;
+}
+
+.system-editor__toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #a6adc8;
+  font-size: 12px;
 }
 
 .system-editor__delete-btn {

@@ -20,6 +20,7 @@ import {EventSenderService} from "./main/services/publishers/event-sender.servic
 import {EventGenerationService} from "./main/services/event-generation.service";
 import {PublisherFactory} from "./main/services/publishers/factory";
 import {ListenerManagerService} from "./main/services/listeners/listener-manager.service";
+import { SessionSentValueIndexService } from './main/services/listeners/session-sent-value-index.service';
 
 const storage = new StorageService();
 const settings = new SettingsService(storage);
@@ -27,12 +28,13 @@ const generation = new EventGenerationService();
 
 const listenerFactory = new ListenerFactory();
 const converterFactory = new ConverterFactory();
-const filterFactory = new FilterFactory();
+const sentValueIndex = new SessionSentValueIndexService(storage, settings);
+const filterFactory = new FilterFactory(sentValueIndex);
 const publisherFactory = new PublisherFactory();
 const lifecycleFactory = new ListenerLifecycleFactory(listenerFactory, converterFactory, filterFactory);
 
-const events = new EventSenderService(storage, settings, publisherFactory);
-const manager = new ListenerManagerService(lifecycleFactory);
+const events = new EventSenderService(storage, settings, publisherFactory, sentValueIndex);
+const manager = new ListenerManagerService(lifecycleFactory, sentValueIndex);
 
 export default app({
     apis: {

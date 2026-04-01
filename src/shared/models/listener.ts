@@ -3,7 +3,7 @@ import type { CloudOperationSettings } from './aws'
 
 export type ListenerLifecycleState = 'starting' | 'running' | 'stopping' | 'stopped' | 'error';
 export type ListenerFilterMode = 'all' | 'any';
-export type ListenerFilterType = 'jsonpath' | 'regex';
+export type ListenerFilterType = 'jsonpath' | 'regex' | 'sessionCorrelation';
 export type ListenerStopReason = 'user-request' | 'session-ended' | 'app-shutdown' | 'fatal-error';
 
 export interface JsonPathFilterConfig {
@@ -18,17 +18,24 @@ export interface RegexFilterConfig {
   targetPath?: string; // optional JSONPath; if omitted the full payload is stringified
 }
 
+export interface SessionCorrelationFilterConfig {
+  sentPath: string; // JSONPath to extract from sent payload, e.g. "$.id"
+  receivedPath: string; // JSONPath to extract from received payload, e.g. "$.eventId"
+  includeHistoricalSent?: boolean; // when true, preload sent events already in this session
+}
+
 export interface ListenerFilter {
   id?: string;
   enabled?: boolean; // default: true
   type: ListenerFilterType;
-  config: JsonPathFilterConfig | RegexFilterConfig;
+  config: JsonPathFilterConfig | RegexFilterConfig | SessionCorrelationFilterConfig;
 }
 
 export interface ListenerConfig {
   systemId: string; // FK → System
   outputId: string; // FK → OutputConfig
   sessionId: string; // FK → Session (used for filter context)
+  environmentId?: string; // FK → Environment (used for variable replacement)
   cloud: CloudOperationSettings; // cloud-provider settings for this listener operation
   filters?: ListenerFilter[];
   filterMode?: ListenerFilterMode; // default: 'all'

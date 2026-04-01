@@ -2,10 +2,12 @@ import {
     JsonPathFilterConfig,
     ListenerConfig,
     ListenerFilter,
-    RegexFilterConfig
+    RegexFilterConfig,
+    SessionCorrelationFilterConfig
 } from "../../../shared/models";
 import {evaluateJsonPath} from "../../util/json";
 import {Message, MessageFilter} from "./listener";
+import { SessionSentValueIndexService } from './session-sent-value-index.service';
 
 export class JsonMessageFilter implements MessageFilter {
 
@@ -78,14 +80,42 @@ export class AggregateFilter implements MessageFilter {
 
 }
 
+export class SessionCorrelationMessageFilter implements MessageFilter {
+
+    constructor(
+        private readonly config: SessionCorrelationFilterConfig,
+        private readonly listenerConfig: ListenerConfig,
+        private readonly sentValueIndex: SessionSentValueIndexService
+    ) {}
+
+    matches(message: Message): boolean {
+        const receivedValue = evaluateJsonPath(message.data, this.config.receivedPath);
+        return this.sentValueIndex.hasSentValue(
+            this.listenerConfig.systemId,
+            this.listenerConfig.sessionId,
+            this.config.sentPath,
+            receivedValue
+        );
+    }
+
+}
+
 export class FilterFactory {
 
-    create(config: ListenerFilter): MessageFilter {
+    constructor(private readonly sentValueIndex: SessionSentValueIndexService) {}
+
+    create(config: ListenerFilter, listenerConfig: ListenerConfig): MessageFilter {
         switch (config.type) {
             case "jsonpath":
                 return new JsonMessageFilter(config.config as JsonPathFilterConfig);
             case "regex":
                 return new RegexMessageFilter(config.config as RegexFilterConfig);
+            case "sessionCorrelation":
+                return new SessionCorrelationMessageFilter(
+                    config.config as SessionCorrelationFilterConfig,
+                    listenerConfig,
+                    this.sentValueIndex
+                );
             default:
                 throw new Error("Unknown event type: " + config.type);
         }

@@ -62,7 +62,7 @@ export class ListenerLifecycleFactory {
     }
 
     private createAggregateFilter(config: ListenerConfig) {
-        const filters = (config.filters ?? []).map(f => this.filterFactory.create(f));
+        const filters = (config.filters ?? []).map(f => this.filterFactory.create(f, config));
 
         return new AggregateFilter(filters, config);
     }
