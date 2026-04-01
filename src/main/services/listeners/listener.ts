@@ -85,6 +85,8 @@ export class DefaultMessageHandler implements MessageHandler {
             status: 'success',
         }
 
+        await App.api.sessions.addEvent(this.config.systemId, sessionId, sessionEvent);
+
         await App.channels.listeners.data.send({
             listenerId,
             sessionId,
@@ -164,7 +166,13 @@ export class DefaultListenerLifecycle implements ListenerLifecycle {
         });
 
         const level = s === 'error' ? 'error' : 'info';
-        await DefaultListenerLifecycle.log.log(level, `Listener ${this.listener.id} state changed to ${s}`, { sessionId });
+        let message = `Listener ${this.listener.id} state changed to ${s}`;
+
+        if (error) {
+            message += `: ${error}`;
+        }
+
+        await DefaultListenerLifecycle.log.log(level, message, { sessionId });
 
         this._state = s;
     }

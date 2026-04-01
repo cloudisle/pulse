@@ -1,3 +1,5 @@
+import type { ListenerFilter, ListenerFilterMode } from './listener'
+
 export type ContentType = 'string' | 'json';
 export type InputType = 'kinesis' | 'sqs' | 'eventbridge';
 export type OutputType = 'kinesis' | 'sqs';
@@ -34,6 +36,11 @@ export interface OutputConfig {
   type: OutputType;
   config: KinesisConfig | SqsConfig;
   contentType: ContentType;
+  listenerDefaults?: {
+    filters?: ListenerFilter[];
+    filterMode?: ListenerFilterMode;
+    includeUnmatched?: boolean;
+  };
 }
 
 export interface System {

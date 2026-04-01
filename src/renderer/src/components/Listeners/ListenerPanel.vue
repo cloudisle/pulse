@@ -4,7 +4,7 @@ import { useListenerStore } from '@renderer/stores/listener.store'
 import { useSystemStore } from '@renderer/stores/system'
 import { useSessionStore } from '@renderer/stores/session.store'
 import { useEnvironmentStore } from '@renderer/stores/environment'
-import type { OutputConfig, ListenerLifecycleState, ListenerStatus } from '@shared/models'
+import type { OutputConfig, ListenerFilterMode, ListenerLifecycleState, ListenerStatus } from '../../../../shared/models'
 import { resolveCloudSettings } from '@renderer/util/cloud'
 
 const listenerStore = useListenerStore()
@@ -17,6 +17,13 @@ let unsubData: (() => void) | null = null
 let unsubError: (() => void) | null = null
 
 const outputs = ref<OutputConfig[]>([])
+const outputOverrides = ref<Record<string, {
+  sentPath: string
+  receivedPath: string
+  filterMode: ListenerFilterMode
+  includeHistoricalSent: boolean
+  includeUnmatched: boolean
+}>>({})
 const bulkStarting = ref(false)
 const startingOutputIds = ref<Set<string>>(new Set())
 
@@ -117,8 +124,27 @@ async function loadOutputs(): Promise<void> {
   try {
     const system = await api.systems.get(systemId)
     outputs.value = system.outputs ?? []
+    outputOverrides.value = Object.fromEntries(
+      outputs.value.map((output) => {
+        const correlation = (output.listenerDefaults?.filters ?? []).find((f) => f.type === 'sessionCorrelation')
+        const correlationConfig = correlation?.config as {
+          sentPath?: string
+          receivedPath?: string
+          includeHistoricalSent?: boolean
+        } | undefined
+
+        return [output.id, {
+          sentPath: correlationConfig?.sentPath ?? '$.id',
+          receivedPath: correlationConfig?.receivedPath ?? '$.eventId',
+          filterMode: output.listenerDefaults?.filterMode ?? 'all',
+          includeHistoricalSent: correlationConfig?.includeHistoricalSent !== false,
+          includeUnmatched: output.listenerDefaults?.includeUnmatched ?? false,
+        }]
+      })
+    )
   } catch {
     outputs.value = []
+    outputOverrides.value = {}
   }
 }
 
@@ -203,12 +229,32 @@ async function onStartListener(outputId: string): Promise<void> {
   setOutputStarting(outputId, true)
 
   try {
+    const override = outputOverrides.value[outputId] ?? {
+      sentPath: '$.id',
+      receivedPath: '$.eventId',
+      filterMode: 'all' as ListenerFilterMode,
+      includeHistoricalSent: true,
+      includeUnmatched: false,
+    }
+
     await listenerStore.startListener({
       systemId,
       outputId,
       sessionId: sessionStore.selectedSessionId,
       environmentId: environmentStore.selectedEnvironmentId ?? undefined,
       cloud: resolveCloudSettings(),
+      filterMode: override.filterMode,
+      includeUnmatched: override.includeUnmatched,
+      filters: [
+        {
+          type: 'sessionCorrelation',
+          config: {
+            sentPath: override.sentPath,
+            receivedPath: override.receivedPath,
+            includeHistoricalSent: override.includeHistoricalSent,
+          }
+        }
+      ]
     })
 
     // Reload to immediately reflect listener ids/status without waiting for lifecycle events.
@@ -392,6 +438,35 @@ function statusBadgeClass(status: string): string {
           :disabled="startingOutputIds.has(listener.outputId) || bulkStarting"
           @click.stop="onStartListener(listener.outputId)"
         >{{ startingOutputIds.has(listener.outputId) ? 'Starting…' : 'Start' }}</button>
+
+        <div class="listener-panel__overrides" @click.stop>
+          <select
+            v-model="outputOverrides[listener.outputId].filterMode"
+            class="listener-panel__select listener-panel__select--small"
+            :data-testid="`filter-mode-${listener.outputId}`"
+          >
+            <option value="all">all</option>
+            <option value="any">any</option>
+          </select>
+          <input
+            v-model="outputOverrides[listener.outputId].sentPath"
+            class="listener-panel__input"
+            :data-testid="`sent-path-${listener.outputId}`"
+            type="text"
+            placeholder="sent path ($.id)"
+          />
+          <input
+            v-model="outputOverrides[listener.outputId].receivedPath"
+            class="listener-panel__input"
+            :data-testid="`received-path-${listener.outputId}`"
+            type="text"
+            placeholder="received path ($.eventId)"
+          />
+          <label class="listener-panel__toggle-label listener-panel__toggle-label--sm">
+            <input v-model="outputOverrides[listener.outputId].includeHistoricalSent" type="checkbox" />
+            History
+          </label>
+        </div>
       </div>
     </div>
 
@@ -596,6 +671,15 @@ function statusBadgeClass(status: string): string {
   font-size: 11px;
   color: #585b70;
   flex-shrink: 0;
+}
+
+.listener-panel__overrides {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding-top: 4px;
+  border-top: 1px solid #313244;
 }
 
 /* Form */

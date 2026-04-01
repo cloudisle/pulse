@@ -47,21 +47,17 @@ function makeEnvironment(overrides: Partial<Environment> = {}): Environment {
 }
 
 describe('ListenerManagerService', () => {
-  let create: ReturnType<typeof vi.fn>
+  let create: any
   let replaceVariablesInObjectSpy: ReturnType<typeof vi.spyOn>
-  let start: ReturnType<typeof vi.fn>
-  let stop: ReturnType<typeof vi.fn>
   let lifecycle: ListenerLifecycle
   let service: ListenerManagerService
+  let sentValueIndex: { hydrateFromSessionStorage: ReturnType<typeof vi.fn> }
 
   afterEach(() => {
     vi.restoreAllMocks()
   })
 
   beforeEach(() => {
-    start = vi.fn().mockResolvedValue(undefined)
-    stop = vi.fn().mockResolvedValue(undefined)
-
     let state: ListenerLifecycle['state'] = 'stopped'
     lifecycle = {
       listener: { id: 'listener-1', start: vi.fn(), stop: vi.fn() },
@@ -70,11 +66,9 @@ describe('ListenerManagerService', () => {
       },
       start: vi.fn(async () => {
         state = 'running'
-        await start()
       }),
       stop: vi.fn(async () => {
         state = 'stopped'
-        await stop()
       })
     }
 
@@ -83,7 +77,11 @@ describe('ListenerManagerService', () => {
       .spyOn(VariableReplacementService.prototype, 'replaceVariablesInObject')
       .mockImplementation((obj: unknown) => obj)
 
-    service = new ListenerManagerService({ create } as any)
+    sentValueIndex = {
+      hydrateFromSessionStorage: vi.fn().mockResolvedValue(undefined)
+    }
+
+    service = new ListenerManagerService({ create } as any, sentValueIndex as any)
   })
 
   it('resolves output variables and passes transformed config into lifecycle factory', async () => {
@@ -106,6 +104,56 @@ describe('ListenerManagerService', () => {
         config: { streamName: 'resolved-stream', region: 'eu-west-1' }
       }
     })
+  })
+
+  it('applies output listener defaults when start config omits filter settings', async () => {
+    const output = makeOutputConfig({
+      listenerDefaults: {
+        filterMode: 'any',
+        includeUnmatched: true,
+        filters: [
+          {
+            type: 'sessionCorrelation',
+            config: {
+              sentPath: '$.id',
+              receivedPath: '$.eventId',
+              includeHistoricalSent: true
+            }
+          }
+        ]
+      }
+    })
+
+    await service.startListener(makeListenerConfig(), output)
+
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({
+      listenerConfig: expect.objectContaining({
+        filterMode: 'any',
+        includeUnmatched: true,
+        filters: expect.any(Array)
+      })
+    }))
+  })
+
+  it('hydrates historical sent values when correlation filter requests it', async () => {
+    const output = makeOutputConfig({
+      listenerDefaults: {
+        filters: [
+          {
+            type: 'sessionCorrelation',
+            config: {
+              sentPath: '$.id',
+              receivedPath: '$.eventId',
+              includeHistoricalSent: true
+            }
+          }
+        ]
+      }
+    })
+
+    await service.startListener(makeListenerConfig(), output)
+
+    expect(sentValueIndex.hydrateFromSessionStorage).toHaveBeenCalledWith('sys-1', 'session-1')
   })
 
   it('starts lifecycle asynchronously after create()', async () => {
