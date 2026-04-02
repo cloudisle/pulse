@@ -498,7 +498,17 @@ onBeforeUnmount(() => {
           data-testid="new-folder-btn"
           @click="openNewFolderDialog(selectedFolderId)"
         >
-          📁 New Folder
+          <svg class="tb__icon" viewBox="0 0 16 16" aria-hidden="true">
+            <path
+              d="M2.5 3.5H7L8.5 5H13.5V12.5H2.5V3.5Z"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+            />
+          </svg>
+          <span>New Folder</span>
         </button>
         <button
           class="tb__btn tb__btn--primary"
@@ -531,7 +541,16 @@ onBeforeUnmount(() => {
           @drop="onDrop($event, null)"
           @contextmenu.prevent="showContextMenu($event, 'folder', '', 'Root')"
         >
-          <span class="tb__tree-icon">📁</span>
+          <svg class="tb__icon tb__tree-icon" viewBox="0 0 16 16" aria-hidden="true">
+            <path
+              d="M2.5 3.5H7L8.5 5H13.5V12.5H2.5V3.5Z"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+            />
+          </svg>
           <span>Root</span>
         </div>
 
@@ -561,7 +580,16 @@ onBeforeUnmount(() => {
             {{ expandedFolders.has(item.id) ? '▾' : '▸' }}
           </button>
           <span v-else class="tb__tree-toggle tb__tree-toggle--spacer" />
-          <span class="tb__tree-icon">📁</span>
+          <svg class="tb__icon tb__tree-icon" viewBox="0 0 16 16" aria-hidden="true">
+            <path
+              d="M2.5 3.5H7L8.5 5H13.5V12.5H2.5V3.5Z"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+            />
+          </svg>
           <span class="tb__tree-label">{{ item.name }}</span>
         </div>
 
@@ -658,7 +686,17 @@ onBeforeUnmount(() => {
                 :disabled="generating"
                 @click="generatePreview"
               >
-                {{ generating ? 'Generating…' : '👁 Preview' }}
+                <svg v-if="!generating" class="tb__icon" viewBox="0 0 16 16" aria-hidden="true">
+                  <path
+                    d="M1.5 8C2.8 5.5 5.2 4 8 4C10.8 4 13.2 5.5 14.5 8C13.2 10.5 10.8 12 8 12C5.2 12 2.8 10.5 1.5 8Z"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                  />
+                  <circle cx="8" cy="8" r="2" fill="none" stroke="currentColor" stroke-width="1.5" />
+                </svg>
+                <span>{{ generating ? 'Generating…' : 'Preview' }}</span>
               </button>
               <button
                 class="tb__btn tb__btn--secondary"
@@ -673,7 +711,16 @@ onBeforeUnmount(() => {
                 :disabled="sending"
                 @click="quickSend"
               >
-                {{ sending ? 'Sending…' : '⚡ Send' }}
+                <svg v-if="!sending" class="tb__icon" viewBox="0 0 16 16" aria-hidden="true">
+                  <path
+                    d="M2 2.75L14 8L2 13.25L5.5 8L2 2.75Z"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                  />
+                </svg>
+                <span>{{ sending ? 'Sending…' : 'Send' }}</span>
               </button>
             </div>
           </div>
@@ -816,7 +863,17 @@ onBeforeUnmount(() => {
           data-testid="ctx-new-subfolder"
           @click="openNewFolderDialog(contextMenu.id)"
         >
-          📁 New Subfolder
+          <svg class="tb__icon" viewBox="0 0 16 16" aria-hidden="true">
+            <path
+              d="M2.5 3.5H7L8.5 5H13.5V12.5H2.5V3.5Z"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+            />
+          </svg>
+          <span>New Subfolder</span>
         </button>
         <button
           v-if="contextMenu.type === 'template'"
@@ -1010,8 +1067,8 @@ onBeforeUnmount(() => {
 }
 
 .tb__tree-icon {
-  font-size: 11px;
-  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
 }
 
 .tb__tree-label {
@@ -1333,6 +1390,10 @@ onBeforeUnmount(() => {
 /* ── Buttons ─────────────────────────────────────────────────────────────── */
 
 .tb__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   padding: 6px 14px;
   border-radius: 4px;
   font-size: 12px;
@@ -1390,6 +1451,12 @@ onBeforeUnmount(() => {
   background: #eb6f92;
   border-color: #eb6f92;
 }
+
+.tb__icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
 </style>
 
 <style>
@@ -1407,7 +1474,9 @@ onBeforeUnmount(() => {
 }
 
 .tb__context-item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   width: 100%;
   background: none;
   border: none;

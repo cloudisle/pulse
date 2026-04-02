@@ -247,7 +247,16 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
           data-testid="send-event-btn"
           @click="openEventSender"
         >
-          ⚡ Send Event
+          <svg class="sidebar__icon" viewBox="0 0 16 16" aria-hidden="true">
+            <path
+              d="M2 2.75L14 8L2 13.25L5.5 8L2 2.75Z"
+              fill="none"
+              stroke="currentColor"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+            />
+          </svg>
+          <span>Send Event</span>
         </button>
       </section>
 
@@ -374,7 +383,18 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
             {{ sectionExpanded.templates ? '▾' : '▸' }}
           </button>
           <h3 class="sidebar__section-title sidebar__section-title--clickable" @click="openTemplateBrowser">Templates</h3>
-          <button class="sidebar__add-btn" title="Browse templates" @click="openTemplateBrowser">⊞</button>
+          <button class="sidebar__add-btn" title="Browse templates" @click="openTemplateBrowser">
+            <svg class="sidebar__icon" viewBox="0 0 16 16" aria-hidden="true">
+              <path
+                d="M2.5 3.5H7L8.5 5H13.5V12.5H2.5V3.5Z"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+              />
+            </svg>
+          </button>
           <button class="sidebar__add-btn" title="Create template" @click="createTemplate">+</button>
         </div>
         <ul v-if="sectionExpanded.templates" class="sidebar__list">
@@ -395,7 +415,16 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
               item.type === 'template' && showContextMenu($event, 'template', item.id)
             "
           >
-            <span v-if="item.type === 'folder'" class="sidebar__folder-icon">📁</span>
+            <svg v-if="item.type === 'folder'" class="sidebar__icon sidebar__folder-icon" viewBox="0 0 16 16" aria-hidden="true">
+              <path
+                d="M2.5 3.5H7L8.5 5H13.5V12.5H2.5V3.5Z"
+                fill="none"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+              />
+            </svg>
             {{ item.name }}
           </li>
         </ul>
@@ -410,7 +439,23 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
         data-testid="sessions-btn"
         @click="openSessionsTab"
       >
-        📋 Sessions
+        <svg class="sidebar__icon" viewBox="0 0 16 16" aria-hidden="true">
+          <path
+            d="M4 2.5H12V13.5H4V2.5Z"
+            fill="none"
+            stroke="currentColor"
+            stroke-linejoin="round"
+            stroke-width="1.5"
+          />
+          <path
+            d="M6 5.5H10M6 8H10M6 10.5H9"
+            fill="none"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-width="1.5"
+          />
+        </svg>
+        <span>Sessions</span>
       </button>
       <button
         class="sidebar__settings-btn"
@@ -418,7 +463,22 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
         data-testid="settings-btn"
         @click="openSettingsTab"
       >
-        ⚙ Settings
+        <svg class="sidebar__icon" viewBox="0 0 16 16" aria-hidden="true">
+          <path
+            d="M8 5.5A2.5 2.5 0 1 1 8 10.5A2.5 2.5 0 0 1 8 5.5Z"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+          />
+          <path
+            d="M8 2.5V4M8 12V13.5M3.4 4.1L4.5 5.2M11.5 10.8L12.6 11.9M2.5 8H4M12 8H13.5M3.4 11.9L4.5 10.8M11.5 5.2L12.6 4.1"
+            fill="none"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-width="1.5"
+          />
+        </svg>
+        <span>Settings</span>
       </button>
     </div>
 
@@ -551,6 +611,12 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
   flex-shrink: 0;
 }
 
+.sidebar__icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
 .sidebar__add-btn:hover {
   background: #313244;
   color: #cdd6f4;
@@ -651,7 +717,8 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
 }
 
 .sidebar__folder-icon {
-  font-size: 11px;
+  width: 13px;
+  height: 13px;
 }
 
 .sidebar__section-title--clickable {
@@ -663,6 +730,9 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
 }
 
 .sidebar__send-event-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: #313244;
   border: 1px solid #45475a;
   color: #89b4fa;
@@ -688,6 +758,9 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
 }
 
 .sidebar__settings-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: none;
   border: none;
   color: #585b70;

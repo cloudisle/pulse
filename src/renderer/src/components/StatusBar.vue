@@ -134,6 +134,10 @@ onMounted(() => {
   animation: spin 1s linear infinite;
 }
 
+.status-bar__refresh-icon {
+  font-size: 12px;
+}
+
 .status-bar__validate-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
