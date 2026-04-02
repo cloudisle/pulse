@@ -15,6 +15,11 @@ describe('StatusBar component', () => {
     expect(wrapper.find('.status-bar__label').text()).toContain('AWS Profile')
   })
 
+  it('renders the refresh profiles button', () => {
+    const wrapper = mount(StatusBar, { global: { plugins: [createPinia()] } })
+    expect(wrapper.find('.status-bar__refresh-btn').exists()).toBe(true)
+  })
+
   it('populates AWS profile dropdown from store', async () => {
     const pinia = createPinia()
     const wrapper = mount(StatusBar, { global: { plugins: [pinia] } })
@@ -49,6 +54,28 @@ describe('StatusBar component', () => {
     await new Promise((r) => setTimeout(r, 0))
 
     expect(loadSpy).toHaveBeenCalledOnce()
+  })
+
+  it('calls loadProfiles on refresh button click', async () => {
+    const pinia = createPinia()
+    const wrapper = mount(StatusBar, { global: { plugins: [pinia] } })
+    const awsStore = useAwsStore()
+    const loadSpy = vi.spyOn(awsStore, 'loadProfiles').mockResolvedValue()
+
+    await wrapper.find('.status-bar__refresh-btn').trigger('click')
+    expect(loadSpy).toHaveBeenCalledOnce()
+  })
+
+  it('disables refresh button while profiles are loading', async () => {
+    const pinia = createPinia()
+    const wrapper = mount(StatusBar, { global: { plugins: [pinia] } })
+    const awsStore = useAwsStore()
+
+    awsStore.loadingProfiles = true
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('.status-bar__refresh-btn').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('.status-bar__refresh-icon--pending').exists()).toBe(true)
   })
 
   it('renders the validate button', () => {

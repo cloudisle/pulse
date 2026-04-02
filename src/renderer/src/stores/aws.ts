@@ -10,6 +10,7 @@ export interface CredentialValidationResult {
 export const useAwsStore = defineStore('aws', () => {
   const availableProfiles = ref<string[]>([])
   const selectedProfile = ref<string | null>(null)
+  const loadingProfiles = ref(false)
   const validating = ref(false)
   const validationResult = ref<CredentialValidationResult | null>(null)
 
@@ -25,8 +26,19 @@ export const useAwsStore = defineStore('aws', () => {
   async function loadProfiles(): Promise<void> {
     const api = (window as any).app?.api
     if (!api) return
-    const profiles: { name: string }[] = await api.aws.listProfiles()
-    availableProfiles.value = profiles.map((p) => p.name)
+    loadingProfiles.value = true
+    try {
+      const profiles: { name: string }[] = await api.aws.listProfiles()
+      const profileNames = profiles.map((p) => p.name)
+      availableProfiles.value = profileNames
+
+      if (selectedProfile.value && !profileNames.includes(selectedProfile.value)) {
+        selectedProfile.value = null
+        validationResult.value = null
+      }
+    } finally {
+      loadingProfiles.value = false
+    }
   }
 
   async function validateCredentials(profileName: string): Promise<void> {
@@ -45,6 +57,7 @@ export const useAwsStore = defineStore('aws', () => {
   return {
     availableProfiles,
     selectedProfile,
+    loadingProfiles,
     validating,
     validationResult,
     setProfiles,

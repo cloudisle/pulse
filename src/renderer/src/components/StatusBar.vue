@@ -14,6 +14,17 @@ onMounted(() => {
     <div class="status-bar__spacer" />
     <div class="status-bar__aws">
       <label class="status-bar__label" for="aws-profile-select">AWS Profile</label>
+      <button
+        class="status-bar__refresh-btn"
+        :disabled="awsStore.loadingProfiles"
+        :title="awsStore.loadingProfiles ? 'Refreshing profiles…' : 'Refresh profiles'"
+        @click="awsStore.loadProfiles()"
+      >
+        <span
+          class="status-bar__refresh-icon"
+          :class="{ 'status-bar__refresh-icon--pending': awsStore.loadingProfiles }"
+        >⟳</span>
+      </button>
       <select
         id="aws-profile-select"
         class="status-bar__select"
@@ -96,6 +107,31 @@ onMounted(() => {
   cursor: pointer;
   color: #a6adc8;
   line-height: 1;
+}
+
+.status-bar__refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  height: 16px;
+  background: transparent;
+  border: 1px solid #45475a;
+  border-radius: 3px;
+  font-size: 10px;
+  cursor: pointer;
+  color: #a6adc8;
+  line-height: 1;
+}
+
+.status-bar__refresh-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.status-bar__refresh-icon--pending {
+  color: #f9e2af;
+  animation: spin 1s linear infinite;
 }
 
 .status-bar__validate-btn:disabled {
