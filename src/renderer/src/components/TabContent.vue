@@ -17,6 +17,22 @@ const uiStore = useUiStore()
 
 const activeTab = computed(() => uiStore.openTabs.find((t) => t.id === uiStore.activeTabId))
 
+type ActiveView = {
+  component:
+    | typeof SystemEditor
+    | typeof SchemaEditor
+    | typeof EventSender
+    | typeof ProfileEditor
+    | typeof EnvironmentEditor
+    | typeof CustomTypeEditor
+    | typeof SessionView
+    | typeof SessionsView
+    | typeof SettingsView
+    | typeof TemplateBrowser
+    | typeof TemplateEditor
+  props: Record<string, unknown>
+}
+
 function systemIdFromTab(tabId: string): string | undefined {
   // tabId is "system:new" or "system:<uuid>"
   const part = tabId.replace(/^system:/, '')
@@ -57,52 +73,52 @@ function environmentIdFromTab(tabId: string): string | undefined {
   const part = tabId.replace(/^environment:/, '')
   return part === 'new' ? undefined : part
 }
+
+const activeView = computed<ActiveView | null>(() => {
+  const tab = activeTab.value
+  if (!tab) return null
+
+  switch (tab.type) {
+    case 'system':
+      return { component: SystemEditor, props: { systemId: systemIdFromTab(tab.id) } }
+    case 'schema':
+      return { component: SchemaEditor, props: { schemaId: schemaIdFromTab(tab.id) } }
+    case 'event-sender':
+      return { component: EventSender, props: {} }
+    case 'profile':
+      return { component: ProfileEditor, props: { profileId: profileIdFromTab(tab.id) } }
+    case 'environment':
+      return { component: EnvironmentEditor, props: { environmentId: environmentIdFromTab(tab.id) } }
+    case 'custom-type':
+      return { component: CustomTypeEditor, props: { customTypeId: customTypeIdFromTab(tab.id) } }
+    case 'session':
+      return { component: SessionView, props: { sessionId: sessionIdFromTab(tab.id) } }
+    case 'sessions':
+      return { component: SessionsView, props: {} }
+    case 'settings':
+      return { component: SettingsView, props: {} }
+    case 'template-browser':
+      return { component: TemplateBrowser, props: {} }
+    case 'template':
+      return { component: TemplateEditor, props: { templateId: templateIdFromTab(tab.id) } }
+    default:
+      return null
+  }
+})
 </script>
 
 <template>
   <div class="tab-content">
     <div v-if="activeTab" class="tab-content__view">
-      <SystemEditor
-        v-if="activeTab.type === 'system'"
-        :system-id="systemIdFromTab(activeTab.id)"
-      />
-      <SchemaEditor
-        v-else-if="activeTab.type === 'schema'"
-        :schema-id="schemaIdFromTab(activeTab.id)"
-      />
-      <EventSender
-        v-else-if="activeTab.type === 'event-sender'"
-      />
-      <ProfileEditor
-        v-else-if="activeTab.type === 'profile'"
-        :profile-id="profileIdFromTab(activeTab.id)"
-      />
-      <EnvironmentEditor
-        v-else-if="activeTab.type === 'environment'"
-        :environment-id="environmentIdFromTab(activeTab.id)"
-      />
-      <CustomTypeEditor
-        v-else-if="activeTab.type === 'custom-type'"
-        :custom-type-id="customTypeIdFromTab(activeTab.id)"
-      />
-      <SessionView
-        v-else-if="activeTab.type === 'session'"
-        :session-id="sessionIdFromTab(activeTab.id)"
-      />
-      <SessionsView
-        v-else-if="activeTab.type === 'sessions'"
-      />
-      <SettingsView
-        v-else-if="activeTab.type === 'settings'"
-      />
-      <TemplateBrowser
-        v-else-if="activeTab.type === 'template-browser'"
-      />
-      <TemplateEditor
-        v-else-if="activeTab.type === 'template'"
-        :template-id="templateIdFromTab(activeTab.id)"
-      />
-      <p v-else class="tab-content__placeholder">{{ activeTab.title }} ({{ activeTab.type }})</p>
+      <KeepAlive>
+        <component
+          :is="activeView?.component"
+          v-if="activeView"
+          :key="activeTab.id"
+          v-bind="activeView.props"
+        />
+      </KeepAlive>
+      <p v-if="!activeView" class="tab-content__placeholder">{{ activeTab.title }} ({{ activeTab.type }})</p>
     </div>
     <div v-else class="tab-content__empty">
       <p>Select an item from the sidebar to open it here.</p>
