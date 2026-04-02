@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import TopBar from '@renderer/components/TopBar.vue'
 import Sidebar from '@renderer/components/Sidebar.vue'
 import RightSidebar from '@renderer/components/RightSidebar.vue'
@@ -8,8 +9,13 @@ import BottomPanel from '@renderer/components/BottomPanel.vue'
 import StatusBar from '@renderer/components/StatusBar.vue'
 import ProfileStackPreview from '@renderer/components/ProfileEditor/ProfileStackPreview.vue'
 import { useUiStore } from '@renderer/stores/ui'
+import { initializeStatePersistence } from '@renderer/stores/state-persistence'
 
 const uiStore = useUiStore()
+
+onMounted(async () => {
+  await initializeStatePersistence()
+})
 </script>
 
 <template>

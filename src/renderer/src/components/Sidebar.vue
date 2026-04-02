@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
 import { useUiStore } from '@renderer/stores/ui'
 import { useSystemStore } from '@renderer/stores/system'
 import { useSchemaStore } from '@renderer/stores/schema.store'
@@ -48,8 +48,21 @@ const contextMenu = ref<ContextMenuState>({
 })
 
 onMounted(async () => {
-  await systemStore.loadSystems()
+  if (systemStore.systems.length === 0) {
+    await systemStore.loadSystems()
+  }
 })
+
+watch(
+  () => systemStore.selectedSystemId,
+  async (systemId) => {
+    if (!systemId) {
+      customTypes.value = []
+      return
+    }
+    await loadCustomTypes(systemId)
+  }
+)
 
 async function onSystemChange(event: Event): Promise<void> {
   const id = (event.target as HTMLSelectElement).value
