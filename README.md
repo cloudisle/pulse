@@ -96,7 +96,7 @@ This project contains comprehensive testing, including unit tests, component tes
 
 This project uses vitest for unit tests and ui tests, and uses playwright for end-to-end tests.
 
-### Tech Notes
+### Tech Notes 
 
 - Schemas are stored as json and follow the OpenAPI spec. For now, Schema versioning is not supported. Events generated are validated, but schema validation only produces warnings, as some events are sent malformed on purpose (i.e. negative testing scenarios)
 - Profiles are stacked, applied in order, and use last write wins. It will be the users responsibility to ensure that the profiles don't conflict in an unintentional way.
