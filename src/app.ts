@@ -36,6 +36,7 @@ const lifecycleFactory = new ListenerLifecycleFactory(listenerFactory, converter
 const events = new EventSenderService(storage, settings, publisherFactory, sentValueIndex);
 const manager = new ListenerManagerService(lifecycleFactory, sentValueIndex);
 
+export { settings, manager }
 export default app({
     apis: {
         app: api(new AppApi(settings)),
