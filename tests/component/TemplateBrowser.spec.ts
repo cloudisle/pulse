@@ -586,4 +586,178 @@ describe('TemplateBrowser component', () => {
 
     expect(moveMock).toHaveBeenCalledWith('sys-1', 'tmpl-1', 'folder-1')
   })
+
+  // ─── Quick-send argument verification ────────────────────────────────────────
+
+  it('quick-send passes only non-omitted field values as overrides to generate', async () => {
+    const { pinia } = setupStores()
+    const generateMock = vi.fn().mockResolvedValue({
+      schemaId: 'sch-1',
+      payload: { orderId: '123', status: 'confirmed' },
+      appliedProfiles: ['prof-1'],
+      warnings: []
+    })
+    const sendMock = vi.fn().mockResolvedValue({ success: true, sessionEventId: 'evt-1' })
+    mockAppApi({ events: { generate: generateMock, send: sendMock } })
+    const { wrapper } = mountBrowser(pinia)
+    const templateStore = useTemplateStore()
+    templateStore.templates = [{ id: 'tmpl-1', name: 'Order Template', folderId: null }]
+    await wrapper.vm.$nextTick()
+    await wrapper.find('[data-testid="template-item-tmpl-1"]').trigger('click')
+    await flushPromises()
+
+    await wrapper.find('[data-testid="send-btn"]').trigger('click')
+    await flushPromises()
+
+    // mockTemplate has: orderId preset ('123', omitted:false), status omitted (omitted:true)
+    expect(generateMock).toHaveBeenCalledWith(
+      'sys-1',
+      expect.objectContaining({
+        schemaId: 'sch-1',
+        profileIds: ['prof-1'],
+        overrides: { 'payload.orderId': '123' } // only the non-omitted field
+      })
+    )
+    // Omitted field 'payload.status' must NOT be in overrides
+    const callArg = generateMock.mock.calls[0][1]
+    expect(callArg.overrides).not.toHaveProperty('payload.status')
+  })
+
+  it('quick-send passes the correct inputId (template destination) to send', async () => {
+    const { pinia } = setupStores()
+    const generateMock = vi.fn().mockResolvedValue({
+      schemaId: 'sch-1',
+      payload: { orderId: '123' },
+      appliedProfiles: [],
+      warnings: []
+    })
+    const sendMock = vi.fn().mockResolvedValue({ success: true, sessionEventId: 'evt-1' })
+    mockAppApi({ events: { generate: generateMock, send: sendMock } })
+    const { wrapper } = mountBrowser(pinia)
+    const templateStore = useTemplateStore()
+    templateStore.templates = [{ id: 'tmpl-1', name: 'Order Template', folderId: null }]
+    await wrapper.vm.$nextTick()
+    await wrapper.find('[data-testid="template-item-tmpl-1"]').trigger('click')
+    await flushPromises()
+
+    await wrapper.find('[data-testid="send-btn"]').trigger('click')
+    await flushPromises()
+
+    // mockTemplate.inputId is 'inp-1'
+    expect(sendMock).toHaveBeenCalledWith(
+      'sys-1',
+      expect.objectContaining({ inputId: 'inp-1' })
+    )
+  })
+
+  it('quick-send passes the active sessionId to send', async () => {
+    const { pinia } = setupStores()
+    const generateMock = vi.fn().mockResolvedValue({
+      schemaId: 'sch-1',
+      payload: { orderId: '123' },
+      appliedProfiles: [],
+      warnings: []
+    })
+    const sendMock = vi.fn().mockResolvedValue({ success: true, sessionEventId: 'evt-1' })
+    mockAppApi({ events: { generate: generateMock, send: sendMock } })
+    const { wrapper } = mountBrowser(pinia)
+    const templateStore = useTemplateStore()
+    templateStore.templates = [{ id: 'tmpl-1', name: 'Order Template', folderId: null }]
+    await wrapper.vm.$nextTick()
+    await wrapper.find('[data-testid="template-item-tmpl-1"]').trigger('click')
+    await flushPromises()
+
+    await wrapper.find('[data-testid="send-btn"]').trigger('click')
+    await flushPromises()
+
+    // setupStores sets selectedSessionId = 'sess-1'
+    expect(sendMock).toHaveBeenCalledWith(
+      'sys-1',
+      expect.objectContaining({ sessionId: 'sess-1' })
+    )
+  })
+
+  it('generate preview passes only non-omitted field values as overrides to generate', async () => {
+    const { pinia } = setupStores()
+    const generateMock = vi.fn().mockResolvedValue({
+      schemaId: 'sch-1',
+      payload: { orderId: '123' },
+      appliedProfiles: [],
+      warnings: []
+    })
+    const sendMock = vi.fn()
+    mockAppApi({ events: { generate: generateMock, send: sendMock } })
+    const { wrapper } = mountBrowser(pinia)
+    const templateStore = useTemplateStore()
+    templateStore.templates = [{ id: 'tmpl-1', name: 'Order Template', folderId: null }]
+    await wrapper.vm.$nextTick()
+    await wrapper.find('[data-testid="template-item-tmpl-1"]').trigger('click')
+    await flushPromises()
+
+    await wrapper.find('[data-testid="preview-btn"]').trigger('click')
+    await flushPromises()
+
+    // Only the non-omitted field appears in overrides
+    const callArg = generateMock.mock.calls[0][1]
+    expect(callArg.overrides).toHaveProperty('payload.orderId', '123')
+    expect(callArg.overrides).not.toHaveProperty('payload.status')
+    expect(sendMock).not.toHaveBeenCalled()
+  })
+
+  it('generate preview shows the correct payload JSON in the preview panel', async () => {
+    const { pinia } = setupStores()
+    const generateMock = vi.fn().mockResolvedValue({
+      schemaId: 'sch-1',
+      payload: { orderId: '123', status: 'confirmed' },
+      appliedProfiles: [],
+      warnings: []
+    })
+    mockAppApi({ events: { generate: generateMock } })
+    const { wrapper } = mountBrowser(pinia)
+    const templateStore = useTemplateStore()
+    templateStore.templates = [{ id: 'tmpl-1', name: 'Order Template', folderId: null }]
+    await wrapper.vm.$nextTick()
+    await wrapper.find('[data-testid="template-item-tmpl-1"]').trigger('click')
+    await flushPromises()
+
+    await wrapper.find('[data-testid="preview-btn"]').trigger('click')
+    await flushPromises()
+
+    const previewEl = wrapper.find('[data-testid="preview-json"]')
+    expect(previewEl.exists()).toBe(true)
+    const parsed = JSON.parse(previewEl.text())
+    expect(parsed.orderId).toBe('123')
+    expect(parsed.status).toBe('confirmed')
+  })
+
+  it('generate preview without a session shows an error instead of the payload', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const systemStore = useSystemStore()
+    systemStore.selectedSystemId = 'sys-1'
+    const schemaStore = useSchemaStore()
+    schemaStore.schemas = [{ id: 'sch-1', name: 'Order Schema' }]
+    // No session selected
+    const sessionStore = useSessionStore()
+    sessionStore.selectedSessionId = null
+
+    const generateMock = vi.fn()
+    mockAppApi({ events: { generate: generateMock } })
+    const { wrapper } = mountBrowser(pinia)
+    const templateStore = useTemplateStore()
+    templateStore.templates = [{ id: 'tmpl-1', name: 'Order Template', folderId: null }]
+    await wrapper.vm.$nextTick()
+    await wrapper.find('[data-testid="template-item-tmpl-1"]').trigger('click')
+    await flushPromises()
+
+    await wrapper.find('[data-testid="preview-btn"]').trigger('click')
+    await flushPromises()
+
+    // generate should not be called (guard returns early)
+    expect(generateMock).not.toHaveBeenCalled()
+    // An error result is shown
+    const result = wrapper.find('[data-testid="send-result"]')
+    expect(result.exists()).toBe(true)
+    expect(result.classes()).toContain('tb__send-result--failure')
+  })
 })
