@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import SessionView from '@renderer/components/SessionView/SessionView.vue'
 import { useSessionStore } from '@renderer/stores/session.store'
 import { useSystemStore } from '@renderer/stores/system'
+import { useUiStore } from '@renderer/stores/ui'
 import {SessionDetail, SessionEvent} from "../../src/shared/models";
 
 const SESSION_ID = 'sess-1'
@@ -18,6 +19,11 @@ function makeSentEvent(overrides: Partial<SessionEvent> = {}): SessionEvent {
     schemaId: 'sch-1',
     inputId: 'inp-1',
     profileIds: ['prof-1'],
+    resources: {
+      'sch-1': 'OrderCreated',
+      'inp-1': 'Primary Input',
+      'prof-1': 'Default Profile'
+    },
     payload: JSON.stringify({ key: 'value' }),
     status: 'success',
     ...overrides
@@ -32,6 +38,10 @@ function makeReceivedEvent(overrides: Partial<SessionEvent> = {}): SessionEvent 
     timestamp: '2026-01-01T10:00:05.000Z',
     outputId: 'out-1',
     listenerId: 'lsnr-1',
+    resources: {
+      'out-1': 'Order Stream',
+      'lsnr-1': 'Order Stream Listener'
+    },
     payload: JSON.stringify({ response: 'ok' }),
     status: 'success',
     ...overrides
@@ -56,6 +66,7 @@ function mockAppApi(overrides: Record<string, any> = {}) {
       sessions: {
         get: vi.fn().mockResolvedValue(makeSession()),
         list: vi.fn().mockResolvedValue([]),
+        rename: vi.fn().mockResolvedValue(makeSession()),
         ...overrides.sessions
       },
       ...overrides
@@ -109,6 +120,53 @@ describe('SessionView component', () => {
   it('renders the refresh button', () => {
     const { wrapper } = mountComponent()
     expect(wrapper.find('[data-testid="refresh-btn"]').exists()).toBe(true)
+  })
+
+  it('renames the session from the title edit icon using popup modal', async () => {
+    const renamedSession = {
+      ...makeSession(),
+      name: 'Renamed Session',
+      updatedAt: '2026-01-01T10:10:10.000Z'
+    }
+    const renameMock = vi.fn().mockResolvedValue(renamedSession)
+    mockAppApi({
+      sessions: {
+        get: vi.fn().mockResolvedValue(makeSession()),
+        list: vi.fn().mockResolvedValue([]),
+        rename: renameMock
+      }
+    })
+
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const systemStore = useSystemStore()
+    const sessionStore = useSessionStore()
+    const uiStore = useUiStore()
+    systemStore.selectedSystemId = SYSTEM_ID
+    sessionStore.activeSession = makeSession()
+    uiStore.openTab({ id: `session:${SESSION_ID}`, type: 'session', title: 'Test Session' })
+
+    const { wrapper } = mountComponent(pinia)
+    await wrapper.vm.$nextTick()
+
+    await wrapper.find('[data-testid="rename-session-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(document.body.querySelector('[data-testid="rename-session-modal"]')).not.toBeNull()
+
+    const input = document.body.querySelector('[data-testid="session-rename-input"]') as HTMLInputElement
+    expect(input).toBeTruthy()
+    input.value = 'Renamed Session'
+    input.dispatchEvent(new Event('input'))
+
+    const saveButton = document.body.querySelector('[data-testid="session-rename-save"]') as HTMLButtonElement
+    expect(saveButton).toBeTruthy()
+    saveButton.click()
+    await flushPromises()
+
+    expect(renameMock).toHaveBeenCalledWith(SYSTEM_ID, SESSION_ID, 'Renamed Session')
+    expect(uiStore.openTabs.find((t) => t.id === `session:${SESSION_ID}`)?.title).toBe('Renamed Session')
+    expect(document.body.querySelector('[data-testid="rename-session-modal"]')).toBeNull()
   })
 
   // ─── Data loading ───────────────────────────────────────────────────────────
@@ -202,7 +260,7 @@ describe('SessionView component', () => {
     expect(wrapper.find('[data-testid="status-badge-evt-rcv-1"]').text()).toBe('failed')
   })
 
-  it('shows schema id, input id and profile ids for sent events', async () => {
+  it('shows schema, input and profile names for sent events', async () => {
     const pinia = createPinia()
     const { wrapper } = mountComponent(pinia)
     const sessionStore = useSessionStore()
@@ -210,12 +268,12 @@ describe('SessionView component', () => {
 
     await wrapper.vm.$nextTick()
     const info = wrapper.find('[data-testid="event-info-evt-sent-1"]').text()
-    expect(info).toContain('sch-1')
-    expect(info).toContain('inp-1')
-    expect(info).toContain('prof-1')
+    expect(info).toContain('OrderCreated')
+    expect(info).toContain('Primary Input')
+    expect(info).toContain('Default Profile')
   })
 
-  it('shows output id and listener id for received events', async () => {
+  it('shows output and listener names for received events', async () => {
     const pinia = createPinia()
     const { wrapper } = mountComponent(pinia)
     const sessionStore = useSessionStore()
@@ -223,8 +281,8 @@ describe('SessionView component', () => {
 
     await wrapper.vm.$nextTick()
     const info = wrapper.find('[data-testid="event-info-evt-rcv-1"]').text()
-    expect(info).toContain('out-1')
-    expect(info).toContain('lsnr-1')
+    expect(info).toContain('Order Stream')
+    expect(info).toContain('Order Stream Listener')
   })
 
   it('shows error message in red for failed events', async () => {

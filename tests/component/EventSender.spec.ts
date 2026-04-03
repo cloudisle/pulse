@@ -8,6 +8,7 @@ import { useSchemaStore } from '@renderer/stores/schema.store'
 import { useProfileStore } from '@renderer/stores/profile'
 import { useEnvironmentStore } from '@renderer/stores/environment'
 import { useAwsStore } from '@renderer/stores/aws'
+import { useSessionStore } from '@renderer/stores/session.store'
 
 function mockAppApi(overrides: Record<string, any> = {}) {
   ;(window as any).app = {
@@ -68,25 +69,21 @@ describe('EventSender component', () => {
     expect(wrapper.find('[data-testid="preview-editor"]').exists()).toBe(true)
   })
 
-  it('renders session selector and New Session button', () => {
+  it('does not render a session selector (uses top bar selection)', () => {
     const { wrapper } = mountComponent()
-    expect(wrapper.find('[data-testid="session-select"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="new-session-btn"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="session-select"]').exists()).toBe(false)
   })
 
   // ─── Session management ────────────────────────────────────────────────────
 
-  it('loads sessions and inputs on mount when system is selected', async () => {
-    const listMock = vi.fn().mockResolvedValue([
-      { id: 'sess-1', systemId: 'sys-1', name: 'Session 1', createdAt: '', updatedAt: '' }
-    ])
+  it('loads inputs on mount when system is selected', async () => {
     const getMock = vi.fn().mockResolvedValue({
       id: 'sys-1',
       name: 'Test',
       inputs: [{ id: 'inp-1', name: 'Kinesis Stream', type: 'kinesis', config: {} }],
       outputs: []
     })
-    mockAppApi({ sessions: { list: listMock }, systems: { get: getMock } })
+    mockAppApi({ systems: { get: getMock } })
 
     const pinia = createPinia()
     mountComponent(pinia)
@@ -95,31 +92,7 @@ describe('EventSender component', () => {
     await flushPromises()
 
     const store = useEventSenderStore()
-    expect(store.sessions.length).toBeGreaterThanOrEqual(0) // loaded on system change
-  })
-
-  it('creates a new session when "New Session" is clicked', async () => {
-    const createMock = vi.fn().mockResolvedValue({
-      id: 'sess-new',
-      systemId: 'sys-1',
-      name: 'Session 12:00:00',
-      createdAt: '',
-      updatedAt: ''
-    })
-    mockAppApi({ sessions: { list: vi.fn().mockResolvedValue([]), create: createMock } })
-
-    const pinia = createPinia()
-    const { wrapper } = mountComponent(pinia)
-    const systemStore = useSystemStore()
-    systemStore.selectedSystemId = 'sys-1'
-    await wrapper.vm.$nextTick()
-
-    await wrapper.find('[data-testid="new-session-btn"]').trigger('click')
-    await flushPromises()
-
-    expect(createMock).toHaveBeenCalledWith("sys-1")
-    const store = useEventSenderStore()
-    expect(store.selectedSessionId).toBe('sess-new')
+    expect(store.inputs.length).toBeGreaterThanOrEqual(0)
   })
 
   // ─── Schema and input selectors ────────────────────────────────────────────
@@ -371,7 +344,9 @@ describe('EventSender component', () => {
     systemStore.selectedSystemId = 'sys-1'
     store.generatedEvent = { schemaId: 'sch-1', payload: {}, appliedProfiles: [], warnings: [] }
     store.previewJson = '{}'
-    store.selectedSessionId = 'sess-1'
+    const sessionStore = useSessionStore()
+    await flushPromises()
+    sessionStore.selectedSessionId = 'sess-1'
     await wrapper.vm.$nextTick()
 
     await wrapper.find('[data-testid="send-btn"]').trigger('click')
@@ -397,7 +372,7 @@ describe('EventSender component', () => {
     await flushPromises()
 
     expect(wrapper.find('[data-testid="error-message"]').text()).toContain(
-      'Select or create a session first'
+      'Select a session first'
     )
   })
 
@@ -413,7 +388,9 @@ describe('EventSender component', () => {
     store.generatedEvent = { schemaId: 'sch-1', payload: { id: '1' }, appliedProfiles: [], warnings: [] }
     store.previewJson = JSON.stringify({ id: '1' }, null, 2)
     store.selectedInputId = 'inp-1'
-    store.selectedSessionId = 'sess-1'
+    const sessionStore = useSessionStore()
+    await flushPromises()
+    sessionStore.selectedSessionId = 'sess-1'
     const awsStore = useAwsStore()
     awsStore.selectedProfile = 'default'
     await wrapper.vm.$nextTick()
@@ -444,7 +421,9 @@ describe('EventSender component', () => {
     store.generatedEvent = { schemaId: 'sch-1', payload: {}, appliedProfiles: [], warnings: [] }
     store.previewJson = '{}'
     store.selectedInputId = 'inp-1'
-    store.selectedSessionId = 'sess-1'
+    const sessionStore = useSessionStore()
+    await flushPromises()
+    sessionStore.selectedSessionId = 'sess-1'
     await wrapper.vm.$nextTick()
 
     await wrapper.find('[data-testid="send-btn"]').trigger('click')
@@ -486,10 +465,12 @@ describe('EventSender component', () => {
     const { wrapper } = mountComponent(pinia)
     const store = useEventSenderStore()
     const systemStore = useSystemStore()
+    const sessionStore = useSessionStore()
     systemStore.selectedSystemId = 'sys-1'
     store.selectedSchemaId = 'sch-1'
     store.selectedInputId = 'inp-1'
-    store.selectedSessionId = 'sess-1'
+    await flushPromises()
+    sessionStore.selectedSessionId = 'sess-1'
     await wrapper.vm.$nextTick()
 
     // Step 1: Generate

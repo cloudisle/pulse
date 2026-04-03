@@ -1,14 +1,16 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { DOMWrapper, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import TopBar from '@renderer/components/TopBar.vue'
 import { useEnvironmentStore } from '@renderer/stores/environment'
 import { useProfileStore } from '@renderer/stores/profile'
 import { useSessionStore } from '@renderer/stores/session.store'
+import { useSystemStore } from '@renderer/stores/system'
 import { useUiStore } from '@renderer/stores/ui'
 
 describe('TopBar component', () => {
   beforeEach(() => {
+    vi.restoreAllMocks()
     setActivePinia(createPinia())
   })
 
@@ -48,6 +50,74 @@ describe('TopBar component', () => {
     await wrapper.find('#session-select').setValue('sess-2')
     expect(sessionStore.selectedSessionId).toBe('sess-2')
     expect(uiStore.selectedSessionId).toBe('sess-2')
+  })
+
+  it('creates a session from the top bar create button', async () => {
+    ;(window as any).app = {
+      api: {
+        sessions: {
+          create: vi.fn().mockResolvedValue({
+            id: 'sess-new',
+            systemId: 'sys-1',
+            name: 'Session 2026-04-02 #1',
+            createdAt: '',
+            updatedAt: ''
+          })
+        }
+      }
+    }
+
+    const pinia = createPinia()
+    const systemStore = useSystemStore(pinia)
+    systemStore.selectedSystemId = 'sys-1'
+    const wrapper = mount(TopBar, { global: { plugins: [pinia] } })
+    const sessionStore = useSessionStore()
+    const uiStore = useUiStore()
+
+    await wrapper.vm.$nextTick()
+
+    await wrapper.find('[data-testid="create-session-btn"]').trigger('click')
+    await wrapper.vm.$nextTick()
+
+    expect((window as any).app.api.sessions.create).toHaveBeenCalledWith('sys-1')
+    expect(sessionStore.selectedSessionId).toBe('sess-new')
+    expect(uiStore.selectedSessionId).toBe('sess-new')
+  })
+
+  it('renames selected session from the top bar edit button', async () => {
+    const renameMock = vi.fn().mockResolvedValue({
+      id: 'sess-1',
+      systemId: 'sys-1',
+      name: 'Renamed Session',
+      createdAt: '',
+      updatedAt: '2026-04-02T00:00:00.000Z'
+    })
+    ;(window as any).app = { api: { sessions: { rename: renameMock } } }
+
+    const pinia = createPinia()
+    const systemStore = useSystemStore(pinia)
+    const sessionStore = useSessionStore(pinia)
+    systemStore.selectedSystemId = 'sys-1'
+    sessionStore.sessions = [
+      { id: 'sess-1', systemId: 'sys-1', name: 'Session One', createdAt: '', updatedAt: '' }
+    ]
+    sessionStore.selectSession('sess-1')
+    const wrapper = mount(TopBar, { global: { plugins: [pinia] } })
+    const uiStore = useUiStore()
+
+    await wrapper.vm.$nextTick()
+    uiStore.openTab({ id: 'session:sess-1', type: 'session', title: 'Session One' })
+
+    await wrapper.find('[data-testid="rename-session-btn"]').trigger('click')
+    await wrapper.vm.$nextTick()
+
+    // The rename modal is teleported to document.body, so it lives outside the wrapper
+    await new DOMWrapper(document.querySelector('[data-testid="topbar-session-rename-input"]')!).setValue('Renamed Session')
+    await new DOMWrapper(document.querySelector('[data-testid="topbar-session-rename-save"]')!).trigger('click')
+    await wrapper.vm.$nextTick()
+
+    expect(renameMock).toHaveBeenCalledWith('sys-1', 'sess-1', 'Renamed Session')
+    expect(uiStore.openTabs.find((t) => t.id === 'session:sess-1')?.title).toBe('Renamed Session')
   })
 
   it('shows the (none) option as the first option in the session dropdown', async () => {

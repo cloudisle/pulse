@@ -4,6 +4,7 @@ import { SettingsService } from '../settings.service'
 import { VariableReplacementService } from '../variable-replacement.service'
 import type { InputConfig, KinesisConfig, SqsConfig, EventBridgeConfig } from '../../../shared/models'
 import type { Environment } from '../../../shared/models'
+import type { Schema, Profile } from '../../../shared/models'
 import type { SessionEvent } from '../../../shared/models'
 import type { SendEventInput, SendEventResult } from '../../../shared/models'
 import { PublisherFactory } from "./factory";
@@ -64,6 +65,9 @@ export class EventSenderService {
       await log.error(`Failed to send event: ${error}`, logContext)
     }
 
+    const dataDir = await this.settings.getDataPath()
+    const resourceMap = await this.resolveResourceMap(dataDir, systemId, input, inputConfig)
+
     // 4. Record the session event
     const sessionEvent: SessionEvent = {
       id: eventId,
@@ -73,13 +77,13 @@ export class EventSenderService {
       inputId: input.inputId,
       schemaId: input.event.schemaId,
       profileIds: input.event.appliedProfiles,
+      resources: resourceMap,
       payload: JSON.stringify(input.event.payload),
       ...(metadata !== undefined && { metadata }),
       status,
       ...(error !== undefined && { error })
     }
 
-    const dataDir = await this.settings.getDataPath()
     await this.storage.write(
       StoragePaths.sessionEvent(dataDir, systemId, input.sessionId, eventId),
       sessionEvent
@@ -116,6 +120,31 @@ export class EventSenderService {
   private buildVariables(environment?: Environment): Record<string, string> {
     if (environment === undefined) return {}
     return Object.fromEntries(environment.variables.map((v) => [v.key, v.value]))
+  }
+
+  private async resolveResourceMap(
+    dataDir: string,
+    systemId: string,
+    input: SendEventInput,
+    inputConfig: InputConfig
+  ): Promise<Record<string, string>> {
+    const resourceMap: Record<string, string> = {
+      [input.inputId]: inputConfig.name,
+    }
+
+    const schema = await this.storage.read<Schema>(
+      StoragePaths.schema(dataDir, systemId, input.event.schemaId)
+    )
+    resourceMap[input.event.schemaId] = schema?.name ?? input.event.schemaId
+
+    for (const profileId of input.event.appliedProfiles ?? []) {
+      const profile = await this.storage.read<Profile>(
+        StoragePaths.profile(dataDir, systemId, profileId)
+      )
+      resourceMap[profileId] = profile?.name ?? profileId
+    }
+
+    return resourceMap
   }
 
   private describeTarget(type: string, config: KinesisConfig | SqsConfig | EventBridgeConfig): string {

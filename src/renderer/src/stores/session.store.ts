@@ -17,7 +17,6 @@ export const useSessionStore = defineStore('session', () => {
     if (!api) return
     const items: Session[] = await api.sessions.list(systemId)
     sessions.value = items
-    selectedSessionId.value = null
   }
 
   async function loadSession(systemId: string, id: string): Promise<void> {
@@ -25,6 +24,39 @@ export const useSessionStore = defineStore('session', () => {
     if (!api) return
     const detail: SessionDetail = await api.sessions.get(systemId, id)
     activeSession.value = detail
+  }
+
+  async function createSession(systemId: string): Promise<Session | null> {
+    const api = (window as any).app?.api
+    if (!api) return null
+    const created: Session = await api.sessions.create(systemId)
+    sessions.value = [created, ...sessions.value.filter((s) => s.id !== created.id)]
+    selectedSessionId.value = created.id
+    return created
+  }
+
+  async function renameSession(systemId: string, sessionId: string, name: string): Promise<Session | null> {
+    const api = (window as any).app?.api
+    if (!api) return null
+    const renamed: Session = await api.sessions.rename(systemId, sessionId, name)
+    sessions.value = sessions.value.map((s) => (s.id === sessionId ? renamed : s))
+    if (activeSession.value?.id === sessionId) {
+      activeSession.value = { ...activeSession.value, name: renamed.name, updatedAt: renamed.updatedAt }
+    }
+    return renamed
+  }
+
+  async function deleteSession(systemId: string, sessionId: string): Promise<void> {
+    const api = (window as any).app?.api
+    if (!api) return
+    await api.sessions.delete(systemId, sessionId)
+    sessions.value = sessions.value.filter((s) => s.id !== sessionId)
+    if (selectedSessionId.value === sessionId) {
+      selectedSessionId.value = null
+    }
+    if (activeSession.value?.id === sessionId) {
+      activeSession.value = null
+    }
   }
 
   function selectSession(sessionId: string | null): void {
@@ -50,6 +82,9 @@ export const useSessionStore = defineStore('session', () => {
     selectedSession,
     loadSessions,
     loadSession,
+    createSession,
+    renameSession,
+    deleteSession,
     selectSession,
     addEvent,
     reset

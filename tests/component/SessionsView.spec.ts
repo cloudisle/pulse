@@ -11,6 +11,7 @@ function mockAppApi(overrides: Record<string, any> = {}) {
     api: {
       sessions: {
         list: vi.fn().mockResolvedValue([]),
+        delete: vi.fn(),
         ...overrides.sessions
       },
       ...overrides.api
@@ -61,7 +62,7 @@ describe('SessionsView component', () => {
     expect(wrapper.text()).toContain('sess-1')
   })
 
-  it('selects a session when a table row is clicked', async () => {
+  it('does not change active session when a table row is clicked', async () => {
     mockAppApi({
       sessions: {
         list: vi.fn().mockResolvedValue([
@@ -83,14 +84,16 @@ describe('SessionsView component', () => {
     const uiStore = useUiStore()
 
     systemStore.selectedSystemId = 'sys-1'
+    sessionStore.selectSession('sess-existing')
+    uiStore.selectSession('sess-existing')
 
     const wrapper = mount(SessionsView, { global: { plugins: [pinia] } })
     await flushPromises()
 
     await wrapper.find('tbody tr').trigger('click')
 
-    expect(sessionStore.selectedSessionId).toBe('sess-1')
-    expect(uiStore.selectedSessionId).toBe('sess-1')
+    expect(sessionStore.selectedSessionId).toBe('sess-existing')
+    expect(uiStore.selectedSessionId).toBe('sess-existing')
   })
 
   it('opens the session detail tab from the View Details button', async () => {
@@ -111,9 +114,12 @@ describe('SessionsView component', () => {
     const pinia = createPinia()
     setActivePinia(pinia)
     const systemStore = useSystemStore()
+    const sessionStore = useSessionStore()
     const uiStore = useUiStore()
 
     systemStore.selectedSystemId = 'sys-1'
+    sessionStore.selectSession('sess-existing')
+    uiStore.selectSession('sess-existing')
 
     const wrapper = mount(SessionsView, { global: { plugins: [pinia] } })
     await flushPromises()
@@ -124,6 +130,105 @@ describe('SessionsView component', () => {
       expect.objectContaining({ id: 'session:sess-1', type: 'session', title: 'Session One' })
     )
     expect(uiStore.activeTabId).toBe('session:sess-1')
+    expect(sessionStore.selectedSessionId).toBe('sess-existing')
+    expect(uiStore.selectedSessionId).toBe('sess-existing')
+  })
+
+  it('preserves the selected session when refreshing the sessions list', async () => {
+    mockAppApi({
+      sessions: {
+        list: vi.fn().mockResolvedValue([
+          {
+            id: 'sess-1',
+            systemId: 'sys-1',
+            name: 'Session One',
+            createdAt: '2026-03-30T10:00:00.000Z',
+            updatedAt: '2026-03-30T11:00:00.000Z'
+          }
+        ])
+      }
+    })
+
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const systemStore = useSystemStore()
+    const sessionStore = useSessionStore()
+
+    systemStore.selectedSystemId = 'sys-1'
+    sessionStore.selectSession('sess-1')
+
+    mount(SessionsView, { global: { plugins: [pinia] } })
+    await flushPromises()
+
+    expect(sessionStore.selectedSessionId).toBe('sess-1')
+  })
+
+  it('does not show inline rename controls in the actions column', async () => {
+    mockAppApi({
+      sessions: {
+        list: vi.fn().mockResolvedValue([
+          {
+            id: 'sess-1',
+            systemId: 'sys-1',
+            name: 'Session One',
+            createdAt: '2026-03-30T10:00:00.000Z',
+            updatedAt: '2026-03-30T11:00:00.000Z'
+          }
+        ])
+      }
+    })
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const systemStore = useSystemStore()
+    systemStore.selectedSystemId = 'sys-1'
+
+    const wrapper = mount(SessionsView, { global: { plugins: [pinia] } })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="rename-session-sess-1"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="save-session-sess-1"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="cancel-rename-session-sess-1"]').exists()).toBe(false)
+  })
+
+  it('deletes a session from the actions column', async () => {
+    const deleteMock = vi.fn().mockResolvedValue(undefined)
+    mockAppApi({
+      sessions: {
+        list: vi.fn().mockResolvedValue([
+          {
+            id: 'sess-1',
+            systemId: 'sys-1',
+            name: 'Session One',
+            createdAt: '2026-03-30T10:00:00.000Z',
+            updatedAt: '2026-03-30T11:00:00.000Z'
+          }
+        ]),
+        delete: deleteMock
+      }
+    })
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const systemStore = useSystemStore()
+    const sessionStore = useSessionStore()
+    const uiStore = useUiStore()
+    systemStore.selectedSystemId = 'sys-1'
+
+    const wrapper = mount(SessionsView, { global: { plugins: [pinia] } })
+    await flushPromises()
+
+    sessionStore.selectSession('sess-1')
+    uiStore.selectSession('sess-1')
+    uiStore.openTab({ id: 'session:sess-1', type: 'session', title: 'Session One' })
+
+    await wrapper.find('[data-testid="delete-session-sess-1"]').trigger('click')
+    await flushPromises()
+
+    expect(deleteMock).toHaveBeenCalledWith('sys-1', 'sess-1')
+    expect(sessionStore.sessions.find((s) => s.id === 'sess-1')).toBeUndefined()
+    expect(uiStore.openTabs.find((t) => t.id === 'session:sess-1')).toBeUndefined()
+    expect(uiStore.selectedSessionId).toBeNull()
   })
 })
 

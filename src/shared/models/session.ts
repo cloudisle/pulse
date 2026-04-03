@@ -13,6 +13,7 @@ export interface SessionEvent {
   listenerId?: string; // FK → active listener (for received events)
   schemaId?: string; // FK → Schema (for sent events)
   profileIds?: string[]; // FK[] → Profile (profiles active at send time)
+  resources?: Record<string, string>; // ID→name snapshot for referenced resources at event time
   payload: string;
   metadata?: Record<string, any>; // cloud-specific metadata (e.g. sequence number, message ID)
   status: EventStatus;

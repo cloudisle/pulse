@@ -359,25 +359,19 @@ function statusBadgeClass(status: string): string {
 
     <!-- Session info and master controls -->
     <div v-if="sessionStore.selectedSessionId" class="listener-panel__session-header">
-      <div class="listener-panel__session-info">
-        <span class="listener-panel__session-label">Session:</span>
-        <span class="listener-panel__session-name">
-          {{ sessionStore.selectedSession?.name ?? sessionStore.selectedSessionId?.slice(0, 8) }}
-        </span>
-      </div>
       <div class="listener-panel__session-controls">
-        <button
-          class="listener-panel__btn listener-panel__btn--danger"
-          title="Stop all listeners for this session"
-          :disabled="!anyListenerRunning"
-          @click="onStopAllListeners"
-        >⏹ Stop All</button>
         <button
           class="listener-panel__btn listener-panel__btn--primary"
           title="Start all listeners for this session"
           :disabled="allListenersRunning || configuredListeners.length === 0 || bulkStarting"
           @click="onStartAllListeners"
         >▶ Start All</button>
+        <button
+          class="listener-panel__btn listener-panel__btn--danger"
+          title="Stop all listeners for this session"
+          :disabled="!anyListenerRunning"
+          @click="onStopAllListeners"
+        >⏹ Stop All</button>
       </div>
     </div>
 
@@ -539,45 +533,25 @@ function statusBadgeClass(status: string): string {
 
 .listener-panel__session-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   padding: 8px 10px;
-  background: #313244;
-  border: 1px solid #45475a;
+  background: #262838;
+  border: 1px solid #3b3e52;
   border-radius: 4px;
-  gap: 8px;
   flex-shrink: 0;
 }
 
-.listener-panel__session-info {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1;
-}
-
-.listener-panel__session-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: #a6adc8;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.listener-panel__session-name {
-  font-size: 12px;
-  color: #cdd6f4;
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 .listener-panel__session-controls {
   display: flex;
-  gap: 6px;
-  flex-shrink: 0;
+  gap: 8px;
+  width: 100%;
 }
+
+.listener-panel__session-controls .listener-panel__btn {
+  flex: 1;
+}
+
 
 .listener-panel__no-session {
   padding: 20px 12px;

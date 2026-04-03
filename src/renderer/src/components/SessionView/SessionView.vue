@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { useSessionStore } from '@renderer/stores/session.store'
 import { useSystemStore } from '@renderer/stores/system'
+import { useUiStore } from '@renderer/stores/ui'
 import type { SessionEvent } from '../../../../shared/models/session'
 
 const props = defineProps<{
@@ -10,11 +11,15 @@ const props = defineProps<{
 
 const sessionStore = useSessionStore()
 const systemStore = useSystemStore()
+const uiStore = useUiStore()
 
 // Filters
 const directionFilter = ref<'both' | 'sent' | 'received'>('both')
 const statusFilter = ref<'all' | 'success' | 'failed' | 'pending'>('all')
 const searchQuery = ref('')
+const renamingSession = ref(false)
+const sessionNameDraft = ref('')
+const renameInputRef = ref<HTMLInputElement | null>(null)
 
 // Expandable state
 const expandedPayloads = ref<Set<string>>(new Set())
@@ -100,6 +105,15 @@ function formatPayload(payload: string | Record<string, any>): string {
   }
 }
 
+function resolveResourceName(event: SessionEvent, id?: string): string {
+  if (!id) return ''
+  return event.resources?.[id] ?? id
+}
+
+function displayProfiles(event: SessionEvent): string {
+  return (event.profileIds ?? []).map((profileId) => resolveResourceName(event, profileId)).join(', ')
+}
+
 function togglePayload(eventId: string): void {
   if (expandedPayloads.value.has(eventId)) {
     expandedPayloads.value.delete(eventId)
@@ -115,6 +129,36 @@ function toggleMetadata(eventId: string): void {
     expandedMetadata.value.add(eventId)
   }
 }
+
+function startRenameSession(): void {
+  const currentSession = session.value
+  if (!currentSession) return
+  sessionNameDraft.value = currentSession.name ?? currentSession.id
+  renamingSession.value = true
+  nextTick(() => {
+    renameInputRef.value?.focus()
+    renameInputRef.value?.select()
+  })
+}
+
+function cancelRenameSession(): void {
+  renamingSession.value = false
+  sessionNameDraft.value = ''
+}
+
+async function confirmRenameSession(): Promise<void> {
+  const systemId = systemStore.selectedSystemId
+  const currentSession = session.value
+  if (!systemId || !currentSession) return
+
+  const trimmed = sessionNameDraft.value.trim()
+  if (!trimmed) return
+
+  const renamed = await sessionStore.renameSession(systemId, currentSession.id, trimmed)
+  if (!renamed) return
+  uiStore.renameTab(`session:${currentSession.id}`, renamed.name ?? currentSession.id)
+  cancelRenameSession()
+}
 </script>
 
 <template>
@@ -122,9 +166,23 @@ function toggleMetadata(eventId: string): void {
     <!-- Header -->
     <header class="session-view__header" data-testid="session-header">
       <div class="session-view__header-main">
-        <h2 class="session-view__title" data-testid="session-name">
-          {{ session?.name ?? session?.id ?? '…' }}
-        </h2>
+        <div class="session-view__title-wrap">
+          <h2 class="session-view__title" data-testid="session-name">
+            {{ session?.name ?? session?.id ?? '…' }}
+          </h2>
+          <button
+            class="session-view__flat-btn"
+            data-testid="rename-session-btn"
+            :disabled="!session || !systemStore.selectedSystemId"
+            title="Rename selected session"
+            @click="startRenameSession"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+        </div>
         <button
           class="session-view__btn session-view__btn--secondary"
           data-testid="refresh-btn"
@@ -148,6 +206,42 @@ function toggleMetadata(eventId: string): void {
         </span>
       </div>
     </header>
+
+    <Teleport to="body">
+      <div
+        v-if="renamingSession"
+        class="session-view__rename-overlay"
+        data-testid="rename-session-modal"
+        @click.self="cancelRenameSession"
+      >
+        <div class="session-view__rename-modal" role="dialog" aria-modal="true" aria-label="Rename session">
+          <h3 class="session-view__rename-title">Rename Session</h3>
+          <input
+            ref="renameInputRef"
+            v-model="sessionNameDraft"
+            class="session-view__rename-input"
+            data-testid="session-rename-input"
+            type="text"
+            placeholder="Session name"
+            @keydown.enter="confirmRenameSession"
+            @keydown.esc="cancelRenameSession"
+          />
+          <div class="session-view__rename-actions">
+            <button
+              class="session-view__rename-btn session-view__rename-btn--cancel"
+              data-testid="session-rename-cancel"
+              @click="cancelRenameSession"
+            >Cancel</button>
+            <button
+              class="session-view__rename-btn session-view__rename-btn--save"
+              data-testid="session-rename-save"
+              :disabled="!sessionNameDraft.trim()"
+              @click="confirmRenameSession"
+            >Save</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 
     <!-- Filters toolbar -->
     <div class="session-view__toolbar" data-testid="filters-toolbar">
@@ -260,17 +354,17 @@ function toggleMetadata(eventId: string): void {
 
           <!-- Sent-specific info -->
           <span v-if="event.direction === 'sent'" class="session-view__event-info" :data-testid="`event-info-${event.id}`">
-            <span v-if="event.schemaId" class="session-view__info-item">Schema: {{ event.schemaId }}</span>
-            <span v-if="event.inputId" class="session-view__info-item">Input: {{ event.inputId }}</span>
+            <span v-if="event.schemaId" class="session-view__info-item">Schema: {{ resolveResourceName(event, event.schemaId) }}</span>
+            <span v-if="event.inputId" class="session-view__info-item">Input: {{ resolveResourceName(event, event.inputId) }}</span>
             <span v-if="event.profileIds && event.profileIds.length > 0" class="session-view__info-item">
-              Profiles: {{ event.profileIds.join(', ') }}
+              Profiles: {{ displayProfiles(event) }}
             </span>
           </span>
 
           <!-- Received-specific info -->
           <span v-if="event.direction === 'received'" class="session-view__event-info" :data-testid="`event-info-${event.id}`">
-            <span v-if="event.outputId" class="session-view__info-item">Output: {{ event.outputId }}</span>
-            <span v-if="event.listenerId" class="session-view__info-item">Listener: {{ event.listenerId }}</span>
+            <span v-if="event.outputId" class="session-view__info-item">Output: {{ resolveResourceName(event, event.outputId) }}</span>
+            <span v-if="event.listenerId" class="session-view__info-item">Listener: {{ resolveResourceName(event, event.listenerId) }}</span>
           </span>
 
           <!-- Expand buttons -->
@@ -347,11 +441,43 @@ function toggleMetadata(eventId: string): void {
   margin-bottom: 8px;
 }
 
+.session-view__title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .session-view__title {
   font-size: 20px;
   font-weight: 700;
   color: #cdd6f4;
   margin: 0;
+}
+
+.session-view__flat-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  background: transparent;
+  color: #a6adc8;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.session-view__flat-btn:hover:not(:disabled) {
+  color: #cdd6f4;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.session-view__flat-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .session-view__meta {
@@ -625,5 +751,93 @@ function toggleMetadata(eventId: string): void {
 
 .session-view__btn--secondary:hover {
   background: #45475a;
+}
+
+.session-view__rename-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.session-view__rename-modal {
+  background: #1e1e2e;
+  border: 1px solid #45475a;
+  border-radius: 8px;
+  padding: 24px;
+  width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.session-view__rename-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #cdd6f4;
+}
+
+.session-view__rename-input {
+  width: 100%;
+  padding: 8px 10px;
+  background: #313244;
+  color: #cdd6f4;
+  border: 1px solid #89b4fa;
+  border-radius: 4px;
+  font-size: 13px;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.session-view__rename-input:focus {
+  border-color: #89b4fa;
+  box-shadow: 0 0 0 2px rgba(137, 180, 250, 0.25);
+}
+
+.session-view__rename-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.session-view__rename-btn {
+  padding: 6px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s;
+}
+
+.session-view__rename-btn--cancel {
+  background: #313244;
+  color: #cdd6f4;
+  border-color: #45475a;
+}
+
+.session-view__rename-btn--cancel:hover {
+  background: #45475a;
+}
+
+.session-view__rename-btn--save {
+  background: #89b4fa;
+  color: #1e1e2e;
+  border-color: #89b4fa;
+  font-weight: 600;
+}
+
+.session-view__rename-btn--save:hover:not(:disabled) {
+  background: #74c7ec;
+  border-color: #74c7ec;
+}
+
+.session-view__rename-btn--save:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 </style>

@@ -54,6 +54,7 @@ export class DefaultMessageHandler implements MessageHandler {
     private static log = logger('DefaultMessageHandler');
 
     constructor(
+        private readonly name: string,
         private readonly config: ListenerConfig,
         private readonly filter: MessageFilter,
         private readonly converter: MessageConverter
@@ -77,6 +78,10 @@ export class DefaultMessageHandler implements MessageHandler {
             outputId: this.config.outputId,
             direction: 'received',
             timestamp: new Date().toISOString(),
+            resources: {
+                [this.config.outputId]: this.name ?? this.config.outputId,
+                [listenerId]: this.name ?? listenerId,
+            },
             payload: message.raw.data,
             metadata: {
                 ...message.raw.headers,

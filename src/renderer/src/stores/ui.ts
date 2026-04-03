@@ -39,6 +39,12 @@ export const useUiStore = defineStore('ui', () => {
     activeTabId.value = id
   }
 
+  function renameTab(id: string, title: string): void {
+    const tab = openTabs.value.find((t) => t.id === id)
+    if (!tab) return
+    tab.title = title
+  }
+
   function toggleSidebar(): void {
     sidebarCollapsed.value = !sidebarCollapsed.value
   }
@@ -84,6 +90,7 @@ export const useUiStore = defineStore('ui', () => {
     openTab,
     closeTab,
     setActiveTab,
+    renameTab,
     toggleSidebar,
     toggleBottomPanel,
     setBottomPanelHeight,

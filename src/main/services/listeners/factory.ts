@@ -56,7 +56,7 @@ export class ListenerLifecycleFactory {
         const filter = this.createAggregateFilter(listenerConfig);
         const listener = this.listenerFactory.create(outputConfig, listenerConfig.cloud);
 
-        const handler = new DefaultMessageHandler(listenerConfig, filter, converter);
+        const handler = new DefaultMessageHandler(outputConfig.name, listenerConfig, filter, converter);
 
         return new DefaultListenerLifecycle(listener, listenerConfig, handler);
     }

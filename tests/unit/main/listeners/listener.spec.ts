@@ -30,7 +30,7 @@ describe('DefaultMessageHandler', () => {
       convert: vi.fn((raw: RawMessage) => ({ raw, data: { orderId: 'ord-1' } }))
     }
 
-    const handler = new DefaultMessageHandler(config, filter, converter)
+    const handler = new DefaultMessageHandler("name", config, filter, converter)
     const raw: RawMessage = {
       data: '{"orderId":"ord-1"}',
       headers: { traceId: 'trace-1' },
@@ -70,7 +70,7 @@ describe('DefaultMessageHandler', () => {
       convert: vi.fn((raw: RawMessage) => ({ raw, data: {} }))
     }
 
-    const handler = new DefaultMessageHandler(config, filter, converter)
+    const handler = new DefaultMessageHandler("name", config, filter, converter)
 
     await handler.handle('listener-1', { data: '{}' })
 

@@ -5,8 +5,9 @@ import { useSystemStore } from '@renderer/stores/system'
 import { useTemplateStore } from '@renderer/stores/template.store'
 import { useSchemaStore } from '@renderer/stores/schema.store'
 import { useProfileStore } from '@renderer/stores/profile'
-import type { Template } from '../../../../../shared/models/template'
-import type { InputConfig } from '../../../../../shared/models/system'
+import { useSessionStore } from '@renderer/stores/session.store'
+import type { Template } from '../../../../shared/models/template'
+import type { InputConfig } from '../../../../shared/models/system'
 import {resolveCloudSettings} from "@renderer/util/cloud";
 
 const uiStore = useUiStore()
@@ -14,6 +15,7 @@ const systemStore = useSystemStore()
 const templateStore = useTemplateStore()
 const schemaStore = useSchemaStore()
 const profileStore = useProfileStore()
+const sessionStore = useSessionStore()
 
 // ─── Selection state ─────────────────────────────────────────────────────────
 
@@ -223,6 +225,10 @@ async function generatePreview(): Promise<void> {
   if (!selectedTemplate.value) return
   const systemId = systemStore.selectedSystemId
   if (!systemId) return
+  if (!sessionStore.selectedSessionId) {
+    sendResult.value = { success: false, error: 'Select a session from the top bar first.' }
+    return
+  }
   const api = (window as any).app?.api
   if (!api) return
 
@@ -282,20 +288,10 @@ async function quickSend(): Promise<void> {
 
     previewJson.value = JSON.stringify(event.payload, null, 2)
 
-    // Get or create a session
-    const sessions = await api.sessions.list(systemId)
-    let sessionId: string
-    if (sessions.length > 0) {
-      sessionId = sessions[0].id
-    } else {
-      const newSession = await api.sessions.create(systemId)
-      sessionId = newSession.id
-    }
-
     // Send
     const result = await api.events.send(toRaw(systemId), {
       inputId: toRaw(selectedTemplate.value.inputId),
-      sessionId: toRaw(sessionId),
+      sessionId: toRaw(sessionStore.selectedSessionId),
       event: {
         schemaId: toRaw(event.schemaId),
         payload: toRaw(event.payload),

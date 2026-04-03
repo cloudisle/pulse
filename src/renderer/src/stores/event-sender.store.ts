@@ -1,7 +1,6 @@
 import {defineStore} from 'pinia'
 import {ref, toRaw} from 'vue'
 import type {GeneratedEvent, SendEventResult, ValidationWarning} from '../../../shared/models/event'
-import type {Session} from '../../../shared/models/session'
 import type {InputConfig, System} from '../../../shared/models/system'
 import {resolveCloudSettings} from "@renderer/util/cloud";
 
@@ -14,8 +13,6 @@ export const useEventSenderStore = defineStore('event-sender', () => {
   const selectedSchemaId = ref<string | null>(null)
   const selectedInputId = ref<string | null>(null)
   const overrides = ref<Override[]>([])
-  const selectedSessionId = ref<string | null>(null)
-  const sessions = ref<Session[]>([])
   const inputs = ref<InputConfig[]>([])
   const generatedEvent = ref<GeneratedEvent | null>(null)
   const previewJson = ref<string>('')
@@ -25,26 +22,11 @@ export const useEventSenderStore = defineStore('event-sender', () => {
   const sending = ref(false)
   const errorMessage = ref<string>('')
 
-  async function loadSessions(systemId: string): Promise<void> {
-    const api = (window as any).app?.api
-    if (!api) return
-    const items: Session[] = await api.sessions.list(systemId)
-    sessions.value = items
-  }
-
   async function loadInputs(systemId: string): Promise<void> {
     const api = (window as any).app?.api
     if (!api) return
     const system: System = await api.systems.get(systemId)
     inputs.value = system.inputs
-  }
-
-  async function createSession(systemId: string): Promise<void> {
-    const api = (window as any).app?.api
-    if (!api) return
-    const session: Session = await api.sessions.create(systemId);
-    sessions.value.unshift(session)
-    selectedSessionId.value = session.id
   }
 
   function addOverride(): void {
@@ -114,14 +96,15 @@ export const useEventSenderStore = defineStore('event-sender', () => {
 
   async function send(
     systemId: string,
+    sessionId: string | null,
     environmentId: string | null
   ): Promise<void> {
     if (!selectedInputId.value) {
       errorMessage.value = 'Select a destination input first.'
       return
     }
-    if (!selectedSessionId.value) {
-      errorMessage.value = 'Select or create a session first.'
+    if (!sessionId) {
+      errorMessage.value = 'Select a session first.'
       return
     }
     if (!generatedEvent.value) {
@@ -143,7 +126,7 @@ export const useEventSenderStore = defineStore('event-sender', () => {
       }
       sendResult.value = await api.events.send(toRaw(systemId), {
         inputId: selectedInputId.value,
-        sessionId: selectedSessionId.value,
+        sessionId,
         event: {
           schemaId: generatedEvent.value.schemaId,
           payload,
@@ -169,8 +152,6 @@ export const useEventSenderStore = defineStore('event-sender', () => {
     selectedSchemaId.value = null
     selectedInputId.value = null
     overrides.value = []
-    selectedSessionId.value = null
-    sessions.value = []
     inputs.value = []
     generatedEvent.value = null
     previewJson.value = ''
@@ -185,8 +166,6 @@ export const useEventSenderStore = defineStore('event-sender', () => {
     selectedSchemaId,
     selectedInputId,
     overrides,
-    selectedSessionId,
-    sessions,
     inputs,
     generatedEvent,
     previewJson,
@@ -195,9 +174,7 @@ export const useEventSenderStore = defineStore('event-sender', () => {
     generating,
     sending,
     errorMessage,
-    loadSessions,
     loadInputs,
-    createSession,
     addOverride,
     removeOverride,
     generate,

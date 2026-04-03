@@ -1,13 +1,23 @@
 <script setup lang="ts">
+import { computed, nextTick, ref } from 'vue'
 import { useEnvironmentStore } from '@renderer/stores/environment'
 import { useProfileStore } from '@renderer/stores/profile'
 import { useSessionStore } from '@renderer/stores/session.store'
+import { useSystemStore } from '@renderer/stores/system'
 import { useUiStore } from '@renderer/stores/ui'
 
 const environmentStore = useEnvironmentStore()
 const profileStore = useProfileStore()
 const sessionStore = useSessionStore()
+const systemStore = useSystemStore()
 const uiStore = useUiStore()
+
+const selectedSession = computed(
+  () => sessionStore.sessions.find((session) => session.id === sessionStore.selectedSessionId) ?? null
+)
+const renamingSession = ref(false)
+const sessionNameDraft = ref('')
+const renameInputRef = ref<HTMLInputElement | null>(null)
 
 function openProfileEditor(): void {
   uiStore.openTab({ id: 'profile:new', type: 'profile', title: 'New Profile' })
@@ -16,6 +26,44 @@ function openProfileEditor(): void {
 function selectSession(sessionId: string): void {
   sessionStore.selectSession(sessionId || null)
   uiStore.selectSession(sessionId || null)
+}
+
+async function createSession(): Promise<void> {
+  const systemId = systemStore.selectedSystemId
+  if (!systemId) return
+  const created = await sessionStore.createSession(systemId)
+  if (!created) return
+  uiStore.selectSession(created.id)
+}
+
+function startRenameSelectedSession(): void {
+  const session = selectedSession.value
+  if (!session) return
+  sessionNameDraft.value = session.name ?? session.id
+  renamingSession.value = true
+  nextTick(() => {
+    renameInputRef.value?.focus()
+    renameInputRef.value?.select()
+  })
+}
+
+function cancelRenameSelectedSession(): void {
+  renamingSession.value = false
+  sessionNameDraft.value = ''
+}
+
+async function confirmRenameSelectedSession(): Promise<void> {
+  const systemId = systemStore.selectedSystemId
+  const session = selectedSession.value
+  if (!systemId || !session) return
+
+  const trimmed = sessionNameDraft.value.trim()
+  if (!trimmed) return
+
+  const renamed = await sessionStore.renameSession(systemId, session.id, trimmed)
+  if (!renamed) return
+  uiStore.renameTab(`session:${session.id}`, renamed.name ?? session.id)
+  cancelRenameSelectedSession()
 }
 </script>
 
@@ -41,6 +89,63 @@ function selectSession(sessionId: string): void {
             :value="session.id"
           >{{ session.name ?? session.id }}</option>
         </select>
+        <button
+          class="top-bar__icon-btn"
+          data-testid="create-session-btn"
+          :disabled="!systemStore.selectedSystemId"
+          title="Create session"
+          @click="createSession"
+        >+</button>
+        <button
+          class="top-bar__flat-btn"
+          data-testid="rename-session-btn"
+          :disabled="!selectedSession || !systemStore.selectedSystemId"
+          title="Rename selected session"
+          @click="startRenameSelectedSession"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+        </button>
+
+      <!-- Rename modal -->
+      <Teleport to="body">
+        <div
+          v-if="renamingSession"
+          class="rename-modal-overlay"
+          data-testid="rename-session-modal"
+          @click.self="cancelRenameSelectedSession"
+          @keydown.esc="cancelRenameSelectedSession"
+        >
+          <div class="rename-modal" role="dialog" aria-modal="true" aria-label="Rename session">
+            <h3 class="rename-modal__title">Rename Session</h3>
+            <input
+              ref="renameInputRef"
+              v-model="sessionNameDraft"
+              class="rename-modal__input"
+              data-testid="topbar-session-rename-input"
+              type="text"
+              placeholder="Session name"
+              @keydown.enter="confirmRenameSelectedSession"
+              @keydown.esc="cancelRenameSelectedSession"
+            />
+            <div class="rename-modal__actions">
+              <button
+                class="rename-modal__btn rename-modal__btn--cancel"
+                data-testid="topbar-session-rename-cancel"
+                @click="cancelRenameSelectedSession"
+              >Cancel</button>
+              <button
+                class="rename-modal__btn rename-modal__btn--save"
+                data-testid="topbar-session-rename-save"
+                :disabled="!sessionNameDraft.trim()"
+                @click="confirmRenameSelectedSession"
+              >Save</button>
+            </div>
+          </div>
+        </div>
+      </Teleport>
       </div>
       <div class="top-bar__group">
         <label class="top-bar__label" for="environment-select">Environment</label>
@@ -151,6 +256,136 @@ function selectSession(sessionId: string): void {
   border-radius: 4px;
   font-size: 13px;
   cursor: pointer;
+}
+
+.top-bar__icon-btn {
+  padding: 2px 8px;
+  background: #313244;
+  color: #cdd6f4;
+  border: 1px solid #45475a;
+  border-radius: 4px;
+  font-size: 13px;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.top-bar__icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.top-bar__flat-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  background: transparent;
+  color: #a6adc8;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.top-bar__flat-btn:hover:not(:disabled) {
+  color: #cdd6f4;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.top-bar__flat-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Rename modal */
+.rename-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.rename-modal {
+  background: #1e1e2e;
+  border: 1px solid #45475a;
+  border-radius: 8px;
+  padding: 24px;
+  width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.rename-modal__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #cdd6f4;
+}
+
+.rename-modal__input {
+  width: 100%;
+  padding: 8px 10px;
+  background: #313244;
+  color: #cdd6f4;
+  border: 1px solid #89b4fa;
+  border-radius: 4px;
+  font-size: 13px;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.rename-modal__input:focus {
+  border-color: #89b4fa;
+  box-shadow: 0 0 0 2px rgba(137, 180, 250, 0.25);
+}
+
+.rename-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.rename-modal__btn {
+  padding: 6px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s;
+}
+
+.rename-modal__btn--cancel {
+  background: #313244;
+  color: #cdd6f4;
+  border-color: #45475a;
+}
+
+.rename-modal__btn--cancel:hover {
+  background: #45475a;
+}
+
+.rename-modal__btn--save {
+  background: #89b4fa;
+  color: #1e1e2e;
+  border-color: #89b4fa;
+  font-weight: 600;
+}
+
+.rename-modal__btn--save:hover:not(:disabled) {
+  background: #74c7ec;
+  border-color: #74c7ec;
+}
+
+.rename-modal__btn--save:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .top-bar__profile-list {

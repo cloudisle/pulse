@@ -14,18 +14,24 @@ onMounted(async () => {
   }
 })
 
-function selectSession(sessionId: string): void {
-  sessionStore.selectSession(sessionId)
-  uiStore.selectSession(sessionId)
-}
-
 function openSession(sessionId: string, sessionName: string): void {
-  selectSession(sessionId)
   uiStore.openTab({
     id: `session:${sessionId}`,
     type: 'session',
     title: sessionName
   })
+}
+
+async function deleteSession(sessionId: string): Promise<void> {
+  const systemId = systemStore.selectedSystemId
+  if (!systemId) return
+  const confirmed = window.confirm('Delete this session? This cannot be undone.')
+  if (!confirmed) return
+  await sessionStore.deleteSession(systemId, sessionId)
+  uiStore.closeTab(`session:${sessionId}`)
+  if (uiStore.selectedSessionId === sessionId) {
+    uiStore.selectSession(null)
+  }
 }
 </script>
 
@@ -41,7 +47,7 @@ function openSession(sessionId: string, sessionName: string): void {
     <div v-if="systemStore.selectedSystemId" class="sessions-view__content">
       <div v-if="sessionStore.sessions.length === 0" class="sessions-view__empty">
         <p>No sessions yet.</p>
-        <p class="sessions-view__empty-hint">Create a new session by sending an event or starting a listener.</p>
+        <p class="sessions-view__empty-hint">Create a new session from the top bar.</p>
       </div>
 
       <div v-else class="sessions-view__table-wrap">
@@ -61,19 +67,28 @@ function openSession(sessionId: string, sessionName: string): void {
               :key="session.id"
               class="sessions-view__row"
               :class="{ 'sessions-view__row--selected': sessionStore.selectedSessionId === session.id }"
-              @click="selectSession(session.id)"
             >
-              <td class="sessions-view__name">{{ session.name ?? 'Unnamed Session' }}</td>
+              <td class="sessions-view__name">
+                <span>{{ session.name ?? 'Unnamed Session' }}</span>
+              </td>
               <td class="sessions-view__id">{{ session.id }}</td>
               <td>{{ new Date(session.createdAt).toLocaleString() }}</td>
               <td>{{ new Date(session.updatedAt).toLocaleString() }}</td>
               <td class="sessions-view__actions-col">
-                <button
-                  class="sessions-view__view-btn"
-                  @click.stop="openSession(session.id, session.name ?? session.id)"
-                >
-                  View Details
-                </button>
+                <div class="sessions-view__actions">
+                  <button
+                    class="sessions-view__view-btn"
+                    @click.stop="openSession(session.id, session.name ?? session.id)"
+                  >
+                    View
+                  </button>
+                  <button
+                    class="sessions-view__icon-btn sessions-view__icon-btn--danger"
+                    :data-testid="`delete-session-${session.id}`"
+                    title="Delete session"
+                    @click.stop="deleteSession(session.id)"
+                  >Del</button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -199,8 +214,14 @@ function openSession(sessionId: string, sessionName: string): void {
 }
 
 .sessions-view__actions-col {
-  width: 120px;
+  width: 160px;
   text-align: right;
+}
+
+.sessions-view__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
 }
 
 .sessions-view__view-btn {
@@ -222,6 +243,21 @@ function openSession(sessionId: string, sessionName: string): void {
 
 .sessions-view__view-btn:active {
   transform: scale(0.98);
+}
+
+.sessions-view__icon-btn {
+  background: #313244;
+  color: #cdd6f4;
+  border: 1px solid #45475a;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.sessions-view__icon-btn--danger {
+  color: #f38ba8;
+  border-color: #f38ba8;
 }
 </style>
 

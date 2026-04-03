@@ -7,6 +7,7 @@ import { useSystemStore } from '@renderer/stores/system'
 import { useTemplateStore } from '@renderer/stores/template.store'
 import { useSchemaStore } from '@renderer/stores/schema.store'
 import { useProfileStore } from '@renderer/stores/profile'
+import { useSessionStore } from '@renderer/stores/session.store'
 
 const mockTemplate = {
   id: 'tmpl-1',
@@ -94,7 +95,9 @@ function setupStores(pinia = createPinia()) {
   schemaStore.schemas = [{ id: 'sch-1', name: 'Order Schema' }]
   const profileStore = useProfileStore()
   profileStore.availableProfiles = [{ id: 'prof-1', name: 'Default Profile' }]
-  return { systemStore, schemaStore, profileStore, pinia }
+  const sessionStore = useSessionStore()
+  sessionStore.selectedSessionId = 'sess-1'
+  return { systemStore, schemaStore, profileStore, sessionStore, pinia }
 }
 
 describe('TemplateBrowser component', () => {

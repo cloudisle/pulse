@@ -107,6 +107,28 @@ export class SessionsApi {
     })
   }
 
+  async rename(systemId: string, id: string, name: string): Promise<Session> {
+    const trimmedName = name.trim()
+    if (!trimmedName) {
+      throw new Error('Session name cannot be empty.')
+    }
+
+    const dataDir = await this.settings.getDataPath()
+    const existing = await this.storage.read<Session>(StoragePaths.session(dataDir, systemId, id))
+    if (existing === null) {
+      throw new Error(`Session not found: ${id}`)
+    }
+
+    const updated: Session = {
+      ...existing,
+      name: trimmedName,
+      updatedAt: new Date().toISOString()
+    }
+
+    await this.storage.write(StoragePaths.session(dataDir, systemId, id), updated)
+    return updated
+  }
+
   async addEvent(systemId: string, sessionId: string, sessionEvent: SessionEvent): Promise<void> {
     const dataDir = await this.settings.getDataPath()
     await this.storage.write(

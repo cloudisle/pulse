@@ -28,7 +28,7 @@ function makeSessionEvent(sessionId: string): SessionEvent {
     sessionId,
     direction: 'sent',
     timestamp: new Date().toISOString(),
-    payload: { key: 'value' },
+    payload: JSON.stringify({ key: 'value' }),
     status: 'success'
   }
 }
@@ -315,6 +315,46 @@ describe('SessionsApi — delete', () => {
   it('throws when deleting a non-existent session', async () => {
     await expect(api.delete(SYS_ID, 'non-existent-id')).rejects.toThrow(
       'Session not found: non-existent-id'
+    )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// rename
+// ---------------------------------------------------------------------------
+
+describe('SessionsApi — rename', () => {
+  it('updates the session name and persists it to disk', async () => {
+    const session = await api.create(SYS_ID)
+
+    const renamed = await api.rename(SYS_ID, session.id, 'Renamed Session')
+
+    expect(renamed.name).toBe('Renamed Session')
+    const detail = await api.get(SYS_ID, session.id)
+    expect(detail.name).toBe('Renamed Session')
+  })
+
+  it('updates updatedAt when renaming', async () => {
+    const session = await api.create(SYS_ID)
+
+    const renamed = await api.rename(SYS_ID, session.id, 'Renamed Session')
+
+    expect(new Date(renamed.updatedAt).getTime()).toBeGreaterThanOrEqual(
+      new Date(session.updatedAt).getTime()
+    )
+  })
+
+  it('throws when renaming a non-existent session', async () => {
+    await expect(api.rename(SYS_ID, 'missing-id', 'Renamed Session')).rejects.toThrow(
+      'Session not found: missing-id'
+    )
+  })
+
+  it('throws when renaming to an empty name', async () => {
+    const session = await api.create(SYS_ID)
+
+    await expect(api.rename(SYS_ID, session.id, '   ')).rejects.toThrow(
+      'Session name cannot be empty.'
     )
   })
 })

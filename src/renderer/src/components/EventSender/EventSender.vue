@@ -5,17 +5,19 @@ import { useSystemStore } from '@renderer/stores/system'
 import { useSchemaStore } from '@renderer/stores/schema.store'
 import { useProfileStore } from '@renderer/stores/profile'
 import { useEnvironmentStore } from '@renderer/stores/environment'
+import { useSessionStore } from '@renderer/stores/session.store'
 
 const store = useEventSenderStore()
 const systemStore = useSystemStore()
 const schemaStore = useSchemaStore()
 const profileStore = useProfileStore()
 const environmentStore = useEnvironmentStore()
+const sessionStore = useSessionStore()
 
 async function init(): Promise<void> {
   const systemId = systemStore.selectedSystemId
   if (!systemId) return
-  await Promise.all([store.loadSessions(systemId), store.loadInputs(systemId)])
+  await store.loadInputs(systemId)
 }
 
 onMounted(init)
@@ -39,13 +41,7 @@ async function onValidate(): Promise<void> {
 async function onSend(): Promise<void> {
   const systemId = systemStore.selectedSystemId
   if (!systemId) return
-  await store.send(systemId, environmentStore.selectedEnvironmentId)
-}
-
-async function onCreateSession(): Promise<void> {
-  const systemId = systemStore.selectedSystemId
-  if (!systemId) return
-  await store.createSession(systemId)
+  await store.send(systemId, sessionStore.selectedSessionId, environmentStore.selectedEnvironmentId)
 }
 </script>
 
@@ -54,30 +50,6 @@ async function onCreateSession(): Promise<void> {
     <!-- Header -->
     <header class="event-sender__header">
       <h2 class="event-sender__title" data-testid="event-sender-title">Send Event</h2>
-      <div class="event-sender__session-row">
-        <label class="event-sender__label" for="session-select">Session</label>
-        <select
-          id="session-select"
-          class="event-sender__select"
-          data-testid="session-select"
-          :value="store.selectedSessionId ?? ''"
-          @change="store.selectedSessionId = ($event.target as HTMLSelectElement).value || null"
-        >
-          <option value="" disabled>Select a session…</option>
-          <option
-            v-for="session in store.sessions"
-            :key="session.id"
-            :value="session.id"
-          >{{ session.name ?? session.id }}</option>
-        </select>
-        <button
-          class="event-sender__btn event-sender__btn--secondary"
-          data-testid="new-session-btn"
-          @click="onCreateSession"
-        >
-          New Session
-        </button>
-      </div>
     </header>
 
     <div class="event-sender__body">
