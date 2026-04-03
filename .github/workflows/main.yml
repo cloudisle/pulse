@@ -10,6 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      release_version: ${{ steps.capture_version.outputs.release_version }}
+      release_sha: ${{ steps.capture_version.outputs.release_sha }}
 
     steps:
       - name: Checkout code
@@ -52,16 +55,12 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
-      - name: Tag current version
+      - name: Capture current version for release
+        id: capture_version
         run: |
           CURRENT_VERSION=$(node -p "require('./package.json').version")
-          TAG="v${CURRENT_VERSION}"
-          if git rev-parse "${TAG}" >/dev/null 2>&1; then
-            echo "Tag ${TAG} already exists, skipping."
-          else
-            git tag "${TAG}"
-            git push origin "${TAG}"
-          fi
+          echo "release_version=${CURRENT_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "release_sha=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
 
       - name: Bump version
         run: |
@@ -70,3 +69,14 @@ jobs:
           git add package.json package-lock.json
           git commit -m "chore: bump version to ${NEW_VERSION} [ci skip]"
           git push
+
+  release-prior-version:
+    needs: build-test-and-bump
+    uses: ./.github/workflows/release.yml
+    permissions:
+      contents: write
+    secrets: inherit
+    with:
+      version: ${{ needs.build-test-and-bump.outputs.release_version }}
+      target_sha: ${{ needs.build-test-and-bump.outputs.release_sha }}
+
