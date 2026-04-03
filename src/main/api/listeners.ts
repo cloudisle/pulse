@@ -3,9 +3,6 @@ import { SettingsService } from '../services/settings.service'
 import { ListenerManagerService } from '../services/listeners/listener-manager.service'
 import type { ListenerConfig, ListenerStartResult, ListenerStatus, System } from '../../shared/models'
 import type { Environment } from '../../shared/models'
-import {app} from "electron";
-
-let quitting = false;
 
 export class ListenersApi {
 
@@ -14,21 +11,6 @@ export class ListenersApi {
     private readonly settings: SettingsService,
     private readonly manager: ListenerManagerService,
   ) {}
-
-  initialize(): void {
-    app.on('before-quit', (event) => {
-      if (quitting) {
-        return;
-      }
-
-      event.preventDefault();
-      quitting = true;
-
-      this.manager.stopAll()
-          .catch(console.error)
-          .finally(() => app.quit())
-    });
-  }
 
   async start(config: ListenerConfig): Promise<ListenerStartResult> {
     const manager = this.requireListenerManager()
