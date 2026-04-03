@@ -42,7 +42,7 @@ import App from '../../../src/app'
 import type { Schema } from '../../../src/shared/models/schema'
 import type { Environment } from '../../../src/shared/models/environment'
 import type { Profile } from '../../../src/shared/models/profile'
-import type { SessionEvent } from '../../../src/shared/models/session'
+import type { SessionDetail, SessionEvent } from '../../../src/shared/models/session'
 import type {
   GenerateEventInput,
   GeneratedEvent,
