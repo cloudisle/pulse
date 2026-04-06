@@ -1,6 +1,6 @@
 {
   "name": "pulse",
-  "version": "1.43.0",
+  "version": "1.43.1",
   "description": "Event Driven Test Application",
   "main": "out/main/index.js",
   "author": "cloudisle",
@@ -15,7 +15,8 @@
     "test:unit": "vitest run --config vitest.config.unit.ts",
     "test:component": "vitest run --config vitest.config.component.ts",
     "test:e2e": "npm run build && playwright test",
-    "test": "npm run test:unit && npm run test:component && npm run test:e2e"
+    "test": "npm run test:unit && npm run test:component && npm run test:e2e",
+    "version:set": "npm version --no-git-tag-version"
   },
   "dependencies": {
     "@aws-sdk/client-eventbridge": "^3.1007.0",
