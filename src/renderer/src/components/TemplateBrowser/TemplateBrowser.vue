@@ -9,6 +9,7 @@ import { useSessionStore } from '@renderer/stores/session.store'
 import type { Template } from '../../../../shared/models/template'
 import type { InputConfig } from '../../../../shared/models/system'
 import {resolveCloudSettings} from "@renderer/util/cloud";
+import {useEnvironmentStore} from "@renderer/stores/environment";
 
 const uiStore = useUiStore()
 const systemStore = useSystemStore()
@@ -16,6 +17,7 @@ const templateStore = useTemplateStore()
 const schemaStore = useSchemaStore()
 const profileStore = useProfileStore()
 const sessionStore = useSessionStore()
+const environmentStore = useEnvironmentStore()
 
 // ─── Selection state ─────────────────────────────────────────────────────────
 
@@ -295,9 +297,11 @@ async function quickSend(): Promise<void> {
       event: {
         schemaId: toRaw(event.schemaId),
         payload: toRaw(event.payload),
-        appliedProfiles: toRaw(event.appliedProfiles)
+        appliedProfiles: toRaw(event.appliedProfiles),
+        environmentId: toRaw(environmentStore.selectedEnvironmentId),
       },
-      cloud: toRaw(resolveCloudSettings())
+      cloud: toRaw(resolveCloudSettings()),
+      environmentId: toRaw(environmentStore.selectedEnvironmentId) ?? undefined
     })
 
     sendResult.value = result

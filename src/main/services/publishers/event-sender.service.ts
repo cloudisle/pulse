@@ -41,6 +41,7 @@ export class EventSenderService {
     ) as KinesisConfig | SqsConfig | EventBridgeConfig
 
     const logContext = { systemId, sessionId: input.sessionId }
+    console.log(resolvedConfig, variables, environment);
     await log.info(`Sending event to ${this.describeTarget(inputConfig.type, resolvedConfig)}`, {
       ...logContext,
       ...input,
