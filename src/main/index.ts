@@ -2,11 +2,7 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { promises as fs } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import App, { settings, manager } from '../app'
-import { PushService } from './services/push.service'
-import { LogService } from './services/log.service'
-import { runStartup } from './startup'
-
+import App from '../app'
 interface WindowState {
   width: number
   height: number
@@ -19,8 +15,7 @@ const DEFAULT_WINDOW_STATE: WindowState = {
   height: 1000
 }
 
-const pushService = new PushService()
-const logService = new LogService()
+let appInitialized = false
 
 function getWindowStatePath(): string {
   return join(app.getPath('userData'), 'window-state.json')
@@ -96,6 +91,11 @@ async function createWindow(): Promise<BrowserWindow> {
     }
   })
 
+  if (!appInitialized) {
+    App.initialize(ipcMain, mainWindow)
+    appInitialized = true
+  }
+
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
   })
@@ -128,38 +128,13 @@ app.whenReady().then(async () => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  const mainWindow = await runStartup({
-    ipcMain,
-    appInstance: App,
-    settings,
-    pushService,
-    logService,
-    createWindow
-  })
+  await createWindow();
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) {
       void createWindow()
     }
   })
-
-  return mainWindow
-})
-
-let quitting = false
-
-app.on('before-quit', (event) => {
-  if (quitting) {
-    return
-  }
-
-  quitting = true
-  event.preventDefault()
-
-  manager
-    .stopAll()
-    .catch((err) => console.error('Failed to stop listeners during shutdown:', err))
-    .finally(() => logService.flush().finally(() => app.quit()))
 })
 
 app.on('window-all-closed', () => {
