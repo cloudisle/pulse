@@ -11,6 +11,7 @@ import {EnvironmentsApi} from "./main/api/environments";
 import {CustomTypesApi} from "./main/api/custom-types";
 import {SessionsApi} from "./main/api/sessions";
 import {TemplatesApi} from "./main/api/templates";
+import {OpenApiImportApi} from "./main/api/openapi-import";
 import {ListenerFactory, ListenerLifecycleFactory} from "./main/services/listeners/factory";
 import {ConverterFactory} from "./main/services/listeners/converter";
 import {FilterFactory} from "./main/services/listeners/filter";
@@ -50,6 +51,7 @@ export default app({
         profiles: api(new ProfilesApi(storage, settings)),
         events: api(new EventsApi(storage, settings, generation, events)),
         listeners: api(new ListenersApi(storage, settings, manager)),
+        openapiImport: api(new OpenApiImportApi()),
     },
     channels: {
         listeners: {

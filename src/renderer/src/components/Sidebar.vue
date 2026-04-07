@@ -7,6 +7,8 @@ import { useEnvironmentStore } from '@renderer/stores/environment'
 import { useProfileStore } from '@renderer/stores/profile'
 import { useTemplateStore } from '@renderer/stores/template.store'
 import { useSessionStore } from '@renderer/stores/session.store'
+import { useOpenApiImportStore } from '@renderer/stores/openapi-import.store'
+import OpenApiImportModal from '@renderer/components/OpenApiImport/OpenApiImportModal.vue'
 
 const uiStore = useUiStore()
 const systemStore = useSystemStore()
@@ -15,6 +17,7 @@ const environmentStore = useEnvironmentStore()
 const profileStore = useProfileStore()
 const templateStore = useTemplateStore()
 const sessionStore = useSessionStore()
+const openApiImportStore = useOpenApiImportStore()
 
 const sectionExpanded = ref({
   schemas: true,
@@ -271,7 +274,8 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
             {{ sectionExpanded.schemas ? '▾' : '▸' }}
           </button>
           <h3 class="sidebar__section-title">Schemas</h3>
-          <button class="sidebar__add-btn" title="Create schema" @click="createSchema">+</button>
+          <button class="sidebar__add-btn" title="Import OpenAPI" data-testid="import-openapi-btn" @click="openApiImportStore.open()">↓</button>
+          <button class="sidebar__add-btn" title="Create schema" data-testid="create-schema-btn" @click="createSchema">+</button>
         </div>
         <ul v-if="sectionExpanded.schemas" class="sidebar__list">
           <li v-if="schemaStore.schemas.length === 0" class="sidebar__empty">No items</li>
@@ -500,6 +504,7 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
           Move
         </button>
       </div>
+      <OpenApiImportModal v-if="openApiImportStore.isOpen" />
     </Teleport>
   </aside>
 </template>
