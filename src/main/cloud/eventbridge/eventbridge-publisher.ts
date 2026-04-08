@@ -3,6 +3,8 @@ import {randomUUID} from "crypto";
 import {fromIni} from "@aws-sdk/credential-providers";
 import {EventBridgeClient, PutEventsCommand} from "@aws-sdk/client-eventbridge";
 import {EventBridgeConfig} from "../../../shared/models";
+import {NodeHttpHandler} from "@smithy/node-http-handler";
+import http from "http";
 
 export interface EventBridgePublisherOptions {
     config: EventBridgeConfig;
@@ -21,9 +23,14 @@ export class EventBridgePublisher implements Publisher {
         private readonly options: EventBridgePublisherOptions
     ) {
         this.id = randomUUID();
+        const endpointUrl = process.env.AWS_ENDPOINT_URL;
         this.client = new EventBridgeClient({
             region: options.config.region,
-            credentials: fromIni({ profile: options.aws.profile })
+            credentials: fromIni({ profile: options.aws.profile }),
+            ...(endpointUrl ? {
+                endpoint: endpointUrl,
+                requestHandler: new NodeHttpHandler({ httpAgent: new http.Agent({ keepAlive: false }) })
+            } : {})
         })
     }
 
