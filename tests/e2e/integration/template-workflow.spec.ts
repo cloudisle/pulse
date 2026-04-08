@@ -8,63 +8,11 @@
  */
 
 import { test, expect, type ElectronApplication, type Page } from '@playwright/test'
-import { _electron as electron } from 'playwright'
-import {
-  KinesisClient,
-  CreateStreamCommand,
-  DescribeStreamCommand,
-} from '@aws-sdk/client-kinesis'
-import { NodeHttpHandler } from '@smithy/node-http-handler'
-import http from 'http'
+import { type KinesisClient } from '@aws-sdk/client-kinesis'
 import { promises as fs } from 'fs'
 import os from 'os'
 import path from 'path'
-import { MINISTACK_ENDPOINT, AWS_CREDENTIALS_FILE, XVFB_DISPLAY_ENV } from '../global-setup'
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-const APP_MAIN = path.join(__dirname, '../../../out/main/index.js')
-
-function makeKinesisClient(): KinesisClient {
-  return new KinesisClient({
-    region: 'us-east-1',
-    endpoint: MINISTACK_ENDPOINT,
-    credentials: { accessKeyId: 'test', secretAccessKey: 'test' },
-    requestHandler: new NodeHttpHandler({ httpAgent: new http.Agent({ keepAlive: false }) }),
-  })
-}
-
-async function createStream(client: KinesisClient, streamName: string): Promise<void> {
-  await client.send(new CreateStreamCommand({ StreamName: streamName, ShardCount: 1 }))
-  for (let i = 0; i < 20; i++) {
-    const desc = await client.send(new DescribeStreamCommand({ StreamName: streamName }))
-    if (desc.StreamDescription?.StreamStatus === 'ACTIVE') return
-    await sleep(300)
-  }
-  throw new Error(`Stream ${streamName} did not become ACTIVE`)
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms))
-}
-
-async function launchApp(userDataDir: string): Promise<{ app: ElectronApplication; page: Page }> {
-  const display = process.env[XVFB_DISPLAY_ENV] ?? process.env.DISPLAY ?? ''
-  const electronApp = await electron.launch({
-    args: ['--no-sandbox', `--user-data-dir=${userDataDir}`, APP_MAIN],
-    env: {
-      ...process.env,
-      DISPLAY: display,
-      AWS_ENDPOINT_URL: MINISTACK_ENDPOINT,
-      AWS_SHARED_CREDENTIALS_FILE: AWS_CREDENTIALS_FILE,
-      AWS_DEFAULT_REGION: 'us-east-1',
-    },
-  })
-  const page = await electronApp.firstWindow()
-  return { app: electronApp, page }
-}
-
-// ─── Suite ───────────────────────────────────────────────────────────────────
+import { makeKinesisClient, createStream, launchApp } from './helpers'
 
 let userDataDir: string
 let electronApp: ElectronApplication

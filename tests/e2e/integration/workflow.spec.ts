@@ -8,85 +8,19 @@
  */
 
 import { test, expect, type ElectronApplication, type Page } from '@playwright/test'
-import { _electron as electron } from 'playwright'
-import {
-  KinesisClient,
-  CreateStreamCommand,
-  DescribeStreamCommand,
-  PutRecordCommand,
-} from '@aws-sdk/client-kinesis'
-import { NodeHttpHandler } from '@smithy/node-http-handler'
-import http from 'http'
+import { type KinesisClient } from '@aws-sdk/client-kinesis'
 import { promises as fs } from 'fs'
 import os from 'os'
 import path from 'path'
-import { MINISTACK_ENDPOINT, AWS_CREDENTIALS_FILE, XVFB_DISPLAY_ENV } from '../global-setup'
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-const APP_MAIN = path.join(__dirname, '../../../out/main/index.js')
-
-function makeKinesisClient(): KinesisClient {
-  return new KinesisClient({
-    region: 'us-east-1',
-    endpoint: MINISTACK_ENDPOINT,
-    credentials: { accessKeyId: 'test', secretAccessKey: 'test' },
-    requestHandler: new NodeHttpHandler({ httpAgent: new http.Agent({ keepAlive: false }) }),
-  })
-}
-
-async function createStream(client: KinesisClient, streamName: string): Promise<void> {
-  await client.send(new CreateStreamCommand({ StreamName: streamName, ShardCount: 1 }))
-  for (let i = 0; i < 20; i++) {
-    const desc = await client.send(new DescribeStreamCommand({ StreamName: streamName }))
-    if (desc.StreamDescription?.StreamStatus === 'ACTIVE') return
-    await sleep(300)
-  }
-  throw new Error(`Stream ${streamName} did not become ACTIVE`)
-}
-
-async function putRecord(client: KinesisClient, streamName: string, payload: object): Promise<void> {
-  await client.send(
-    new PutRecordCommand({
-      StreamName: streamName,
-      Data: Buffer.from(JSON.stringify(payload)),
-      PartitionKey: 'pk',
-    })
-  )
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms))
-}
-
-async function launchApp(userDataDir: string): Promise<{ app: ElectronApplication; page: Page }> {
-  const display = process.env[XVFB_DISPLAY_ENV] ?? process.env.DISPLAY ?? ''
-  const electronApp = await electron.launch({
-    args: ['--no-sandbox', `--user-data-dir=${userDataDir}`, APP_MAIN],
-    env: {
-      ...process.env,
-      DISPLAY: display,
-      AWS_ENDPOINT_URL: MINISTACK_ENDPOINT,
-      AWS_SHARED_CREDENTIALS_FILE: AWS_CREDENTIALS_FILE,
-      AWS_DEFAULT_REGION: 'us-east-1',
-    },
-  })
-  const page = await electronApp.firstWindow()
-  return { app: electronApp, page }
-}
-
-// Helper: call window.app.api.* from renderer context
-async function api<T>(page: Page, expr: string, ...args: unknown[]): Promise<T> {
-  return page.evaluate(
-    ([e, a]) => {
-      const fn = new Function('args', `return (${e})(...args)`)
-      return fn(a)
-    },
-    [expr, args] as [string, unknown[]]
-  ) as Promise<T>
-}
-
-// ─── Suite ───────────────────────────────────────────────────────────────────
+import {
+  makeKinesisClient,
+  createStream,
+  putRecord,
+  launchApp,
+  sleep,
+  LISTENER_RECEIVE_POLL_ATTEMPTS,
+  LISTENER_RECEIVE_POLL_DELAY_MS,
+} from './helpers'
 
 let userDataDir: string
 let electronApp: ElectronApplication
@@ -353,10 +287,10 @@ test('listener lifecycle: start on MiniStack stream, receive record, stop', asyn
   const receivedPayload = { correlationId: 'test-corr-1', result: 'ok' }
   await putRecord(kinesis, outputStreamName, receivedPayload)
 
-  // Poll session history until the received event appears (max 15s)
+  // Poll session history until the received event appears
   let receivedEvents: any[] = []
-  for (let i = 0; i < 30; i++) {
-    await sleep(500)
+  for (let i = 0; i < LISTENER_RECEIVE_POLL_ATTEMPTS; i++) {
+    await sleep(LISTENER_RECEIVE_POLL_DELAY_MS)
     const history = await page.evaluate(async (args) => {
       return (window as any).app.api.sessions.get(args.systemId, args.sessionId)
     }, { systemId: system.id, sessionId: session.id })
