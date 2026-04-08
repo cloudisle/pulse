@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import App from '../../../../src/app'
-import type { ListenerConfig } from '../../../../src/shared/models'
+import App from '@app'
+import type { ListenerConfig } from '@shared/models'
 import {
   DefaultMessageHandler,
   type MessageConverter,
   type MessageFilter,
   type RawMessage
-} from '../../../../src/main/services/listeners/listener'
+} from '@main/services/listeners/listener'
 
 function makeConfig(overrides: Partial<ListenerConfig> = {}): ListenerConfig {
   return {

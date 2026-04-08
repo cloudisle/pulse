@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { OpenApiImportService } from '../../src/main/services/openapi-import.service'
+import { OpenApiImportService } from '@main/services/openapi-import.service'
 
 describe('OpenApiImportService', () => {
   let service: OpenApiImportService
@@ -94,7 +94,7 @@ describe('OpenApiImportService', () => {
     const result = service.parse(JSON.stringify(doc))
     expect(result.error).toBeUndefined()
     const el = result.schemas[0].elements[0]
-    expect(el.constraints.enum).toEqual(['active', 'inactive', 'pending'])
+    expect(el.constraints?.enum).toEqual(['active', 'inactive', 'pending'])
     expect(el.generationStrategy.type).toBe('enum')
     const config = el.generationStrategy.config as { values: any[] }
     expect(config.values).toEqual(['active', 'inactive', 'pending'])
@@ -117,7 +117,7 @@ describe('OpenApiImportService', () => {
     const result = service.parse(JSON.stringify(doc))
     expect(result.error).toBeUndefined()
     const el = result.schemas[0].elements[0]
-    expect(el.constraints.pattern).toBe('^[A-Z]{3}-\\d{4}$')
+    expect(el.constraints?.pattern).toBe('^[A-Z]{3}-\\d{4}$')
     expect(el.generationStrategy.type).toBe('pattern')
     const config = el.generationStrategy.config as { pattern: string }
     expect(config.pattern).toBe('^[A-Z]{3}-\\d{4}$')

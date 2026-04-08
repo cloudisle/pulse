@@ -9,12 +9,12 @@ vi.mock('electron', () => ({
   }
 }))
 
-import { StorageService, StoragePaths } from '../../../../src/main/services/storage'
-import { SettingsService } from '../../../../src/main/services/settings.service'
-import { CustomTypesApi } from '../../../../src/main/api/custom-types'
-import type { DeleteCustomTypeResult } from '../../../../src/main/api/custom-types'
-import type { CustomDataType } from '../../../../src/shared/models/schema'
-import type { CreateCustomTypeInput, UpdateCustomTypeInput } from '../../../../src/shared/dto/custom-types'
+import { StorageService, StoragePaths } from '@main/services/storage.service'
+import { SettingsService } from '@main/services/settings.service'
+import { CustomTypesApi } from '@main/api/custom-types'
+import type { DeleteCustomTypeResult } from '@main/api/custom-types'
+import type { CustomDataType } from '@shared/models/schema'
+import type { CreateCustomTypeInput } from '@shared/dto/custom-types'
 
 let tmpDir: string
 let storage: StorageService

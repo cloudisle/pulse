@@ -9,11 +9,11 @@ vi.mock('electron', () => ({
   }
 }))
 
-import { StorageService, StoragePaths } from '../../../../src/main/services/storage'
-import { SettingsService } from '../../../../src/main/services/settings.service'
-import { ProfilesApi } from '../../../../src/main/api/profiles'
-import type { Profile, ProfileOverride } from '../../../../src/shared/models/profile'
-import type { Template } from '../../../../src/shared/models/template'
+import { StorageService, StoragePaths } from '@main/services/storage.service'
+import { SettingsService } from '@main/services/settings.service'
+import { ProfilesApi } from '@main/api/profiles'
+import type { Profile, ProfileOverride } from '@shared/models/profile'
+import type { Template } from '@shared/models/template'
 
 let tmpDir: string
 let storage: StorageService
@@ -23,7 +23,7 @@ const SYS_ID = 'sys-1'
 
 const OVERRIDES: ProfileOverride[] = [
   { elementPath: 'payload.status', action: 'set', value: 'active' },
-  { elementPath: 'payload.orderId', action: 'generate', generationStrategy: 'uuid' }
+  { elementPath: 'payload.orderId', action: 'generate', generationStrategy: { type: 'faker', config: { method: 'string.uuid' } } }
 ]
 
 beforeEach(async () => {
@@ -98,7 +98,7 @@ describe('ProfilesApi — create', () => {
     const override: ProfileOverride = {
       elementPath: 'orderId',
       action: 'generate',
-      generationStrategy: 'uuid'
+      generationStrategy: { type: 'faker', config: { method: 'string.uuid' } }
     }
     const profile = await api.create({ systemId: SYS_ID, name: 'P', overrides: [override] })
 
@@ -129,7 +129,7 @@ describe('ProfilesApi — create', () => {
   it('persists all override action types together', async () => {
     const overrides: ProfileOverride[] = [
       { elementPath: 'a', action: 'set', value: 1 },
-      { elementPath: 'b', action: 'generate', generationStrategy: 'uuid' },
+      { elementPath: 'b', action: 'generate', generationStrategy: { type: 'faker', config: { method: 'string.uuid' } } },
       { elementPath: 'c', action: 'omit' },
       { elementPath: 'd', action: 'nullify' },
       { elementPath: 'e', action: 'require' }

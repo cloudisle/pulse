@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ListenerManagerService } from '../../../../src/main/services/listeners/listener-manager.service'
-import type { Environment, ListenerConfig, OutputConfig } from '../../../../src/shared/models'
-import type { ListenerLifecycle } from '../../../../src/main/services/listeners/listener'
-import { VariableReplacementService } from '../../../../src/main/services/variable-replacement.service'
+import { ListenerManagerService } from '@main/services/listeners/listener-manager.service'
+import type { Environment, ListenerConfig, OutputConfig } from '@shared/models'
+import type { ListenerLifecycle } from '@main/services/listeners/listener'
+import { VariableReplacementService } from '@main/services/variable-replacement.service'
 
 function makeListenerConfig(overrides: Partial<ListenerConfig> = {}): ListenerConfig {
   return {

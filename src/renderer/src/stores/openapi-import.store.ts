@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { SchemaElement } from '../../../shared/models/schema'
-import type { OpenApiParsedSchema } from '../../../main/services/openapi-import.service'
-import { useSchemaStore } from './schema.store'
+import type { SchemaElement } from '@shared/models/schema'
+import { useSchemaStore } from '@renderer/stores/schema.store'
+import {OpenApiParsedSchema} from "@shared/models/openapi";
 
 export type WizardStep = 'provide' | 'select' | 'edit'
 

@@ -1,17 +1,7 @@
 import * as yaml from 'js-yaml'
-import type { SchemaElement, SchemaConstraints } from '../../shared/models/schema'
-import type { GenerationStrategy } from '../../shared/models/generation'
-
-export interface OpenApiParsedSchema {
-  name: string
-  description?: string
-  elements: SchemaElement[]
-}
-
-export interface OpenApiImportResult {
-  schemas: OpenApiParsedSchema[]
-  error?: string
-}
+import type { SchemaElement, SchemaConstraints } from '@shared/models/schema'
+import type { GenerationStrategy } from '@shared/models/generation'
+import {OpenApiImportResult, OpenApiParsedSchema} from "@shared/models/openapi";
 
 export class OpenApiImportService {
   parse(content: string): OpenApiImportResult {

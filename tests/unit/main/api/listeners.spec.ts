@@ -9,10 +9,10 @@ vi.mock('electron', () => ({
   }
 }))
 
-import { StorageService, StoragePaths } from '../../../../src/main/services/storage'
-import { SettingsService } from '../../../../src/main/services/settings.service'
-import { ListenersApi } from '../../../../src/main/api/listeners'
-import type { ListenerManagerService } from '../../../../src/main/services/listeners/listener-manager.service'
+import { StorageService, StoragePaths } from '@main/services/storage.service'
+import { SettingsService } from '@main/services/settings.service'
+import { ListenersApi } from '@main/api/listeners'
+import type { ListenerManagerService } from '@main/services/listeners/listener-manager.service'
 import type {
   ListenerConfig,
   ListenerStartResult,
@@ -20,7 +20,7 @@ import type {
   System,
   OutputConfig,
   Environment,
-} from '../../../../src/shared/models'
+} from '@shared/models'
 
 let tmpDir: string
 let storage: StorageService

@@ -1,4 +1,4 @@
-import { TemplateField } from '../models/template'
+import { TemplateField } from '@shared/models/template'
 
 export interface CreateTemplateInput {
   systemId: string;

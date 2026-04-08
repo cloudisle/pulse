@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import type { AppSettings } from '../../../../shared/models/settings'
+import type { AppSettings } from '@shared/models/settings'
 
 const DEFAULT_SETTINGS: Omit<AppSettings, 'dataDirectory'> & { dataDirectory: string } = {
   sessionHistoryLimit: 10,

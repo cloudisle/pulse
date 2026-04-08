@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useLogStore } from '@renderer/stores/log.store'
-import type { LogEntry } from '../../../../shared/models'
+import type { LogEntry } from '@shared/models'
 
 const logStore = useLogStore()
 

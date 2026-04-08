@@ -8,8 +8,8 @@ import type {
   KinesisConfig,
   SqsConfig,
   EventBridgeConfig
-} from '../../../src/shared/models/system'
-import type { Environment, EnvironmentVariable } from '../../../src/shared/models/environment'
+} from '@shared/models/system'
+import type { Environment, EnvironmentVariable } from '@shared/models/environment'
 import type {
   Schema,
   SchemaElement,
@@ -17,7 +17,7 @@ import type {
   DataTypeRef,
   BuiltInType,
   CustomDataType
-} from '../../../src/shared/models/schema'
+} from '@shared/models/schema'
 import type {
   GenerationStrategy,
   StrategyType,
@@ -28,22 +28,22 @@ import type {
   RangeConfig,
   ConstantConfig,
   TemplateConfig
-} from '../../../src/shared/models/generation'
-import type { Profile, ProfileOverride, OverrideAction } from '../../../src/shared/models/profile'
+} from '@shared/models/generation'
+import type { Profile, ProfileOverride, OverrideAction } from '@shared/models/profile'
 import type {
   Template,
   TemplateField,
   TemplateFolder,
   TemplateTree,
   TemplateFolderNode
-} from '../../../src/shared/models/template'
+} from '@shared/models/template'
 import type {
   Session,
   SessionDetail,
   SessionEvent,
   EventDirection,
   EventStatus
-} from '../../../src/shared/models/session'
+} from '@shared/models/session'
 import type {
   ListenerConfig,
   ListenerLifecycleState,
@@ -58,7 +58,7 @@ import type {
   ListenerDataEvent,
   ListenerErrorEvent,
   ListenerStartResult
-} from '../../../src/shared/models/listener'
+} from '@shared/models/listener'
 import type {
   GenerateEventInput,
   GeneratedEvent,
@@ -66,15 +66,15 @@ import type {
   SendEventResult,
   ValidationResult,
   ValidationWarning
-} from '../../../src/shared/models/event'
-import type { AWSProfile, CredentialValidation } from '../../../src/shared/models/aws'
-import type { LogLevel, LogEntry } from '../../../src/shared/models/log'
-import type { AppSettings } from '../../../src/shared/models/settings'
-import type { CreateSystemInput, UpdateSystemInput, ExportedSystem } from '../../../src/shared/dto/systems'
-import type { CreateSchemaInput, UpdateSchemaInput } from '../../../src/shared/dto/schemas'
-import type { CreateEnvInput, UpdateEnvInput } from '../../../src/shared/dto/environments'
-import type { CreateProfileInput, UpdateProfileInput } from '../../../src/shared/dto/profiles'
-import type { CreateTemplateInput, UpdateTemplateInput } from '../../../src/shared/dto/templates'
+} from '@shared/models/event'
+import type { AWSProfile, CredentialValidation } from '@shared/models/aws'
+import type { LogLevel, LogEntry } from '@shared/models/log'
+import type { AppSettings } from '@shared/models/settings'
+import type { CreateSystemInput, UpdateSystemInput, ExportedSystem } from '@shared/dto/systems'
+import type { CreateSchemaInput, UpdateSchemaInput } from '@shared/dto/schemas'
+import type { CreateEnvInput, UpdateEnvInput } from '@shared/dto/environments'
+import type { CreateProfileInput, UpdateProfileInput } from '@shared/dto/profiles'
+import type { CreateTemplateInput, UpdateTemplateInput } from '@shared/dto/templates'
 
 describe('shared models — System', () => {
   it('KinesisConfig satisfies interface shape', () => {
@@ -115,7 +115,8 @@ describe('shared models — System', () => {
       id: 'out-1',
       name: 'Fulfillment Stream',
       type: 'kinesis' as OutputType,
-      config: { streamName: 'fulfillment-events', region: 'us-east-1' }
+      config: { streamName: 'fulfillment-events', region: 'us-east-1' },
+      contentType: 'json'
     }
     expectTypeOf(output).toMatchTypeOf<OutputConfig>()
   })
@@ -299,7 +300,7 @@ describe('shared models — Session', () => {
       sessionId: 'sess-1',
       direction: 'sent' as EventDirection,
       timestamp: '2026-02-22T10:05:32.000Z',
-      payload: { orderId: 'ORD-X7K9M2P4' },
+      payload: '{ orderId: "ORD-X7K9M2P4" }',
       status: 'success' as EventStatus
     }
     expectTypeOf(event).toMatchTypeOf<SessionEvent>()
@@ -333,7 +334,8 @@ describe('shared models — Listener', () => {
     const config: ListenerConfig = {
       systemId: 'sys-1',
       outputId: 'out-1',
-      sessionId: 'sess-1'
+      sessionId: 'sess-1',
+      cloud: {}
     }
     expectTypeOf(config).toMatchTypeOf<ListenerConfig>()
   })
@@ -391,7 +393,7 @@ describe('shared models — Listener', () => {
         sessionId: 'sess-1',
         direction: 'received',
         timestamp: '2026-02-22T10:05:35.200Z',
-        payload: {},
+        payload: '{}',
         status: 'success'
       }
     }
@@ -529,7 +531,11 @@ describe('shared models — AppSettings', () => {
 
 describe('shared dto — systems', () => {
   it('CreateSystemInput satisfies interface shape', () => {
-    const input: CreateSystemInput = { name: 'My System' }
+    const input: CreateSystemInput = {
+      name: 'My System' ,
+      inputs: [],
+      outputs: []
+    }
     expectTypeOf(input).toMatchTypeOf<CreateSystemInput>()
   })
 

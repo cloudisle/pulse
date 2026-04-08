@@ -1,10 +1,10 @@
 import { faker, allFakers } from '@faker-js/faker'
 import RandExp from 'randexp'
 import { VariableReplacementService } from './variable-replacement.service'
-import { Schema, SchemaElement, CustomDataType, BuiltInType } from '../../shared/models/schema'
-import { Environment } from '../../shared/models/environment'
-import { Profile, ProfileOverride } from '../../shared/models/profile'
-import { GenerateEventInput, GeneratedEvent, ValidationResult, ValidationWarning } from '../../shared/models/event'
+import { Schema, SchemaElement, CustomDataType, BuiltInType } from '@shared/models/schema'
+import { Environment } from '@shared/models/environment'
+import { Profile, ProfileOverride } from '@shared/models/profile'
+import { GenerateEventInput, GeneratedEvent, ValidationResult, ValidationWarning } from '@shared/models/event'
 import {
   GenerationStrategy,
   FakerConfig,
@@ -13,8 +13,8 @@ import {
   RangeConfig,
   ConstantConfig,
   TemplateConfig
-} from '../../shared/models/generation'
-import {logger} from "../util/log";
+} from '@shared/models/generation'
+import {logger} from "@main/util/log";
 
 const log = logger('event-generation.service');
 

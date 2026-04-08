@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { SessionSentValueIndexService } from '../../../../src/main/services/listeners/session-sent-value-index.service'
+import { SessionSentValueIndexService } from '@main/services/listeners/session-sent-value-index.service'
 
 describe('SessionSentValueIndexService', () => {
   it('matches a received value when the corresponding sent value has been recorded', () => {

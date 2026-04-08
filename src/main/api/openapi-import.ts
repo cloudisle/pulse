@@ -1,5 +1,5 @@
-import { OpenApiImportService } from '../services/openapi-import.service'
-import type { OpenApiImportResult } from '../services/openapi-import.service'
+import { OpenApiImportService } from '@main/services/openapi-import.service'
+import type { OpenApiImportResult } from '@shared/models/openapi'
 
 export class OpenApiImportApi {
   private readonly service = new OpenApiImportService()

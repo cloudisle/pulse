@@ -9,11 +9,11 @@ vi.mock('electron', () => ({
   }
 }))
 
-import { StorageService, StoragePaths } from '../../../../src/main/services/storage'
-import { SettingsService } from '../../../../src/main/services/settings.service'
-import { SessionsApi } from '../../../../src/main/api/sessions'
-import type { Session, SessionDetail, SessionEvent } from '../../../../src/shared/models/session'
-import type { LogEntry } from '../../../../src/shared/models/log'
+import { StorageService, StoragePaths } from '@main/services/storage.service'
+import { SettingsService } from '@main/services/settings.service'
+import { SessionsApi } from '@main/api/sessions'
+import type { Session, SessionEvent } from '@shared/models/session'
+import type { LogEntry } from '@shared/models/log'
 
 let tmpDir: string
 let storage: StorageService

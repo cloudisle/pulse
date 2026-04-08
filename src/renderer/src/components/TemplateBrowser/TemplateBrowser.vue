@@ -6,8 +6,8 @@ import { useTemplateStore } from '@renderer/stores/template.store'
 import { useSchemaStore } from '@renderer/stores/schema.store'
 import { useProfileStore } from '@renderer/stores/profile'
 import { useSessionStore } from '@renderer/stores/session.store'
-import type { Template } from '../../../../shared/models/template'
-import type { InputConfig } from '../../../../shared/models/system'
+import type { Template } from '@shared/models/template'
+import type { InputConfig } from '@shared/models/system'
 import {resolveCloudSettings} from "@renderer/util/cloud";
 import {useEnvironmentStore} from "@renderer/stores/environment";
 

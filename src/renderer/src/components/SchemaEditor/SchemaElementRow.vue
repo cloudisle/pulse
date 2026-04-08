@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { SchemaElement, SchemaConstraints } from '../../../../../shared/models/schema'
-import type { StrategyType } from '../../../../../shared/models/generation'
-import type { ValidationWarning } from '../../../../../shared/models/event'
+import type { SchemaElement, SchemaConstraints } from '@shared/models/schema'
+import type { StrategyType } from '@shared/models/generation'
+import type { ValidationWarning } from '@shared/models/event'
 
 const props = defineProps<{
   element: SchemaElement

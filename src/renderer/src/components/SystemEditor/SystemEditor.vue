@@ -2,8 +2,8 @@
 import {ref, reactive, onMounted, computed, toRaw} from 'vue'
 import { useUiStore } from '@renderer/stores/ui'
 import { useSystemStore } from '@renderer/stores/system'
-import type { InputType, OutputType } from '../../../../shared/models/system'
-import type { ListenerFilterMode } from '../../../../shared/models/listener'
+import type { InputType, OutputType } from '@shared/models/system'
+import type { ListenerFilterMode } from '@shared/models/listener'
 
 const props = defineProps<{
   systemId?: string

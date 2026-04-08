@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { GeneratedEvent, InputConfig, Environment, SendEventInput } from '../../../../src/shared/models'
-import { StoragePaths, StorageService } from '../../../../src/main/services/storage'
-import { SettingsService } from '../../../../src/main/services/settings.service'
-import { EventSenderService } from '../../../../src/main/services/publishers/event-sender.service'
+import { GeneratedEvent, InputConfig, Environment, SendEventInput } from '@shared/models'
+import { StoragePaths, StorageService } from '@main/services/storage.service'
+import { SettingsService } from '@main/services/settings.service'
+import { EventSenderService } from '@main/services/publishers/event-sender.service'
 
 const DATA_DIR = '/test/data'
 const SYSTEM_ID = 'system-1'

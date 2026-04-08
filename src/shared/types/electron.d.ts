@@ -1,4 +1,4 @@
-import App from '../../app'
+import type App from '@app'
 
 type ExposedAppConfig = ReturnType<typeof App.expose>
 

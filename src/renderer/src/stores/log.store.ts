@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { LogEntry } from '../../../shared/models'
+import type { LogEntry } from '@shared/models'
 
 export interface LogFilters {
   debug: boolean

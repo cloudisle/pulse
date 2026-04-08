@@ -5,9 +5,9 @@ import { useSystemStore } from '@renderer/stores/system'
 import { useSchemaStore } from '@renderer/stores/schema.store'
 import { useProfileStore } from '@renderer/stores/profile'
 import { useTemplateStore } from '@renderer/stores/template.store'
-import type { Template, TemplateField } from '../../../../../shared/models/template'
-import type { Schema, SchemaElement } from '../../../../../shared/models/schema'
-import type { InputConfig } from '../../../../../shared/models/system'
+import type { Template, TemplateField } from '@shared/models/template'
+import type { Schema, SchemaElement } from '@shared/models/schema'
+import type { InputConfig } from '@shared/models/system'
 
 const props = defineProps<{
   templateId?: string

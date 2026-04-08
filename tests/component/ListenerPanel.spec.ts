@@ -5,8 +5,8 @@ import ListenerPanel from '@renderer/components/Listeners/ListenerPanel.vue'
 import { useListenerStore } from '@renderer/stores/listener.store'
 import { useSessionStore } from '@renderer/stores/session.store'
 import { useSystemStore } from '@renderer/stores/system'
-import type { ListenerStatus } from '../../src/shared/models/listener'
-import type { SessionEvent } from '../../src/shared/models/session'
+import type { ListenerStatus } from '@shared/models/listener'
+import type { SessionEvent } from '@shared/models/session'
 
 function makeStatus(overrides: Partial<ListenerStatus> = {}): ListenerStatus {
   return {

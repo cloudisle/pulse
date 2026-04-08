@@ -4,9 +4,9 @@ import { useUiStore } from '@renderer/stores/ui'
 import { useSystemStore } from '@renderer/stores/system'
 import { useSchemaStore } from '@renderer/stores/schema.store'
 import SchemaElementRow from './SchemaElementRow.vue'
-import type { Schema, SchemaElement, BuiltInType } from '../../../../../shared/models/schema'
-import type { StrategyType } from '../../../../../shared/models/generation'
-import type { ValidationWarning } from '../../../../../shared/models/event'
+import type { Schema, SchemaElement, BuiltInType } from '@shared/models/schema'
+import type { StrategyType } from '@shared/models/generation'
+import type { ValidationWarning } from '@shared/models/event'
 
 const props = defineProps<{
   schemaId?: string

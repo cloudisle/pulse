@@ -4,9 +4,9 @@ import { useUiStore } from '@renderer/stores/ui'
 import { useSystemStore } from '@renderer/stores/system'
 import { useSchemaStore } from '@renderer/stores/schema.store'
 import { useProfileStore } from '@renderer/stores/profile'
-import type { Profile, ProfileOverride, OverrideAction } from '../../../../../shared/models/profile'
-import type { GenerationStrategy, StrategyType } from '../../../../../shared/models/generation'
-import type { Schema, SchemaElement } from '../../../../../shared/models/schema'
+import type { Profile, ProfileOverride, OverrideAction } from '@shared/models/profile'
+import type { GenerationStrategy, StrategyType } from '@shared/models/generation'
+import type { Schema, SchemaElement } from '@shared/models/schema'
 
 const props = defineProps<{
   profileId?: string

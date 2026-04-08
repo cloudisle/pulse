@@ -4,7 +4,7 @@ import { useListenerStore } from '@renderer/stores/listener.store'
 import { useSystemStore } from '@renderer/stores/system'
 import { useSessionStore } from '@renderer/stores/session.store'
 import { useEnvironmentStore } from '@renderer/stores/environment'
-import type { OutputConfig, ListenerFilterMode, ListenerLifecycleState, ListenerStatus } from '../../../../shared/models'
+import type { OutputConfig, ListenerFilterMode, ListenerLifecycleState, ListenerStatus } from '@shared/models'
 import { resolveCloudSettings } from '@renderer/util/cloud'
 
 const listenerStore = useListenerStore()

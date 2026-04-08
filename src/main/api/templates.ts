@@ -1,15 +1,15 @@
 import { randomUUID } from 'crypto'
 import path from 'path'
-import { StorageService, StoragePaths } from '../services/storage'
-import { SettingsService } from '../services/settings.service'
+import { StorageService, StoragePaths } from '@main/services/storage.service'
+import { SettingsService } from '@main/services/settings.service'
 import type {
   Template,
   TemplateFolder,
   TemplateFolderNode,
   TemplateTree
-} from '../../shared/models/template'
-import type { Schema, SchemaElement } from '../../shared/models/schema'
-import type { CreateTemplateInput, UpdateTemplateInput } from '../../shared/dto/templates'
+} from '@shared/models/template'
+import type { Schema, SchemaElement } from '@shared/models/schema'
+import type { CreateTemplateInput, UpdateTemplateInput } from '@shared/dto/templates'
 
 export class TemplatesApi {
 

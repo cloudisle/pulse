@@ -4,8 +4,8 @@ import { useProfileStore } from '@renderer/stores/profile'
 import { useSchemaStore } from '@renderer/stores/schema.store'
 import { useSystemStore } from '@renderer/stores/system'
 import { useUiStore } from '@renderer/stores/ui'
-import type { Profile, ProfileOverride } from '../../../../../shared/models/profile'
-import type { Schema, SchemaElement } from '../../../../../shared/models/schema'
+import type { Profile, ProfileOverride } from '@shared/models/profile'
+import type { Schema, SchemaElement } from '@shared/models/schema'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 

@@ -4,9 +4,9 @@ import { useOpenApiImportStore } from '@renderer/stores/openapi-import.store'
 import { useSchemaStore } from '@renderer/stores/schema.store'
 import { useSystemStore } from '@renderer/stores/system'
 import SchemaElementRow from '@renderer/components/SchemaEditor/SchemaElementRow.vue'
-import type { SchemaElement, BuiltInType } from '../../../../../shared/models/schema'
-import type { StrategyType } from '../../../../../shared/models/generation'
-import type { ValidationWarning } from '../../../../../shared/models/event'
+import type { SchemaElement, BuiltInType } from '@shared/models/schema'
+import type { StrategyType } from '@shared/models/generation'
+import type { ValidationWarning } from '@shared/models/event'
 
 const store = useOpenApiImportStore()
 const schemaStore = useSchemaStore()
