@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { VariableReplacementService } from '../../../src/main/services/variable-replacement.service'
+import { VariableReplacementService } from '@main/services/variable-replacement.service'
 
 describe('VariableReplacementService', () => {
   let service: VariableReplacementService

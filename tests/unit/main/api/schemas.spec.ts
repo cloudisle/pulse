@@ -9,11 +9,11 @@ vi.mock('electron', () => ({
   }
 }))
 
-import { StorageService } from '../../../../src/main/services/storage'
-import { SettingsService } from '../../../../src/main/services/settings.service'
-import { SchemasApi } from '../../../../src/main/api/schemas'
-import type { Schema, SchemaElement } from '../../../../src/shared/models/schema'
-import type { CreateSchemaInput, UpdateSchemaInput } from '../../../../src/shared/dto/schemas'
+import { StorageService } from '@main/services/storage.service'
+import { SettingsService } from '@main/services/settings.service'
+import { SchemasApi } from '@main/api/schemas'
+import type { Schema, SchemaElement } from '@shared/models/schema'
+import type { CreateSchemaInput, UpdateSchemaInput } from '@shared/dto/schemas'
 
 let tmpDir: string
 let storage: StorageService

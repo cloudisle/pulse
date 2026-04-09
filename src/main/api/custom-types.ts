@@ -1,9 +1,9 @@
 import { randomUUID } from 'crypto'
 import path from 'path'
-import type { CustomDataType, Schema, SchemaElement } from '../../shared/models/schema'
-import type { CreateCustomTypeInput, UpdateCustomTypeInput } from '../../shared/dto/custom-types'
-import { StorageService, StoragePaths } from '../services/storage'
-import { SettingsService } from '../services/settings.service'
+import type { CustomDataType, Schema, SchemaElement } from '@shared/models/schema'
+import type { CreateCustomTypeInput, UpdateCustomTypeInput } from '@shared/dto/custom-types'
+import { StorageService, StoragePaths } from '@main/services/storage.service'
+import { SettingsService } from '@main/services/settings.service'
 
 export interface DeleteCustomTypeResult {
   warnings: string[]

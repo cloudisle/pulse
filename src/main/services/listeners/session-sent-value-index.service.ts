@@ -1,8 +1,8 @@
 import path from 'path'
-import { evaluateJsonPath } from '../../util/json'
-import { StoragePaths, StorageService } from '../storage'
-import { SettingsService } from '../settings.service'
-import type { SessionEvent } from '../../../shared/models'
+import { evaluateJsonPath } from '@main/util/json'
+import { StoragePaths, StorageService } from '@main/services/storage.service'
+import { SettingsService } from '@main/services/settings.service'
+import type { SessionEvent } from '@shared/models'
 
 type SessionKey = `${string}:${string}`
 

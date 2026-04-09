@@ -1,9 +1,9 @@
 import path from 'path'
 import { v4 as uuidv4 } from 'uuid'
-import { StorageService, StoragePaths } from '../services/storage'
-import { SettingsService } from '../services/settings.service'
-import type { Environment } from '../../shared/models'
-import {CreateEnvInput, UpdateEnvInput} from "../../shared/dto";
+import { StorageService, StoragePaths } from '@main/services/storage.service'
+import { SettingsService } from '@main/services/settings.service'
+import type { Environment } from '@shared/models'
+import {CreateEnvInput, UpdateEnvInput} from "@shared/dto";
 
 export class EnvironmentsApi {
 

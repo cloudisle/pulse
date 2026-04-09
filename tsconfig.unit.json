@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.node.json",
+  "compilerOptions": {
+    "composite": false,
+    "types": ["electron-vite/node", "vitest/globals", "node"]
+  },
+  "include": [
+    "src/app.ts",
+    "src/main/**/*",
+    "src/preload/**/*",
+    "src/shared/**/*",
+    "tests/unit/**/*"
+  ]
+}
+

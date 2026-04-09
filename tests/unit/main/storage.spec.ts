@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { promises as fs } from 'fs'
 import os from 'os'
 import path from 'path'
-import { StorageService, StoragePaths } from '../../../src/main/services/storage'
+import { StorageService, StoragePaths } from '@main/services/storage.service'
 
 let tmpDir: string
 let service: StorageService

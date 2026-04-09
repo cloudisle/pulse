@@ -3,10 +3,11 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useUiStore } from '@renderer/stores/ui'
 import { useSystemStore } from '@renderer/stores/system'
 import { useSchemaStore } from '@renderer/stores/schema.store'
+import { useOpenApiImportStore } from '@renderer/stores/openapi-import.store'
 import SchemaElementRow from './SchemaElementRow.vue'
-import type { Schema, SchemaElement, BuiltInType } from '../../../../../shared/models/schema'
-import type { StrategyType } from '../../../../../shared/models/generation'
-import type { ValidationWarning } from '../../../../../shared/models/event'
+import type { Schema, SchemaElement, BuiltInType } from '@shared/models/schema'
+import type { StrategyType } from '@shared/models/generation'
+import type { ValidationWarning } from '@shared/models/event'
 
 const props = defineProps<{
   schemaId?: string
@@ -15,6 +16,7 @@ const props = defineProps<{
 const uiStore = useUiStore()
 const systemStore = useSystemStore()
 const schemaStore = useSchemaStore()
+const openApiImportStore = useOpenApiImportStore()
 
 const isEditMode = computed(() => !!props.schemaId && props.schemaId !== 'new')
 
@@ -24,6 +26,7 @@ const elements = reactive<SchemaElement[]>([])
 
 const errorMessage = ref('')
 const saving = ref(false)
+const deleting = ref(false)
 const validating = ref(false)
 const validationWarnings = ref<ValidationWarning[]>([])
 
@@ -51,22 +54,36 @@ function ensureConstraints(elements: SchemaElement[]): SchemaElement[] {
   }))
 }
 
-onMounted(async () => {
-  await loadCustomTypes()
-  if (!isEditMode.value) return
+async function loadSchema(): Promise<void> {
+  if (!isEditMode.value || !props.schemaId) return
   const api = (window as any).app?.api
   if (!api || !systemStore.selectedSystemId) return
   try {
     const schema: Schema = await api.schemas.get(systemStore.selectedSystemId, props.schemaId)
     schemaName.value = schema.name ?? ''
     schemaDescription.value = schema.description ?? ''
-    elements.push(...ensureConstraints(JSON.parse(JSON.stringify(schema.elements ?? []))))
+    elements.splice(0, elements.length, ...ensureConstraints(JSON.parse(JSON.stringify(schema.elements ?? []))))
+    validationWarnings.value = []
+    errorMessage.value = ''
   } catch {
     errorMessage.value = 'Failed to load schema.'
   }
+}
+
+onMounted(async () => {
+  await loadCustomTypes()
+  await loadSchema()
 })
 
 watch(() => systemStore.selectedSystemId, loadCustomTypes)
+watch(
+  () => openApiImportStore.lastSaveCompletedAt,
+  async () => {
+    if (!isEditMode.value || !props.schemaId) return
+    if (!openApiImportStore.lastSavedSchemaIds.includes(props.schemaId)) return
+    await loadSchema()
+  }
+)
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -232,6 +249,43 @@ async function validate(): Promise<void> {
     validating.value = false
   }
 }
+
+async function deleteSchema(): Promise<void> {
+  if (!isEditMode.value || !props.schemaId) return
+
+  const api = (window as any).app?.api
+  const systemId = systemStore.selectedSystemId
+  if (!api || !systemId) return
+
+  let warningText = `Delete schema "${schemaName.value || props.schemaId}"? This action cannot be undone.`
+  try {
+    const templates = await api.templates?.list(systemId)
+    const references = (templates ?? []).filter((t: any) => t.schemaId === props.schemaId)
+    if (references.length > 0) {
+      warningText = `Warning: ${references.length} template(s) reference this schema. Deleting it may break those templates.\n\n${warningText}`
+    }
+  } catch {
+    // Ignore reference lookup errors and keep standard confirmation.
+  }
+
+  if (!confirm(warningText)) return
+
+  deleting.value = true
+  errorMessage.value = ''
+  try {
+    await schemaStore.deleteSchema(systemId, props.schemaId)
+    uiStore.closeTab(`schema:${props.schemaId}`)
+  } catch {
+    errorMessage.value = 'Failed to delete schema.'
+  } finally {
+    deleting.value = false
+  }
+}
+
+function syncFromOpenApi(): void {
+  if (!isEditMode.value || !props.schemaId) return
+  openApiImportStore.openForSchemaSync(props.schemaId, schemaName.value.trim())
+}
 </script>
 
 <template>
@@ -256,6 +310,14 @@ async function validate(): Promise<void> {
       </div>
       <div class="schema-editor__header-actions">
         <button
+          v-if="isEditMode"
+          class="schema-editor__btn schema-editor__btn--secondary"
+          data-testid="sync-btn"
+          @click="syncFromOpenApi"
+        >
+          Sync from OpenAPI
+        </button>
+        <button
           class="schema-editor__btn schema-editor__btn--secondary"
           :disabled="validating"
           data-testid="validate-btn"
@@ -264,8 +326,17 @@ async function validate(): Promise<void> {
           {{ validating ? 'Validating…' : 'Validate' }}
         </button>
         <button
+          v-if="isEditMode"
+          class="schema-editor__btn schema-editor__btn--danger"
+          :disabled="deleting"
+          data-testid="delete-btn"
+          @click="deleteSchema"
+        >
+          {{ deleting ? 'Deleting…' : 'Delete' }}
+        </button>
+        <button
           class="schema-editor__btn schema-editor__btn--primary"
-          :disabled="saving"
+          :disabled="saving || deleting"
           data-testid="save-btn"
           @click="save"
         >
@@ -422,6 +493,16 @@ async function validate(): Promise<void> {
 
 .schema-editor__btn--secondary:hover:not(:disabled) {
   background: #45475a;
+}
+
+.schema-editor__btn--danger {
+  background: rgba(243, 139, 168, 0.15);
+  color: #f38ba8;
+  border: 1px solid rgba(243, 139, 168, 0.4);
+}
+
+.schema-editor__btn--danger:hover:not(:disabled) {
+  background: rgba(243, 139, 168, 0.25);
 }
 
 .schema-editor__error {

@@ -5,9 +5,9 @@ import {
   GetRecordsCommand
 } from '@aws-sdk/client-kinesis'
 import { fromIni } from '@aws-sdk/credential-providers'
-import type { KinesisConfig } from '../../../shared/models'
+import type { KinesisConfig } from '@shared/models'
 import {randomUUID} from "crypto";
-import {Listener, MessageHandler} from "../../services/listeners/listener";
+import {Listener, MessageHandler} from "@main/services/listeners/listener";
 
 export interface KinesisListenerOptions {
   config: KinesisConfig

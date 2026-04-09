@@ -34,7 +34,7 @@ vi.mock('@aws-sdk/credential-providers', () => ({
 }))
 
 import { promises as fs } from 'fs'
-import { AwsApi } from '../../../../src/main/api/aws'
+import { AwsApi } from '@main/api/aws'
 
 const readFileMock = fs.readFile as ReturnType<typeof vi.fn>
 

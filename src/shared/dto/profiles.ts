@@ -1,4 +1,4 @@
-import { ProfileOverride } from '../models/profile'
+import { ProfileOverride } from '@shared/models/profile'
 
 export interface CreateProfileInput {
   systemId: string;

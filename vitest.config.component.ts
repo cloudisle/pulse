@@ -6,8 +6,9 @@ export default defineConfig({
   plugins: [vue()],
   resolve: {
     alias: {
-      '@renderer': resolve('src/renderer/src'),
-      '@shared': resolve('src/shared')
+      '@app': resolve(__dirname, 'src/app'),
+      '@renderer': resolve(__dirname, 'src/renderer/src'),
+      '@shared': resolve(__dirname, 'src/shared')
     }
   },
   test: {

@@ -2,8 +2,8 @@
 import { ref, computed, onMounted, reactive } from 'vue'
 import { useUiStore } from '@renderer/stores/ui'
 import { useSystemStore } from '@renderer/stores/system'
-import type { BuiltInType, SchemaConstraints } from '../../../../../shared/models/schema'
-import type { StrategyType } from '../../../../../shared/models/generation'
+import type { BuiltInType, SchemaConstraints } from '@shared/models/schema'
+import type { StrategyType } from '@shared/models/generation'
 
 const props = defineProps<{
   customTypeId?: string

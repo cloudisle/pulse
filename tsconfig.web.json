@@ -12,6 +12,11 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
+      "@app": ["src/app.ts"],
+      "@main": ["src/main/index.ts"],
+      "@main/*": ["src/main/*"],
+      "@shared": ["src/shared/index.ts"],
+      "@shared/*": ["src/shared/*"],
       "@renderer/*": ["src/renderer/src/*"]
     }
   }

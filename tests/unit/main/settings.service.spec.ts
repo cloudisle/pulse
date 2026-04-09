@@ -9,9 +9,9 @@ vi.mock('electron', () => ({
   }
 }))
 
-import { StorageService, StoragePaths } from '../../../src/main/services/storage'
-import { SettingsService } from '../../../src/main/services/settings.service'
-import type { AppSettings } from '../../../src/shared/models/settings'
+import { StorageService, StoragePaths } from '@main/services/storage.service'
+import { SettingsService } from '@main/services/settings.service'
+import type { AppSettings } from '@shared/models/settings'
 
 let tmpDir: string
 let storage: StorageService

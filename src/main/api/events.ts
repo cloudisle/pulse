@@ -1,20 +1,20 @@
 import path from 'path'
-import { StorageService, StoragePaths } from '../services/storage'
-import { SettingsService } from '../services/settings.service'
-import { EventGenerationService } from '../services/event-generation.service'
-import { EventSenderService } from '../services/publishers/event-sender.service'
-import type { Schema, CustomDataType } from '../../shared/models/schema'
-import type { Environment } from '../../shared/models/environment'
-import type { Profile } from '../../shared/models/profile'
-import type { System } from '../../shared/models/system'
+import { StorageService, StoragePaths } from '@main/services/storage.service'
+import { SettingsService } from '@main/services/settings.service'
+import { EventGenerationService } from '@main/services/event-generation.service'
+import { EventSenderService } from '@main/services/publishers/event-sender.service'
+import type { Schema, CustomDataType } from '@shared/models/schema'
+import type { Environment } from '@shared/models/environment'
+import type { Profile } from '@shared/models/profile'
+import type { System } from '@shared/models/system'
 import type {
   GenerateEventInput,
   GeneratedEvent,
   SendEventInput,
   SendEventResult,
   ValidationResult
-} from '../../shared/models/event'
-import {logger} from "../util/log";
+} from '@shared/models/event'
+import {logger} from "@main/util/log";
 
 const log = logger('events.api');
 

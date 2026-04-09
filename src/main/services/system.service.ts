@@ -1,6 +1,6 @@
-import {StoragePaths, StorageService} from "./storage";
+import {StoragePaths, StorageService} from "@main/services/storage.service";
 import {SettingsService} from "./settings.service";
-import {OutputConfig, System} from "../../shared/models";
+import {OutputConfig, System} from "@shared/models";
 
 export class SystemService {
 

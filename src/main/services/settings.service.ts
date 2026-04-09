@@ -1,8 +1,8 @@
 import path from 'path'
 import { app } from 'electron'
-import { StorageService, StoragePaths } from './storage'
-import type { AppSettings } from '../../shared/models/settings'
-import {lazy} from "../util";
+import { StorageService, StoragePaths } from '@main/services/storage.service'
+import type { AppSettings } from '@shared/models/settings'
+import {lazy} from "@main/util";
 
 const DEFAULT_SETTINGS: Omit<AppSettings, 'dataDirectory'> = {
   sessionHistoryLimit: 10,

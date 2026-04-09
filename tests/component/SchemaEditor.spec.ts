@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import SchemaEditor from '@renderer/components/SchemaEditor/SchemaEditor.vue'
 import { useUiStore } from '@renderer/stores/ui'
 import { useSystemStore } from '@renderer/stores/system'
+import { useOpenApiImportStore } from '@renderer/stores/openapi-import.store'
 
 function mockAppApi(overrides: Record<string, any> = {}) {
   ;(window as any).app = {
@@ -12,9 +13,14 @@ function mockAppApi(overrides: Record<string, any> = {}) {
         get: vi.fn().mockResolvedValue(null),
         create: vi.fn().mockResolvedValue({ id: 'new-schema-id', name: 'New Schema' }),
         update: vi.fn().mockResolvedValue({}),
+        delete: vi.fn().mockResolvedValue(undefined),
         validate: vi.fn().mockResolvedValue({ valid: true, warnings: [] }),
         list: vi.fn().mockResolvedValue([]),
         ...overrides.schemas
+      },
+      templates: {
+        list: vi.fn().mockResolvedValue([]),
+        ...overrides.templates
       },
       customTypes: {
         list: vi.fn().mockResolvedValue([]),
@@ -191,6 +197,86 @@ describe('SchemaEditor component', () => {
 
       expect(wrapper.find('[data-testid="error-message"]').exists()).toBe(true)
       expect(wrapper.find('[data-testid="error-message"]').text()).toContain('Failed to load')
+    })
+
+    it('opens OpenAPI modal in schema sync mode from edit action', async () => {
+      mockAppApi({ schemas: { get: vi.fn().mockResolvedValue(existingSchema) } })
+      const pinia = createPinia()
+      const wrapper = mount(SchemaEditor, {
+        props: { schemaId: 'schema-existing' },
+        global: { plugins: [pinia] }
+      })
+      const systemStore = useSystemStore()
+      systemStore.selectedSystemId = 'sys-1'
+      await flushPromises()
+
+      await wrapper.find('[data-testid="sync-btn"]').trigger('click')
+
+      const importStore = useOpenApiImportStore()
+      expect(importStore.isOpen).toBe(true)
+      expect(importStore.mode).toBe('schema-sync')
+      expect(importStore.syncTargetSchemaId).toBe('schema-existing')
+      expect(importStore.syncTargetSchemaName).toBe('Existing Schema')
+    })
+
+    it('deletes schema and closes tab from edit action', async () => {
+      const deleteMock = vi.fn().mockResolvedValue(undefined)
+      mockAppApi({
+        schemas: {
+          get: vi.fn().mockResolvedValue(existingSchema),
+          delete: deleteMock,
+          list: vi.fn().mockResolvedValue([])
+        },
+        templates: { list: vi.fn().mockResolvedValue([]) }
+      })
+
+      const pinia = createPinia()
+      const wrapper = mount(SchemaEditor, {
+        props: { schemaId: 'schema-existing' },
+        global: { plugins: [pinia] }
+      })
+      const systemStore = useSystemStore()
+      systemStore.selectedSystemId = 'sys-1'
+      const uiStore = useUiStore()
+      uiStore.openTab({ id: 'schema:schema-existing', type: 'schema', title: 'Existing Schema' })
+      await flushPromises()
+
+      await wrapper.find('[data-testid="delete-btn"]').trigger('click')
+      await flushPromises()
+
+      expect(deleteMock).toHaveBeenCalledWith('sys-1', 'schema-existing')
+      expect(uiStore.openTabs.find((t) => t.id === 'schema:schema-existing')).toBeUndefined()
+    })
+
+    it('reloads editor state when OpenAPI sync saves this schema', async () => {
+      const getMock = vi.fn()
+        .mockResolvedValueOnce(existingSchema)
+        .mockResolvedValueOnce({
+          ...existingSchema,
+          name: 'Synced Schema',
+          description: 'Updated by sync'
+        })
+
+      mockAppApi({ schemas: { get: getMock } })
+      const pinia = createPinia()
+      const wrapper = mount(SchemaEditor, {
+        props: { schemaId: 'schema-existing' },
+        global: { plugins: [pinia] }
+      })
+      const systemStore = useSystemStore()
+      systemStore.selectedSystemId = 'sys-1'
+      await flushPromises()
+
+      expect((wrapper.find('[data-testid="schema-name"]').element as HTMLInputElement).value).toBe('Existing Schema')
+
+      const importStore = useOpenApiImportStore()
+      importStore.lastSavedSchemaIds = ['schema-existing']
+      importStore.lastSaveCompletedAt = Date.now()
+      await flushPromises()
+
+      expect(getMock).toHaveBeenCalledTimes(2)
+      expect((wrapper.find('[data-testid="schema-name"]').element as HTMLInputElement).value).toBe('Synced Schema')
+      expect((wrapper.find('[data-testid="schema-description"]').element as HTMLInputElement).value).toBe('Updated by sync')
     })
   })
 
