@@ -127,6 +127,23 @@ describe('OpenApiImportModal component', () => {
       expect(nextBtn).not.toBeNull()
       expect(nextBtn!.disabled).toBe(true)
     })
+
+    it('renders schema-sync mode text and radio selection', async () => {
+      const { wrapper, store } = mountModal()
+      store.mode = 'schema-sync'
+      store.syncTargetSchemaName = 'CurrentSchema'
+      store.parsedSchemas = [
+        { name: 'User', elements: [] },
+        { name: 'Order', elements: [] }
+      ]
+      store.step = 'select'
+      await wrapper.vm.$nextTick()
+
+      const subtitle = document.body.querySelector('.oai-subtitle')
+      expect(subtitle?.textContent).toContain('sync into CurrentSchema')
+      expect(document.body.querySelectorAll('input[type="radio"][name="sync-source-schema"]').length).toBe(2)
+      expect(document.body.querySelectorAll('input[type="checkbox"]').length).toBe(0)
+    })
   })
 
   describe('Step 3: edit', () => {
@@ -177,6 +194,19 @@ describe('OpenApiImportModal component', () => {
       const saveBtn = document.body.querySelector('[data-testid="save-all-btn"]') as HTMLButtonElement | null
       expect(saveBtn).not.toBeNull()
       expect(saveBtn!.disabled).toBe(true)
+    })
+
+    it('uses sync action label in schema-sync mode', async () => {
+      const { wrapper, store } = mountModal()
+      store.mode = 'schema-sync'
+      store.editingSchemas = [
+        { originalName: 'User', name: 'CurrentSchema', description: '', elements: [], action: 'update' }
+      ]
+      store.step = 'edit'
+      await wrapper.vm.$nextTick()
+
+      const saveBtn = document.body.querySelector('[data-testid="save-all-btn"]') as HTMLButtonElement | null
+      expect(saveBtn?.textContent).toContain('Sync Schema')
     })
   })
 })

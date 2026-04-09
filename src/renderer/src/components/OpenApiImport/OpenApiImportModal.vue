@@ -35,12 +35,20 @@ function onFileChange(event: Event): void {
 // ── Step 2 ──────────────────────────────────────────────────────────────────
 
 const localSelected = ref<string[]>([])
+const isSyncMode = computed(() => store.mode === 'schema-sync')
+const canProceedFromSelect = computed(() =>
+  isSyncMode.value ? localSelected.value.length === 1 : localSelected.value.length > 0
+)
 
 watch(
   () => store.step,
   (s) => {
     if (s === 'select') {
-      localSelected.value = store.parsedSchemas.map((p) => p.name)
+      if (isSyncMode.value) {
+        localSelected.value = store.parsedSchemas.length > 0 ? [store.parsedSchemas[0].name] : []
+      } else {
+        localSelected.value = store.parsedSchemas.map((p) => p.name)
+      }
     }
   }
 )
@@ -58,7 +66,16 @@ function deselectAll(): void {
 }
 
 function onNext(): void {
+  if (isSyncMode.value) {
+    const selected = localSelected.value[0]
+    store.confirmSelection(selected ? [selected] : [])
+    return
+  }
   store.confirmSelection([...localSelected.value])
+}
+
+function onSyncSourceSelect(name: string, checked: boolean): void {
+  localSelected.value = checked ? [name] : []
 }
 
 function goBackToProvide(): void {
@@ -199,13 +216,11 @@ function warningsForPath(_path: string): ValidationWarning[] {
 
 const stepTitle = computed(() => {
   switch (store.step) {
-    case 'provide': return 'Import OpenAPI File'
-    case 'select': return 'Select Schemas to Import'
-    case 'edit': return 'Review & Edit Schemas'
+    case 'provide': return isSyncMode.value ? 'Sync Schema From OpenAPI' : 'Import OpenAPI File'
+    case 'select': return isSyncMode.value ? 'Select Source Schema' : 'Select Schemas to Import'
+    case 'edit': return isSyncMode.value ? 'Review Sync Changes' : 'Review & Edit Schemas'
   }
 })
-
-// ── Escape key ──────────────────────────────────────────────────────────────
 
 function onKeydown(e: KeyboardEvent): void {
   if (e.key === 'Escape') store.close()
@@ -235,13 +250,21 @@ onUnmounted(() => {
         <div class="oai-steps">
           <span class="oai-step" :class="{ 'oai-step--active': store.step === 'provide' }">1 Provide</span>
           <span class="oai-step-sep">›</span>
-          <span class="oai-step" :class="{ 'oai-step--active': store.step === 'select' }">2 Select</span>
+          <span class="oai-step" :class="{ 'oai-step--active': store.step === 'select' }">
+            {{ isSyncMode ? '2 Pick Source' : '2 Select' }}
+          </span>
           <span class="oai-step-sep">›</span>
-          <span class="oai-step" :class="{ 'oai-step--active': store.step === 'edit' }">3 Edit &amp; Save</span>
+          <span class="oai-step" :class="{ 'oai-step--active': store.step === 'edit' }">
+            {{ isSyncMode ? '3 Review &amp; Sync' : '3 Edit &amp; Save' }}
+          </span>
         </div>
 
         <!-- Step 1: Provide -->
         <div v-if="store.step === 'provide'" class="oai-body">
+          <p v-if="isSyncMode" class="oai-subtitle">
+            Choose an OpenAPI file and select one schema to sync into
+            <strong>{{ store.syncTargetSchemaName }}</strong>.
+          </p>
           <div class="oai-field">
             <label class="oai-label">Paste OpenAPI content (JSON or YAML)</label>
             <textarea
@@ -290,9 +313,12 @@ onUnmounted(() => {
 
         <!-- Step 2: Select -->
         <div v-else-if="store.step === 'select'" class="oai-body">
-          <p class="oai-subtitle">Found {{ store.parsedSchemas.length }} schema(s) in the provided file.</p>
+          <p class="oai-subtitle">
+            Found {{ store.parsedSchemas.length }} schema(s) in the provided file.
+            <template v-if="isSyncMode">Select one source schema to sync into {{ store.syncTargetSchemaName }}.</template>
+          </p>
 
-          <div class="oai-select-actions">
+          <div v-if="!isSyncMode" class="oai-select-actions">
             <button class="oai-btn oai-btn--secondary oai-btn--sm" @click="selectAll">Select All</button>
             <button class="oai-btn oai-btn--secondary oai-btn--sm" @click="deselectAll">Deselect All</button>
           </div>
@@ -301,11 +327,21 @@ onUnmounted(() => {
             <li v-for="schema in store.parsedSchemas" :key="schema.name" class="oai-schema-row">
               <label class="oai-schema-label">
                 <input
+                  v-if="!isSyncMode"
                   v-model="localSelected"
                   type="checkbox"
                   :value="schema.name"
                   class="oai-checkbox"
                   :data-testid="`schema-checkbox-${schema.name}`"
+                />
+                <input
+                  v-else
+                  type="radio"
+                  name="sync-source-schema"
+                  class="oai-checkbox"
+                  :checked="localSelected[0] === schema.name"
+                  :data-testid="`schema-checkbox-${schema.name}`"
+                  @change="onSyncSourceSelect(schema.name, ($event.target as HTMLInputElement).checked)"
                 />
                 <span class="oai-schema-name">{{ schema.name }}</span>
                 <span v-if="schema.description" class="oai-schema-desc">{{ schema.description }}</span>
@@ -319,7 +355,7 @@ onUnmounted(() => {
             <button class="oai-btn oai-btn--secondary" @click="goBackToProvide">← Back</button>
             <button
               class="oai-btn oai-btn--primary"
-              :disabled="localSelected.length === 0"
+              :disabled="!canProceedFromSelect"
               data-testid="next-btn"
               @click="onNext"
             >
@@ -402,7 +438,7 @@ onUnmounted(() => {
               data-testid="save-all-btn"
               @click="store.saveAll(systemStore.selectedSystemId!)"
             >
-              {{ store.saving ? 'Saving…' : 'Save All' }}
+              {{ store.saving ? 'Saving…' : (isSyncMode ? 'Sync Schema' : 'Save All') }}
             </button>
           </div>
         </div>

@@ -5,12 +5,25 @@ import Sidebar from '@renderer/components/Sidebar.vue'
 import { useUiStore } from '@renderer/stores/ui'
 import { useSystemStore } from '@renderer/stores/system'
 import { useSchemaStore } from '@renderer/stores/schema.store'
+import { useOpenApiImportStore } from '@renderer/stores/openapi-import.store'
+
+function mountSidebar(pinia = createPinia()) {
+  return mount(Sidebar, {
+    global: {
+      plugins: [pinia],
+      stubs: { teleport: true }
+    }
+  })
+}
 
 function mockAppApi(overrides: Record<string, any> = {}) {
   ;(window as any).app = {
     api: {
       systems: { list: vi.fn().mockResolvedValue([]) },
-      schemas: { list: vi.fn().mockResolvedValue([]) },
+      schemas: {
+        list: vi.fn().mockResolvedValue([]),
+        delete: vi.fn().mockResolvedValue(undefined)
+      },
       environments: { list: vi.fn().mockResolvedValue([]) },
       profiles: { list: vi.fn().mockResolvedValue([]) },
       templates: { list: vi.fn().mockResolvedValue({ folders: [], templates: [] }) },
@@ -28,7 +41,7 @@ describe('Sidebar component', () => {
   })
 
   it('renders all navigation sections when expanded', () => {
-    const wrapper = mount(Sidebar, { global: { plugins: [createPinia()] } })
+    const wrapper = mountSidebar(createPinia())
     const titles = wrapper.findAll('.sidebar__section-title').map((el) => el.text())
     expect(titles).toEqual(['Systems', 'Schemas', 'Environments', 'Profiles', 'Custom Types', 'Templates'])
     expect(wrapper.find('[data-testid="sessions-btn"]').exists()).toBe(true)
@@ -36,7 +49,7 @@ describe('Sidebar component', () => {
 
   it('hides navigation when collapsed', async () => {
     const pinia = createPinia()
-    const wrapper = mount(Sidebar, { global: { plugins: [pinia] } })
+    const wrapper = mountSidebar(pinia)
     const store = useUiStore()
     store.toggleSidebar()
     await wrapper.vm.$nextTick()
@@ -45,7 +58,7 @@ describe('Sidebar component', () => {
 
   it('toggles sidebar collapsed state on toggle button click', async () => {
     const pinia = createPinia()
-    const wrapper = mount(Sidebar, { global: { plugins: [pinia] } })
+    const wrapper = mountSidebar(pinia)
     const store = useUiStore()
     expect(store.sidebarCollapsed).toBe(false)
     await wrapper.find('.sidebar__toggle').trigger('click')
@@ -56,7 +69,7 @@ describe('Sidebar component', () => {
 
   it('applies collapsed class when sidebar is collapsed', async () => {
     const pinia = createPinia()
-    const wrapper = mount(Sidebar, { global: { plugins: [pinia] } })
+    const wrapper = mountSidebar(pinia)
     const store = useUiStore()
     expect(wrapper.find('.sidebar--collapsed').exists()).toBe(false)
     store.toggleSidebar()
@@ -71,7 +84,7 @@ describe('Sidebar component', () => {
     ]
     mockAppApi({ systems: { list: vi.fn().mockResolvedValue(systems) } })
     const pinia = createPinia()
-    mount(Sidebar, { global: { plugins: [pinia] } })
+    mountSidebar(pinia)
     await flushPromises()
     const systemStore = useSystemStore()
     expect(systemStore.systems).toEqual(systems)
@@ -94,7 +107,7 @@ describe('Sidebar component', () => {
       sessions: { list: vi.fn().mockResolvedValue([]) }
     })
     const pinia = createPinia()
-    const wrapper = mount(Sidebar, { global: { plugins: [pinia] } })
+    const wrapper = mountSidebar(pinia)
     await flushPromises()
 
     // Pre-populate the systems dropdown so setValue can select a valid option
@@ -124,7 +137,7 @@ describe('Sidebar component', () => {
 
   it('opens a schema tab when a schema item is clicked', async () => {
     const pinia = createPinia()
-    const wrapper = mount(Sidebar, { global: { plugins: [pinia] } })
+    const wrapper = mountSidebar(pinia)
     const schemaStore = useSchemaStore()
     schemaStore.schemas = [{ id: 'sch1', name: 'My Schema' }]
     await wrapper.vm.$nextTick()
@@ -140,7 +153,7 @@ describe('Sidebar component', () => {
 
   it('focuses an existing tab instead of opening a duplicate', async () => {
     const pinia = createPinia()
-    const wrapper = mount(Sidebar, { global: { plugins: [pinia] } })
+    const wrapper = mountSidebar(pinia)
     const schemaStore = useSchemaStore()
     schemaStore.schemas = [{ id: 'sch1', name: 'My Schema' }]
     await wrapper.vm.$nextTick()
@@ -156,7 +169,7 @@ describe('Sidebar component', () => {
 
   it('opens the create schema tab when the Schemas + button is clicked', async () => {
     const pinia = createPinia()
-    const wrapper = mount(Sidebar, { global: { plugins: [pinia] } })
+    const wrapper = mountSidebar(pinia)
 
     await wrapper.find('[data-testid="create-schema-btn"]').trigger('click')
 
@@ -168,7 +181,7 @@ describe('Sidebar component', () => {
 
   it('opens the sessions tab when the Sessions footer button is clicked', async () => {
     const pinia = createPinia()
-    const wrapper = mount(Sidebar, { global: { plugins: [pinia] } })
+    const wrapper = mountSidebar(pinia)
 
     await wrapper.find('[data-testid="sessions-btn"]').trigger('click')
 
@@ -177,5 +190,56 @@ describe('Sidebar component', () => {
       expect.objectContaining({ id: 'sessions', type: 'sessions', title: 'Sessions' })
     )
     expect(uiStore.activeTabId).toBe('sessions')
+  })
+
+  it('deletes schema from context menu', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const deleteMock = vi.fn().mockResolvedValue(undefined)
+    mockAppApi({
+      schemas: { list: vi.fn().mockResolvedValue([]), delete: deleteMock },
+      templates: { list: vi.fn().mockResolvedValue({ folders: [], templates: [] }) }
+    })
+
+    const pinia = createPinia()
+    const wrapper = mountSidebar(pinia)
+    const schemaStore = useSchemaStore()
+    const systemStore = useSystemStore()
+    systemStore.selectedSystemId = 'sys1'
+    schemaStore.schemas = [{ id: 'sch1', name: 'My Schema' }]
+    await wrapper.vm.$nextTick()
+
+    await wrapper.find('.sidebar__item').trigger('contextmenu', {
+      button: 2,
+      clientX: 120,
+      clientY: 80,
+    })
+    await wrapper.vm.$nextTick()
+    const deleteBtn = wrapper.findAll('.sidebar__context-item').find((btn) => btn.text() === 'Delete')
+    expect(deleteBtn).toBeDefined()
+    await deleteBtn!.trigger('click')
+    await flushPromises()
+
+    expect(deleteMock).toHaveBeenCalledWith('sys1', 'sch1')
+    expect(schemaStore.schemas).toEqual([])
+    confirmSpy.mockRestore()
+  })
+
+  it('opens OpenAPI modal in schema sync mode from context menu', async () => {
+    const pinia = createPinia()
+    const wrapper = mountSidebar(pinia)
+    const schemaStore = useSchemaStore()
+    schemaStore.schemas = [{ id: 'sch1', name: 'My Schema' }]
+    await wrapper.vm.$nextTick()
+
+    await wrapper.find('.sidebar__item').trigger('contextmenu')
+    await wrapper.vm.$nextTick()
+    const syncBtn = wrapper.findAll('.sidebar__context-item').find((btn) => btn.text() === 'Sync from OpenAPI')
+    expect(syncBtn).toBeDefined()
+    await syncBtn!.trigger('click')
+
+    const importStore = useOpenApiImportStore()
+    expect(importStore.isOpen).toBe(true)
+    expect(importStore.mode).toBe('schema-sync')
+    expect(importStore.syncTargetSchemaId).toBe('sch1')
   })
 })
