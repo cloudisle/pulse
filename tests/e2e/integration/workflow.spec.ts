@@ -10,17 +10,62 @@
 import { test, expect, type ElectronApplication, type Page } from '@playwright/test'
 import { type KinesisClient } from '@aws-sdk/client-kinesis'
 import { promises as fs } from 'fs'
-import os from 'os'
-import path from 'path'
+import * as os from 'os'
+import * as path from 'path'
 import {
   makeKinesisClient,
   createStream,
   putRecord,
   launchApp,
   sleep,
+  setRefreshCredentialState,
+  CREDENTIAL_REFRESH_PROFILE,
   LISTENER_RECEIVE_POLL_ATTEMPTS,
   LISTENER_RECEIVE_POLL_DELAY_MS,
 } from './helpers'
+
+async function waitForListenerState(
+  page: Page,
+  listenerId: string,
+  expected: 'starting' | 'running' | 'stopping' | 'stopped' | 'error',
+  attempts = 25,
+  delayMs = 300
+): Promise<void> {
+  for (let i = 0; i < attempts; i++) {
+    const statuses = await page.evaluate(async () => {
+      return (window as any).app.api.listeners.status()
+    })
+    const match = statuses.find((status: any) => status.listenerId === listenerId)
+    if (match?.status === expected) {
+      return
+    }
+    await sleep(delayMs)
+  }
+
+  throw new Error(`Listener ${listenerId} did not reach state ${expected}`)
+}
+
+async function waitForCredentialValidation(
+  page: Page,
+  profile: string,
+  expectedValid: boolean,
+  attempts = 20,
+  delayMs = 250
+): Promise<void> {
+  for (let i = 0; i < attempts; i++) {
+    const validation = await page.evaluate(async (profileName) => {
+      return (window as any).app.api.aws.validateCredentials(profileName)
+    }, profile)
+
+    if (validation?.valid === expectedValid) {
+      return
+    }
+
+    await sleep(delayMs)
+  }
+
+  throw new Error(`Profile ${profile} did not reach validation state valid=${expectedValid}`)
+}
 
 let userDataDir: string
 let electronApp: ElectronApplication
@@ -307,6 +352,107 @@ test('listener lifecycle: start on MiniStack stream, receive record, stop', asyn
   const rcvPayload = JSON.parse(receivedEvents[0].payload)
   expect(rcvPayload.correlationId).toBe('test-corr-1')
   expect(rcvPayload.result).toBe('ok')
+})
+
+test('listener retries with same profile after session refresh', async () => {
+  const outputStreamName = 'e2e-orders-credential-refresh'
+  await createStream(kinesis, outputStreamName)
+
+  const system = await page.evaluate(async (input) => {
+    return (window as any).app.api.systems.create(input)
+  }, {
+    name: 'E2E Listener Credential Refresh',
+    inputs: [],
+    outputs: [
+      {
+        name: 'Orders Output',
+        type: 'kinesis',
+        contentType: 'json',
+        config: { streamName: outputStreamName, region: 'us-east-1' },
+        listenerDefaults: {
+          filterMode: 'all',
+          includeUnmatched: true,
+          filters: [],
+        },
+      },
+    ],
+  })
+
+  const session = await page.evaluate(async (systemId) => {
+    return (window as any).app.api.sessions.create(systemId)
+  }, system.id)
+
+  const outputId: string = system.outputs[0].id
+
+  let failedListenerId: string | undefined
+  let recoveredListenerId: string | undefined
+
+  try {
+    await setRefreshCredentialState('expired')
+    await waitForCredentialValidation(page, CREDENTIAL_REFRESH_PROFILE, false)
+
+    // First start uses same profile while its credential process reports expired credentials.
+    const failedStart = await page.evaluate(async (args) => {
+      return (window as any).app.api.listeners.start({
+        systemId: args.systemId,
+        outputId: args.outputId,
+        sessionId: args.sessionId,
+        cloud: { aws: { profile: args.profile } },
+      })
+    }, { systemId: system.id, outputId, sessionId: session.id, profile: CREDENTIAL_REFRESH_PROFILE })
+
+    failedListenerId = failedStart.listenerId
+    await waitForListenerState(page, failedListenerId, 'error')
+
+    await setRefreshCredentialState('valid')
+    await waitForCredentialValidation(page, CREDENTIAL_REFRESH_PROFILE, true)
+
+    // Retry with the same profile after credentials are refreshed.
+    const recoveredStart = await page.evaluate(async (args) => {
+      return (window as any).app.api.listeners.start({
+        systemId: args.systemId,
+        outputId: args.outputId,
+        sessionId: args.sessionId,
+        cloud: { aws: { profile: args.profile } },
+      })
+    }, { systemId: system.id, outputId, sessionId: session.id, profile: CREDENTIAL_REFRESH_PROFILE })
+
+    recoveredListenerId = recoveredStart.listenerId
+    expect(recoveredListenerId).not.toBe(failedListenerId)
+    await waitForListenerState(page, recoveredListenerId, 'running')
+
+    // Give the polling loop time to acquire shard iterators before publishing.
+    await sleep(1500)
+
+    await putRecord(kinesis, outputStreamName, { correlationId: 'refresh-1', result: 'ok' })
+
+    let receivedEvents: any[] = []
+    for (let i = 0; i < LISTENER_RECEIVE_POLL_ATTEMPTS; i++) {
+      await sleep(LISTENER_RECEIVE_POLL_DELAY_MS)
+      const history = await page.evaluate(async (args) => {
+        return (window as any).app.api.sessions.get(args.systemId, args.sessionId)
+      }, { systemId: system.id, sessionId: session.id })
+      receivedEvents = history.events.filter((e: any) => e.direction === 'received')
+      if (receivedEvents.length > 0) break
+    }
+
+    expect(receivedEvents).toHaveLength(1)
+    const payload = JSON.parse(receivedEvents[0].payload)
+    expect(payload.correlationId).toBe('refresh-1')
+  } finally {
+    if (failedListenerId) {
+      await page.evaluate(async (listenerId) => {
+        return (window as any).app.api.listeners.stop(listenerId)
+      }, failedListenerId)
+    }
+    if (recoveredListenerId) {
+      await page.evaluate(async (listenerId) => {
+        return (window as any).app.api.listeners.stop(listenerId)
+      }, recoveredListenerId)
+    }
+
+    await setRefreshCredentialState('expired')
+  }
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
