@@ -1,14 +1,14 @@
 import { promises as fs } from 'fs'
 import path from 'path'
 import { v4 as uuidv4 } from 'uuid'
-import { StorageService, StoragePaths } from '../services/storage'
-import { SettingsService } from '../services/settings.service'
-import type { System, InputConfig, OutputConfig } from '../../shared/models'
-import type { Schema, CustomDataType, SchemaElement } from '../../shared/models/schema'
-import type { Environment } from '../../shared/models/environment'
-import type { Profile } from '../../shared/models/profile'
-import type { Template, TemplateFolder } from '../../shared/models/template'
-import type { CreateSystemInput, UpdateSystemInput, ExportedSystem } from '../../shared/dto'
+import { StorageService, StoragePaths } from '@main/services/storage.service'
+import { SettingsService } from '@main/services/settings.service'
+import type { System, InputConfig, OutputConfig } from '@shared/models'
+import type { Schema, CustomDataType, SchemaElement } from '@shared/models/schema'
+import type { Environment } from '@shared/models/environment'
+import type { Profile } from '@shared/models/profile'
+import type { Template, TemplateFolder } from '@shared/models/template'
+import type { CreateSystemInput, UpdateSystemInput, ExportedSystem } from '@shared/dto'
 
 export class SystemsApi {
 

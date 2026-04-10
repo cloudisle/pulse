@@ -1,10 +1,10 @@
 import { faker, allFakers } from '@faker-js/faker'
 import RandExp from 'randexp'
 import { VariableReplacementService } from './variable-replacement.service'
-import { Schema, SchemaElement, CustomDataType, BuiltInType } from '../../shared/models/schema'
-import { Environment } from '../../shared/models/environment'
-import { Profile, ProfileOverride } from '../../shared/models/profile'
-import { GenerateEventInput, GeneratedEvent, ValidationResult, ValidationWarning } from '../../shared/models/event'
+import { Schema, SchemaElement, CustomDataType, BuiltInType } from '@shared/models/schema'
+import { Environment } from '@shared/models/environment'
+import { Profile, ProfileOverride } from '@shared/models/profile'
+import { GenerateEventInput, GeneratedEvent, ValidationResult, ValidationWarning } from '@shared/models/event'
 import {
   GenerationStrategy,
   FakerConfig,
@@ -13,8 +13,8 @@ import {
   RangeConfig,
   ConstantConfig,
   TemplateConfig
-} from '../../shared/models/generation'
-import {logger} from "../util/log";
+} from '@shared/models/generation'
+import {logger} from "@main/util/log";
 
 const log = logger('event-generation.service');
 
@@ -131,6 +131,11 @@ export class EventGenerationService {
 
     if (profileOverride?.action === 'set') {
       return profileOverride.value
+    }
+
+    // Skip optional fields unless a profile action forces inclusion
+    if (!element.required && profileOverride?.action !== 'require' && profileOverride?.action !== 'generate') {
+      return undefined
     }
 
     // Resolve effective type and strategy (custom type takes base, then profile 'generate' overrides strategy)

@@ -7,6 +7,8 @@ import { useEnvironmentStore } from '@renderer/stores/environment'
 import { useProfileStore } from '@renderer/stores/profile'
 import { useTemplateStore } from '@renderer/stores/template.store'
 import { useSessionStore } from '@renderer/stores/session.store'
+import { useOpenApiImportStore } from '@renderer/stores/openapi-import.store'
+import OpenApiImportModal from '@renderer/components/OpenApiImport/OpenApiImportModal.vue'
 
 const uiStore = useUiStore()
 const systemStore = useSystemStore()
@@ -15,6 +17,7 @@ const environmentStore = useEnvironmentStore()
 const profileStore = useProfileStore()
 const templateStore = useTemplateStore()
 const sessionStore = useSessionStore()
+const openApiImportStore = useOpenApiImportStore()
 
 const sectionExpanded = ref({
   schemas: true,
@@ -171,12 +174,57 @@ function onContextMenuEdit(): void {
   if (contextMenu.value.entityType === 'system') {
     const sys = systemStore.systems.find((s) => s.id === contextMenu.value.entityId)
     if (sys) editSystem(sys.id, sys.name)
+  } else if (contextMenu.value.entityType === 'schema') {
+    const schema = schemaStore.schemas.find((s) => s.id === contextMenu.value.entityId)
+    if (schema) openSchemaTab(schema.id, schema.name)
   }
   hideContextMenu()
 }
 
-function onContextMenuDelete(): void {
+async function onContextMenuDelete(): Promise<void> {
+  const { entityType, entityId } = contextMenu.value
   hideContextMenu()
+
+  if (entityType !== 'schema') return
+
+  const schema = schemaStore.schemas.find((s) => s.id === entityId)
+  const schemaName = schema?.name ?? entityId
+  const systemId = systemStore.selectedSystemId
+  const api = (window as any).app?.api
+  if (!systemId || !api) return
+
+  let warningText = `Delete schema "${schemaName}"? This action cannot be undone.`
+  try {
+    const templates = await api.templates?.list(systemId)
+    const references = (templates ?? []).filter((t: any) => t.schemaId === entityId)
+    if (references.length > 0) {
+      warningText = `Warning: ${references.length} template(s) reference this schema. Deleting it may break those templates.\n\n${warningText}`
+    }
+  } catch {
+    // Ignore reference lookup errors and keep standard confirmation.
+  }
+
+  if (!confirm(warningText)) return
+
+  try {
+    await schemaStore.deleteSchema(systemId, entityId)
+    uiStore.closeTab(`schema:${entityId}`)
+  } catch {
+    // Keep context menu behavior simple; editors show richer error states.
+  }
+}
+
+function onContextMenuSyncSchema(): void {
+  if (contextMenu.value.entityType !== 'schema') {
+    hideContextMenu()
+    return
+  }
+
+  const schema = schemaStore.schemas.find((s) => s.id === contextMenu.value.entityId)
+  hideContextMenu()
+  if (!schema) return
+
+  openApiImportStore.openForSchemaSync(schema.id, schema.name)
 }
 
 interface TreeItem {
@@ -271,7 +319,14 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
             {{ sectionExpanded.schemas ? '▾' : '▸' }}
           </button>
           <h3 class="sidebar__section-title">Schemas</h3>
-          <button class="sidebar__add-btn" title="Create schema" @click="createSchema">+</button>
+          <button class="sidebar__add-btn" title="Import OpenAPI" data-testid="import-openapi-btn" @click="openApiImportStore.open()">
+            <svg class="sidebar__icon" viewBox="0 0 35 35" aria-hidden="true">
+              <path d="M17.5,22.131a1.249,1.249,0,0,1-1.25-1.25V2.187a1.25,1.25,0,0,1,2.5,0V20.881A1.25,1.25,0,0,1,17.5,22.131Z" fill="currentColor"/>
+              <path d="M17.5,22.693a3.189,3.189,0,0,1-2.262-.936L8.487,15.006a1.249,1.249,0,0,1,1.767-1.767l6.751,6.751a.7.7,0,0,0,.99,0l6.751-6.751a1.25,1.25,0,0,1,1.768,1.767l-6.752,6.751A3.191,3.191,0,0,1,17.5,22.693Z" fill="currentColor"/>
+              <path d="M31.436,34.063H3.564A3.318,3.318,0,0,1,.25,30.749V22.011a1.25,1.25,0,0,1,2.5,0v8.738a.815.815,0,0,0,.814.814H31.436a.815.815,0,0,0,.814-.814V22.011a1.25,1.25,0,1,1,2.5,0v8.738A3.318,3.318,0,0,1,31.436,34.063Z" fill="currentColor"/>
+            </svg>
+          </button>
+          <button class="sidebar__add-btn" title="Create schema" data-testid="create-schema-btn" @click="createSchema">+</button>
         </div>
         <ul v-if="sectionExpanded.schemas" class="sidebar__list">
           <li v-if="schemaStore.schemas.length === 0" class="sidebar__empty">No items</li>
@@ -491,6 +546,13 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
         @click.stop
       >
         <button class="sidebar__context-item" @click="onContextMenuEdit">Edit</button>
+        <button
+          v-if="contextMenu.entityType === 'schema'"
+          class="sidebar__context-item"
+          @click="onContextMenuSyncSchema"
+        >
+          Sync from OpenAPI
+        </button>
         <button class="sidebar__context-item" @click="onContextMenuDelete">Delete</button>
         <button
           v-if="contextMenu.entityType === 'template'"
@@ -500,6 +562,7 @@ const templateTree = computed<TreeItem[]>(() => buildTemplateList(null, 0))
           Move
         </button>
       </div>
+      <OpenApiImportModal v-if="openApiImportStore.isOpen" />
     </Teleport>
   </aside>
 </template>

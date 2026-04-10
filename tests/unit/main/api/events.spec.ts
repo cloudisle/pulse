@@ -37,22 +37,22 @@ vi.mock('../../../../src/app', () => ({
   }
 }))
 
-import { StorageService, StoragePaths } from '../../../../src/main/services/storage'
-import { SettingsService } from '../../../../src/main/services/settings.service'
-import { EventGenerationService } from '../../../../src/main/services/event-generation.service'
-import { EventSenderService } from '../../../../src/main/services/publishers/event-sender.service'
-import { EventsApi } from '../../../../src/main/api/events'
-import type { Schema, SchemaElement } from '../../../../src/shared/models/schema'
-import type { Environment } from '../../../../src/shared/models/environment'
-import type { Profile } from '../../../../src/shared/models/profile'
-import type { System, InputConfig } from '../../../../src/shared/models/system'
+import { StorageService, StoragePaths } from '@main/services/storage.service'
+import { SettingsService } from '@main/services/settings.service'
+import { EventGenerationService } from '@main/services/event-generation.service'
+import { EventSenderService } from '@main/services/publishers/event-sender.service'
+import { EventsApi } from '@main/api/events'
+import type { Schema, SchemaElement } from '@shared/models/schema'
+import type { Environment } from '@shared/models/environment'
+import type { Profile } from '@shared/models/profile'
+import type { System, InputConfig } from '@shared/models/system'
 import type {
   GenerateEventInput,
   GeneratedEvent,
   SendEventInput,
   SendEventResult,
   ValidationResult
-} from '../../../../src/shared/models/event'
+} from '@shared/models/event'
 
 const SYSTEM_ID = 'sys-test-1'
 

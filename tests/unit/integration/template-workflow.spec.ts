@@ -23,21 +23,21 @@ const mockKinesisPublish = vi.fn()
 
 // ─── Imports ──────────────────────────────────────────────────────────────────
 
-import { StorageService, StoragePaths } from '../../../src/main/services/storage'
-import { SettingsService } from '../../../src/main/services/settings.service'
-import { EventGenerationService } from '../../../src/main/services/event-generation.service'
-import { EventSenderService } from '../../../src/main/services/publishers/event-sender.service'
-import { SessionSentValueIndexService } from '../../../src/main/services/listeners/session-sent-value-index.service'
-import { SystemsApi } from '../../../src/main/api/systems'
-import { SessionsApi } from '../../../src/main/api/sessions'
-import { EventsApi } from '../../../src/main/api/events'
-import { TemplatesApi } from '../../../src/main/api/templates'
+import { StorageService, StoragePaths } from '@main/services/storage.service'
+import { SettingsService } from '@main/services/settings.service'
+import { EventGenerationService } from '@main/services/event-generation.service'
+import { EventSenderService } from '@main/services/publishers/event-sender.service'
+import { SessionSentValueIndexService } from '@main/services/listeners/session-sent-value-index.service'
+import { SystemsApi } from '@main/api/systems'
+import { SessionsApi } from '@main/api/sessions'
+import { EventsApi } from '@main/api/events'
+import { TemplatesApi } from '@main/api/templates'
 
-import type { Schema } from '../../../src/shared/models/schema'
-import type { Environment } from '../../../src/shared/models/environment'
-import type { Profile } from '../../../src/shared/models/profile'
-import type { GeneratedEvent, SendEventInput, SendEventResult } from '../../../src/shared/models/event'
-import type { TemplateField } from '../../../src/shared/models/template'
+import type { Schema } from '@shared/models/schema'
+import type { Environment } from '@shared/models/environment'
+import type { Profile } from '@shared/models/profile'
+import type { GeneratedEvent, SendEventInput, SendEventResult } from '@shared/models/event'
+import type { TemplateField } from '@shared/models/template'
 
 // ─── Suite setup ──────────────────────────────────────────────────────────────
 
@@ -856,7 +856,7 @@ describe('Template field override precedence', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('Quick-send overrides edge cases', () => {
-  it('template with no fields results in empty overrides (full schema generation)', async () => {
+  it('template with no fields results in empty overrides (optional fields not auto-generated)', async () => {
     const system = await systemsApi.create({
       name: 'No Fields System',
       inputs: [],
@@ -907,8 +907,8 @@ describe('Quick-send overrides edge cases', () => {
       overrides
     })
 
-    // Schema's own strategy generates the value
-    expect(generated.payload.auto).toBe('auto-generated')
+    // Optional field without any override is not included in the payload
+    expect(generated.payload).not.toHaveProperty('auto')
   })
 
   it('only fields with omitted=false and a defined value appear in overrides', async () => {

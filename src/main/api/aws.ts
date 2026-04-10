@@ -1,4 +1,4 @@
-import type { AWSProfile, CredentialValidation } from '../../shared/models/aws'
+import type { AWSProfile, CredentialValidation } from '@shared/models/aws'
 import { promises as fs } from 'fs'
 import os from 'os'
 import path from 'path'

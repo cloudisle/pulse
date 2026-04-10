@@ -3,14 +3,14 @@ import type {
   ListenerFilter,
   ListenerStatus,
   ListenerStartResult,
-} from '../../../shared/models'
-import type { OutputConfig } from '../../../shared/models'
-import type { Environment } from '../../../shared/models'
-import {ListenerLifecycleFactory} from "./factory";
-import {ListenerLifecycle} from "./listener";
-import {VariableReplacementService} from "../variable-replacement.service";
-import {logger} from "../../util/log";
-import { SessionSentValueIndexService } from './session-sent-value-index.service';
+} from '@shared/models'
+import type { OutputConfig } from '@shared/models'
+import type { Environment } from '@shared/models'
+import {ListenerLifecycleFactory} from "@main/services/listeners/factory";
+import {ListenerLifecycle} from "@main/services/listeners/listener";
+import {VariableReplacementService} from "@main/services/variable-replacement.service";
+import {logger} from "@main/util/log";
+import { SessionSentValueIndexService } from '@main/services/listeners/session-sent-value-index.service';
 
 const log = logger('listener-manager.service');
 

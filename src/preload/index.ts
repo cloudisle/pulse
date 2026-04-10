@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import App from '../app'
+import App from '@app'
 
 const app = App.expose(ipcRenderer)
 

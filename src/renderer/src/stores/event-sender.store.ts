@@ -1,7 +1,7 @@
 import {defineStore} from 'pinia'
 import {ref, toRaw} from 'vue'
-import type {GeneratedEvent, SendEventResult, ValidationWarning} from '../../../shared/models/event'
-import type {InputConfig, System} from '../../../shared/models/system'
+import type {GeneratedEvent, SendEventResult, ValidationWarning} from '@shared/models/event'
+import type {InputConfig, System} from '@shared/models/system'
 import {resolveCloudSettings} from "@renderer/util/cloud";
 
 export interface Override {

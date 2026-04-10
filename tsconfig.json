@@ -9,6 +9,9 @@
     },
     {
       "path": "./tsconfig.component.json"
+    },
+    {
+      "path": "./tsconfig.unit.json"
     }
   ]
 }

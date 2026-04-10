@@ -20,36 +20,36 @@ const mockKinesisPublish = vi.fn()
 
 // ─── Imports ──────────────────────────────────────────────────────────────────
 
-import { StorageService, StoragePaths } from '../../../src/main/services/storage'
-import { SettingsService } from '../../../src/main/services/settings.service'
-import { EventGenerationService } from '../../../src/main/services/event-generation.service'
-import { EventSenderService } from '../../../src/main/services/publishers/event-sender.service'
-import { SessionSentValueIndexService } from '../../../src/main/services/listeners/session-sent-value-index.service'
+import { StorageService, StoragePaths } from '@main/services/storage.service'
+import { SettingsService } from '@main/services/settings.service'
+import { EventGenerationService } from '@main/services/event-generation.service'
+import { EventSenderService } from '@main/services/publishers/event-sender.service'
+import { SessionSentValueIndexService } from '@main/services/listeners/session-sent-value-index.service'
 import {
   AggregateFilter,
   FilterFactory,
   SessionCorrelationMessageFilter
-} from '../../../src/main/services/listeners/filter'
-import { ConverterFactory } from '../../../src/main/services/listeners/converter'
-import { ListenerLifecycleFactory } from '../../../src/main/services/listeners/factory'
-import { ListenerManagerService } from '../../../src/main/services/listeners/listener-manager.service'
-import { DefaultMessageHandler } from '../../../src/main/services/listeners/listener'
-import { SystemsApi } from '../../../src/main/api/systems'
-import { SessionsApi } from '../../../src/main/api/sessions'
-import { EventsApi } from '../../../src/main/api/events'
-import App from '../../../src/app'
+} from '@main/services/listeners/filter'
+import { ConverterFactory } from '@main/services/listeners/converter'
+import { ListenerLifecycleFactory } from '@main/services/listeners/factory'
+import { ListenerManagerService } from '@main/services/listeners/listener-manager.service'
+import { DefaultMessageHandler } from '@main/services/listeners/listener'
+import { SystemsApi } from '@main/api/systems'
+import { SessionsApi } from '@main/api/sessions'
+import { EventsApi } from '@main/api/events'
+import App from '@app'
 
-import type { Schema } from '../../../src/shared/models/schema'
-import type { Environment } from '../../../src/shared/models/environment'
-import type { Profile } from '../../../src/shared/models/profile'
-import type { SessionDetail, SessionEvent } from '../../../src/shared/models/session'
+import type { Schema } from '@shared/models/schema'
+import type { Environment } from '@shared/models/environment'
+import type { Profile } from '@shared/models/profile'
+import type { SessionDetail, SessionEvent } from '@shared/models/session'
 import type {
   GenerateEventInput,
   GeneratedEvent,
   SendEventInput,
   SendEventResult
-} from '../../../src/shared/models/event'
-import type { ListenerConfig } from '../../../src/shared/models'
+} from '@shared/models/event'
+import type { ListenerConfig } from '@shared/models'
 
 // ─── Suite setup ──────────────────────────────────────────────────────────────
 
@@ -221,9 +221,10 @@ describe('Full end-to-end workflow', () => {
     expect(generated.appliedProfiles).toContain(profile.id)
     // Profile override: amount must be the overridden value
     expect(generated.payload.amount).toBe(999.99)
-    // Variable replacement: region and source must use env variables
+    // Variable replacement: region must use env variables
     expect(generated.payload.region).toBe('eu-west-1')
-    expect(generated.payload.source).toBe('order-service-staging')
+    // source is optional and has no override, so it is not included in the payload
+    expect(generated.payload).not.toHaveProperty('source')
     // Status must be one of the enum values
     expect(['pending', 'confirmed', 'shipped']).toContain(generated.payload.status)
 
@@ -725,7 +726,7 @@ describe('Edge cases', () => {
     expect(result.payload.orderId).toBeTruthy()
   })
 
-  it('optional field not overridden by profile still uses generated value', async () => {
+  it('optional field not overridden by profile is excluded from the payload', async () => {
     const system = await systemsApi.create({ name: 'Optional Fields', inputs: [], outputs: [] })
     const now = new Date().toISOString()
     const schema: Schema = {
@@ -761,8 +762,8 @@ describe('Edge cases', () => {
       profileIds: [profile.id]
     })
 
-    // Optional field not overridden by profile must still carry the generated value
-    expect(result.payload.notes).toBe('default-note')
+    // Optional field with no override must be absent from the payload
+    expect(result.payload).not.toHaveProperty('notes')
     expect(result.appliedProfiles).toContain(profile.id)
   })
 

@@ -1,8 +1,8 @@
-import { InputConfig, OutputConfig, System } from '../models/system'
-import { CustomDataType, Schema } from '../models/schema'
-import { Environment } from '../models/environment'
-import { Profile } from '../models/profile'
-import { Template, TemplateFolder } from '../models/template'
+import { InputConfig, OutputConfig, System } from '@shared/models/system'
+import { CustomDataType, Schema } from '@shared/models/schema'
+import { Environment } from '@shared/models/environment'
+import { Profile } from '@shared/models/profile'
+import { Template, TemplateFolder } from '@shared/models/template'
 
 export interface CreateSystemInput {
   name: string;

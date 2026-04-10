@@ -1,10 +1,10 @@
 import { randomUUID } from 'crypto'
 import path from 'path'
-import type { Schema, SchemaElement } from '../../shared/models/schema'
-import type { ValidationResult, ValidationWarning } from '../../shared/models/event'
-import type { CreateSchemaInput, UpdateSchemaInput } from '../../shared/dto/schemas'
-import { StorageService, StoragePaths } from '../services/storage'
-import { SettingsService } from '../services/settings.service'
+import type { Schema, SchemaElement } from '@shared/models/schema'
+import type { ValidationResult, ValidationWarning } from '@shared/models/event'
+import type { CreateSchemaInput, UpdateSchemaInput } from '@shared/dto/schemas'
+import { StorageService, StoragePaths } from '@main/services/storage.service'
+import { SettingsService } from '@main/services/settings.service'
 
 export class SchemasApi {
 

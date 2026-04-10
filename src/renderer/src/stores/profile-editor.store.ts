@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { Profile } from '../../../shared/models/profile'
+import type { Profile } from '@shared/models/profile'
 
 export const useProfileEditorStore = defineStore('profileEditor', () => {
   const workingProfile = ref<Profile | null>(null)

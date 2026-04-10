@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { promises as fs } from 'fs'
-import os from 'os'
-import path from 'path'
+import * as os from 'os'
+import * as path from 'path'
 
 vi.mock('electron', () => ({
   app: {
@@ -9,12 +9,12 @@ vi.mock('electron', () => ({
   }
 }))
 
-import { StorageService, StoragePaths } from '../../../../src/main/services/storage'
-import { SettingsService } from '../../../../src/main/services/settings.service'
-import { TemplatesApi } from '../../../../src/main/api/templates'
-import type { Template, TemplateFolder } from '../../../../src/shared/models/template'
-import type { Schema, SchemaElement } from '../../../../src/shared/models/schema'
-import type { CreateTemplateInput } from '../../../../src/shared/dto/templates'
+import { StorageService, StoragePaths } from '@main/services/storage.service'
+import { SettingsService } from '@main/services/settings.service'
+import { TemplatesApi } from '@main/api/templates'
+import type { Template, TemplateFolder } from '@shared/models/template'
+import type { Schema, SchemaElement } from '@shared/models/schema'
+import type { CreateTemplateInput } from '@shared/dto/templates'
 
 let tmpDir: string
 let storage: StorageService

@@ -3,7 +3,7 @@ import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { useSessionStore } from '@renderer/stores/session.store'
 import { useSystemStore } from '@renderer/stores/system'
 import { useUiStore } from '@renderer/stores/ui'
-import type { SessionEvent } from '../../../../shared/models/session'
+import type { SessionEvent } from '@shared/models/session'
 
 const props = defineProps<{
   sessionId: string

@@ -9,31 +9,32 @@ vi.mock('electron', () => ({
   }
 }))
 
-import { StorageService, StoragePaths } from '../../../../src/main/services/storage'
-import { SettingsService } from '../../../../src/main/services/settings.service'
-import { SystemsApi } from '../../../../src/main/api/systems'
-import type { System, InputConfig } from '../../../../src/shared/models'
-import type { Schema, CustomDataType } from '../../../../src/shared/models/schema'
-import type { Environment } from '../../../../src/shared/models/environment'
-import type { Profile } from '../../../../src/shared/models/profile'
-import type { Template, TemplateFolder } from '../../../../src/shared/models/template'
-import type { CreateSystemInput, ExportedSystem } from '../../../../src/shared/dto'
+import { StorageService, StoragePaths } from '@main/services/storage.service'
+import { SettingsService } from '@main/services/settings.service'
+import { SystemsApi } from '@main/api/systems'
+import type { System } from '@shared/models'
+import type { Schema, CustomDataType } from '@shared/models/schema'
+import type { Environment } from '@shared/models/environment'
+import type { Profile } from '@shared/models/profile'
+import type { Template, TemplateFolder } from '@shared/models/template'
+import type { CreateSystemInput, ExportedSystem } from '@shared/dto'
 
 let tmpDir: string
 let storage: StorageService
 let settings: SettingsService
 let api: SystemsApi
 
-const kinesisInput: Omit<import('../../../../src/shared/models').InputConfig, 'id'> = {
+const kinesisInput: Omit<import('@shared/models').InputConfig, 'id'> = {
   name: 'My Input',
   type: 'kinesis',
   config: { streamName: 'my-stream', region: 'us-east-1' }
 }
 
-const sqsOutput: Omit<import('../../../../src/shared/models').OutputConfig, 'id'> = {
+const sqsOutput: Omit<import('@shared/models').OutputConfig, 'id'> = {
   name: 'My Output',
   type: 'sqs',
-  config: { queueUrl: 'https://sqs.us-east-1.amazonaws.com/123/q', region: 'us-east-1' }
+  config: { queueUrl: 'https://sqs.us-east-1.amazonaws.com/123/q', region: 'us-east-1' },
+  contentType: 'json'
 }
 
 beforeEach(async () => {
@@ -582,7 +583,7 @@ describe('SystemsApi — import', () => {
           { id: oldInputId, name: 'In', type: 'kinesis', config: { streamName: 's', region: 'us-east-1' } }
         ],
         outputs: [
-          { id: oldOutputId, name: 'Out', type: 'sqs', config: { queueUrl: 'https://q', region: 'us-east-1' } }
+          { id: oldOutputId, name: 'Out', type: 'sqs', config: { queueUrl: 'https://q', region: 'us-east-1' }, contentType: 'json' }
         ],
         createdAt: '2026-01-01T00:00:00.000Z',
         updatedAt: '2026-01-01T00:00:00.000Z'

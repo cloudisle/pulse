@@ -3,7 +3,7 @@ import type { Configuration } from 'electron-builder'
 const config: Configuration = {
   appId: 'com.cloudisle.pulse',
   productName: 'Pulse',
-  copyright: 'Copyright © 2024 cloudisle',
+  copyright: 'Copyright © 2026 cloudisle',
   directories: {
     buildResources: 'resources'
   },

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { Session, SessionDetail, SessionEvent } from '../../../shared/models/session'
+import type { Session, SessionDetail, SessionEvent } from '@shared/models/session'
 
 export const useSessionStore = defineStore('session', () => {
   const sessions = ref<Session[]>([])

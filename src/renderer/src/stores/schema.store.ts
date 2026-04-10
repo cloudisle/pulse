@@ -16,9 +16,16 @@ export const useSchemaStore = defineStore('schema', () => {
     schemas.value = items.map(({ id, name }) => ({ id, name }))
   }
 
+  async function deleteSchema(systemId: string, id: string): Promise<void> {
+    const api = (window as any).app?.api
+    if (!api) return
+    await api.schemas.delete(systemId, id)
+    schemas.value = schemas.value.filter((s) => s.id !== id)
+  }
+
   function reset(): void {
     schemas.value = []
   }
 
-  return { schemas, list, reset }
+  return { schemas, list, deleteSchema, reset }
 })

@@ -1,10 +1,10 @@
 import { promises as fs } from 'fs'
 import path from 'path'
 import { randomUUID } from 'crypto'
-import { StorageService, StoragePaths } from '../services/storage'
-import { SettingsService } from '../services/settings.service'
-import type { Session, SessionDetail, SessionEvent } from '../../shared/models/session'
-import type { LogEntry } from '../../shared/models/log'
+import { StorageService, StoragePaths } from '@main/services/storage.service'
+import { SettingsService } from '@main/services/settings.service'
+import type { Session, SessionDetail, SessionEvent } from '@shared/models/session'
+import type { LogEntry } from '@shared/models/log'
 
 export class SessionsApi {
 

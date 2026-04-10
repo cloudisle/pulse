@@ -7,9 +7,9 @@ import {
 import { fromIni } from '@aws-sdk/credential-providers'
 import { NodeHttpHandler } from '@smithy/node-http-handler'
 import http from 'http'
-import type { KinesisConfig } from '../../../shared/models'
+import type { KinesisConfig } from '@shared/models'
 import {randomUUID} from "crypto";
-import {Listener, MessageHandler} from "../../services/listeners/listener";
+import {Listener, MessageHandler} from "@main/services/listeners/listener";
 
 export interface KinesisListenerOptions {
   config: KinesisConfig

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { KinesisListener } from '../../../../src/main/cloud/kinesis/kinesis-listener'
-import type { MessageHandler } from '../../../../src/main/services/listeners/listener'
+import { KinesisListener } from '@main/cloud/kinesis/kinesis-listener'
+import type { MessageHandler } from '@main/services/listeners/listener'
 
 const mockSend = vi.hoisted(() => vi.fn())
 const mockFromIni = vi.hoisted(() => vi.fn().mockReturnValue({ provider: 'ini' }))

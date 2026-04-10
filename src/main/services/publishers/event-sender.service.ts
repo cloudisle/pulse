@@ -1,16 +1,16 @@
 import { randomUUID } from 'crypto'
-import { StorageService, StoragePaths } from '../storage'
-import { SettingsService } from '../settings.service'
-import { VariableReplacementService } from '../variable-replacement.service'
-import type { InputConfig, KinesisConfig, SqsConfig, EventBridgeConfig } from '../../../shared/models'
-import type { Environment } from '../../../shared/models'
-import type { Schema, Profile } from '../../../shared/models'
-import type { SessionEvent } from '../../../shared/models'
-import type { SendEventInput, SendEventResult } from '../../../shared/models'
-import { PublisherFactory } from "./factory";
-import { PublishResult } from "./publisher";
-import {logger} from "../../util/log";
-import { SessionSentValueIndexService } from '../listeners/session-sent-value-index.service';
+import { StorageService, StoragePaths } from '@main/services/storage.service'
+import { SettingsService } from '@main/services/settings.service'
+import { VariableReplacementService } from '@main/services/variable-replacement.service'
+import type { InputConfig, KinesisConfig, SqsConfig, EventBridgeConfig } from '@shared/models'
+import type { Environment } from '@shared/models'
+import type { Schema, Profile } from '@shared/models'
+import type { SessionEvent } from '@shared/models'
+import type { SendEventInput, SendEventResult } from '@shared/models'
+import { PublisherFactory } from "@main/services/publishers/factory";
+import { PublishResult } from "@main/services/publishers/publisher";
+import {logger} from "@main/util/log";
+import { SessionSentValueIndexService } from '@main/services/listeners/session-sent-value-index.service';
 
 const log = logger('event-sender.service');
 

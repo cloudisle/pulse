@@ -7,8 +7,8 @@ import type {
   ListenerLifecycleEvent,
   ListenerDataEvent,
   ListenerErrorEvent,
-} from '../../../shared/models/listener'
-import type { SessionEvent } from '../../../shared/models/session'
+} from '@shared/models/listener'
+import type { SessionEvent } from '@shared/models/session'
 
 export const useListenerStore = defineStore('listener', () => {
   const activeListeners = ref<Map<string, ListenerStatus>>(new Map())

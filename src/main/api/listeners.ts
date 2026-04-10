@@ -1,8 +1,8 @@
-import { StorageService, StoragePaths } from '../services/storage'
-import { SettingsService } from '../services/settings.service'
-import { ListenerManagerService } from '../services/listeners/listener-manager.service'
-import type { ListenerConfig, ListenerStartResult, ListenerStatus, System } from '../../shared/models'
-import type { Environment } from '../../shared/models'
+import { StorageService, StoragePaths } from '@main/services/storage.service'
+import { SettingsService } from '@main/services/settings.service'
+import { ListenerManagerService } from '@main/services/listeners/listener-manager.service'
+import type { ListenerConfig, ListenerStartResult, ListenerStatus, System } from '@shared/models'
+import type { Environment } from '@shared/models'
 import {app} from "electron";
 
 let quitting = false;

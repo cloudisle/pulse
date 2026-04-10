@@ -1,4 +1,4 @@
-import { SchemaElement } from '../models/schema'
+import { SchemaElement } from '@shared/models/schema'
 
 export interface CreateSchemaInput {
   systemId: string;

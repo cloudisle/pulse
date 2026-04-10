@@ -1,5 +1,5 @@
-import type { BuiltInType, SchemaConstraints } from '../models/schema'
-import type { GenerationStrategy } from '../models/generation'
+import type { BuiltInType, SchemaConstraints } from '@shared/models/schema'
+import type { GenerationStrategy } from '@shared/models/generation'
 
 export interface CreateCustomTypeInput {
   systemId: string;

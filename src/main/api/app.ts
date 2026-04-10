@@ -1,6 +1,6 @@
 import { dialog } from 'electron'
-import { SettingsService } from '../services/settings.service'
-import type { AppSettings } from '../../shared/models'
+import { SettingsService } from '@main/services/settings.service'
+import type { AppSettings } from '@shared/models'
 
 export class AppApi {
 
