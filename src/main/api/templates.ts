@@ -239,7 +239,7 @@ export class TemplatesApi {
       // A required field is satisfied if it has an explicit entry with any action.
       // For 'set' action, a defined value is also required.
       if (!field || (field.action === 'set' && field.value === undefined)) {
-        throw new Error(`Required field "${reqPath}" must be set or marked as omitted`)
+        throw new Error(`Required field "${reqPath}" must be set or given an explicit action (e.g. 'omit', 'generate')`)
       }
     }
   }

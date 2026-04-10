@@ -249,7 +249,7 @@ describe('TemplatesApi — create', () => {
 
     await expect(
       api.create(makeInput(schema.id, { fields: [] }))
-    ).rejects.toThrow('Required field "orderId" must be set or marked as omitted')
+    ).rejects.toThrow('Required field "orderId" must be set or given an explicit action')
   })
 
   it('accepts a required field marked as omitted (value is irrelevant when omitted)', async () => {
@@ -285,7 +285,7 @@ describe('TemplatesApi — create', () => {
 
     await expect(
       api.create(makeInput(schema.id, { fields: [] }))
-    ).rejects.toThrow('Required field "address.zip" must be set or marked as omitted')
+    ).rejects.toThrow('Required field "address.zip" must be set or given an explicit action')
   })
 
   it('succeeds when all required fields are set', async () => {
