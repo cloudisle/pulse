@@ -1,15 +1,16 @@
 import {
   KinesisClient,
   DescribeStreamCommand,
+  DescribeStreamCommandOutput,
   GetShardIteratorCommand,
-  GetRecordsCommand
+  GetShardIteratorCommandOutput,
+  GetRecordsCommand,
+  GetRecordsCommandOutput
 } from '@aws-sdk/client-kinesis'
-import { fromIni } from '@aws-sdk/credential-providers'
-import { NodeHttpHandler } from '@smithy/node-http-handler'
-import http from 'http'
 import type { KinesisConfig } from '@shared/models'
 import {randomUUID} from "crypto";
 import {Listener, MessageHandler} from "@main/services/listeners/listener";
+import { buildAwsClientConfig, isAwsSessionExpiredError } from '@main/cloud/aws-client'
 
 export interface KinesisListenerOptions {
   config: KinesisConfig
@@ -23,21 +24,13 @@ export class KinesisListener implements Listener {
   readonly id: string
 
   private stopped = false
-  private readonly client: KinesisClient
+  private client: KinesisClient
 
   constructor(
     private readonly options: KinesisListenerOptions,
   ) {
     this.id = randomUUID()
-    const endpointUrl = process.env.AWS_ENDPOINT_URL;
-    this.client = new KinesisClient({
-      region: options.config.region,
-      credentials: fromIni({ profile: options.aws.profile }),
-      ...(endpointUrl ? {
-        endpoint: endpointUrl,
-        requestHandler: new NodeHttpHandler({ httpAgent: new http.Agent({ keepAlive: false }) })
-      } : {})
-    })
+    this.client = this.createClient()
   }
 
   /**
@@ -47,8 +40,8 @@ export class KinesisListener implements Listener {
   async start(handler: MessageHandler): Promise<void> {
     const { config } = this.options
 
-    const describeResult = await this.client.send(
-      new DescribeStreamCommand({ StreamName: config.streamName })
+    const describeResult = await this.sendWithCredentialRefresh<DescribeStreamCommandOutput>((client) =>
+      client.send(new DescribeStreamCommand({ StreamName: config.streamName }))
     )
 
     const shards = describeResult.StreamDescription?.Shards ?? []
@@ -85,8 +78,8 @@ export class KinesisListener implements Listener {
 
     while (!this.stopped) {
       try {
-        const result = await this.client.send(
-          new GetRecordsCommand({ ShardIterator: shardIterator, Limit: 100 })
+        const result = await this.sendWithCredentialRefresh<GetRecordsCommandOutput>((client) =>
+          client.send(new GetRecordsCommand({ ShardIterator: shardIterator, Limit: 100 }))
         )
 
         for (const record of result.Records ?? []) {
@@ -117,12 +110,12 @@ export class KinesisListener implements Listener {
   }
 
   private async getShardIterator(shardId: string): Promise<string> {
-    const result = await this.client.send(
-      new GetShardIteratorCommand({
+    const result = await this.sendWithCredentialRefresh<GetShardIteratorCommandOutput>((client) =>
+      client.send(new GetShardIteratorCommand({
         StreamName: this.options.config.streamName,
         ShardId: shardId,
         ShardIteratorType: 'LATEST'
-      })
+      }))
     )
 
     if (!result.ShardIterator) {
@@ -152,6 +145,26 @@ export class KinesisListener implements Listener {
 
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms))
+  }
+
+  private createClient(): KinesisClient {
+    return new KinesisClient({
+      region: this.options.config.region,
+      ...buildAwsClientConfig(this.options.aws.profile)
+    })
+  }
+
+  private async sendWithCredentialRefresh<T>(execute: (client: KinesisClient) => Promise<T>): Promise<T> {
+    try {
+      return await execute(this.client)
+    } catch (error) {
+      if (!isAwsSessionExpiredError(error)) {
+        throw error
+      }
+
+      this.client = this.createClient()
+      return await execute(this.client)
+    }
   }
 
 }

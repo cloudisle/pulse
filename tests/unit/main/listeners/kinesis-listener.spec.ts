@@ -60,6 +60,24 @@ describe('KinesisListener', () => {
     expect(mockFromIni).toHaveBeenCalledWith({ profile: 'dev-profile' })
   })
 
+  it('rebuilds credentials and retries startup when AWS session is expired', async () => {
+    const expired = Object.assign(new Error('Your session has expired'), {
+      name: 'ExpiredTokenException'
+    })
+
+    mockSend
+      .mockRejectedValueOnce(expired)
+      .mockResolvedValueOnce({ StreamDescription: { Shards: [] } })
+
+    const listener = createListener()
+    const handler = createHandler()
+
+    await listener.start(handler)
+
+    expect(mockFromIni).toHaveBeenCalledTimes(2)
+    expect(handler.onError).not.toHaveBeenCalled()
+  })
+
   it('polls records and forwards decoded message payloads to handler.handle', async () => {
     mockSend
       .mockResolvedValueOnce({

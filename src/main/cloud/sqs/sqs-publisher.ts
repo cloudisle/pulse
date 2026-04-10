@@ -1,10 +1,8 @@
 import {Publisher} from "@main/services/publishers/publisher";
 import {randomUUID} from "crypto";
-import {fromIni} from "@aws-sdk/credential-providers";
 import {SqsConfig} from "@shared/models";
-import {SendMessageCommand, SQSClient} from "@aws-sdk/client-sqs";
-import {NodeHttpHandler} from "@smithy/node-http-handler";
-import http from "http";
+import {SendMessageCommand, SendMessageCommandOutput, SQSClient} from "@aws-sdk/client-sqs";
+import { buildAwsClientConfig, isAwsSessionExpiredError } from '@main/cloud/aws-client'
 
 export interface SqsPublisherOptions {
     config: SqsConfig;
@@ -17,33 +15,45 @@ export class SqsPublisher implements Publisher {
 
     readonly id: string;
 
-    private readonly client: SQSClient;
+    private client: SQSClient;
 
     constructor(
         private readonly options: SqsPublisherOptions
     ) {
         this.id = randomUUID();
-        const endpointUrl = process.env.AWS_ENDPOINT_URL;
-        this.client = new SQSClient({
-            region: options.config.region,
-            credentials: fromIni({ profile: options.aws.profile }),
-            ...(endpointUrl ? {
-                endpoint: endpointUrl,
-                requestHandler: new NodeHttpHandler({ httpAgent: new http.Agent({ keepAlive: false }) })
-            } : {})
-        })
+        this.client = this.createClient()
     }
 
     async publish(event: any) {
-        const result = await this.client.send(
-            new SendMessageCommand({
+        const result = await this.sendWithCredentialRefresh<SendMessageCommandOutput>((client) =>
+            client.send(new SendMessageCommand({
                 QueueUrl: this.options.config.queueUrl,
                 MessageBody: event
-            })
+            }))
         )
         return {
             id: result.MessageId ?? randomUUID(),
             MessageId: result.MessageId
+        }
+    }
+
+    private createClient(): SQSClient {
+        return new SQSClient({
+            region: this.options.config.region,
+            ...buildAwsClientConfig(this.options.aws.profile)
+        })
+    }
+
+    private async sendWithCredentialRefresh<T>(execute: (client: SQSClient) => Promise<T>): Promise<T> {
+        try {
+            return await execute(this.client)
+        } catch (error) {
+            if (!isAwsSessionExpiredError(error)) {
+                throw error
+            }
+
+            this.client = this.createClient()
+            return await execute(this.client)
         }
     }
 
