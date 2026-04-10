@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type {Schema, SchemaElement, ValidationWarning} from "../../../shared/models";
+import type {Schema, SchemaElement, ValidationWarning} from "@shared/models";
 
 export const useSchemaEditorStore = defineStore('schemaEditor', () => {
   const workingSchema = ref<Schema | null>(null)

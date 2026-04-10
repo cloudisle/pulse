@@ -1,4 +1,4 @@
-import {Publisher} from "./publisher";
+import {Publisher} from "@main/services/publishers/publisher";
 import {
     AwsOperationSettings,
     CloudOperationSettings,
@@ -6,10 +6,10 @@ import {
     InputConfig,
     KinesisConfig,
     SqsConfig
-} from "../../../shared/models";
-import {KinesisPublisher} from "../../cloud/kinesis/kinesis-publisher";
-import {SqsPublisher} from "../../cloud/sqs/sqs-publisher";
-import {EventBridgePublisher} from "../../cloud/eventbridge/eventbridge-publisher";
+} from "@shared/models";
+import {KinesisPublisher} from "@main/cloud/kinesis/kinesis-publisher";
+import {SqsPublisher} from "@main/cloud/sqs/sqs-publisher";
+import {EventBridgePublisher} from "@main/cloud/eventbridge/eventbridge-publisher";
 
 export class PublisherFactory {
 

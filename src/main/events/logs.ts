@@ -1,4 +1,4 @@
-import {LogEntry, LogLevel} from "../../shared/models";
+import {LogEntry, LogLevel} from "@shared/models";
 import {randomUUID} from "crypto";
 
 export interface LogData {

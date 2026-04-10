@@ -28,6 +28,7 @@
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "@faker-js/faker": "^10.3.0",
+    "@smithy/node-http-handler": "^4.4.16",
     "electron-updater": "^6.3.9",
     "js-yaml": "^4.1.1",
     "pinia": "^3.0.4",

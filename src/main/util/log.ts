@@ -1,6 +1,6 @@
-import {LogLevel} from "../../shared/models";
-import App from "../../app";
-import {LogMessage} from "../events/logs";
+import {LogLevel} from "@shared/models";
+import App from "@app";
+import {LogMessage} from "@main/events/logs";
 
 export async function log(level: LogLevel, source: string, message: string, metadata: Record<string, any> = {}) {
     try {

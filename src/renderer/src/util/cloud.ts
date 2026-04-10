@@ -1,4 +1,4 @@
-import {AwsOperationSettings, CloudOperationSettings} from "../../../shared/models";
+import {AwsOperationSettings, CloudOperationSettings} from "@shared/models";
 import {useAwsStore} from "@renderer/stores/aws";
 
 function resolveAwsSettings(): AwsOperationSettings|undefined {

@@ -1,8 +1,10 @@
-import {KinesisConfig} from "../../../shared/models";
-import {Publisher} from "../../services/publishers/publisher";
+import {KinesisConfig} from "@shared/models";
+import {Publisher} from "@main/services/publishers/publisher";
 import {randomUUID} from "crypto";
 import {KinesisClient, PutRecordCommand} from "@aws-sdk/client-kinesis";
 import {fromIni} from "@aws-sdk/credential-providers";
+import {NodeHttpHandler} from "@smithy/node-http-handler";
+import http from "http";
 
 export interface KinesisPublisherOptions {
     config: KinesisConfig;
@@ -21,9 +23,14 @@ export class KinesisPublisher implements Publisher {
         private readonly options: KinesisPublisherOptions
     ) {
         this.id = randomUUID();
+        const endpointUrl = process.env.AWS_ENDPOINT_URL;
         this.client = new KinesisClient({
             region: options.config.region,
-            credentials: fromIni({ profile: options.aws.profile })
+            credentials: fromIni({ profile: options.aws.profile }),
+            ...(endpointUrl ? {
+                endpoint: endpointUrl,
+                requestHandler: new NodeHttpHandler({ httpAgent: new http.Agent({ keepAlive: false }) })
+            } : {})
         })
     }
 
