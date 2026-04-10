@@ -221,9 +221,10 @@ describe('Full end-to-end workflow', () => {
     expect(generated.appliedProfiles).toContain(profile.id)
     // Profile override: amount must be the overridden value
     expect(generated.payload.amount).toBe(999.99)
-    // Variable replacement: region and source must use env variables
+    // Variable replacement: region must use env variables
     expect(generated.payload.region).toBe('eu-west-1')
-    expect(generated.payload.source).toBe('order-service-staging')
+    // source is optional and has no override, so it is not included in the payload
+    expect(generated.payload).not.toHaveProperty('source')
     // Status must be one of the enum values
     expect(['pending', 'confirmed', 'shipped']).toContain(generated.payload.status)
 
@@ -725,7 +726,7 @@ describe('Edge cases', () => {
     expect(result.payload.orderId).toBeTruthy()
   })
 
-  it('optional field not overridden by profile still uses generated value', async () => {
+  it('optional field not overridden by profile is excluded from the payload', async () => {
     const system = await systemsApi.create({ name: 'Optional Fields', inputs: [], outputs: [] })
     const now = new Date().toISOString()
     const schema: Schema = {
@@ -761,8 +762,8 @@ describe('Edge cases', () => {
       profileIds: [profile.id]
     })
 
-    // Optional field not overridden by profile must still carry the generated value
-    expect(result.payload.notes).toBe('default-note')
+    // Optional field with no override must be absent from the payload
+    expect(result.payload).not.toHaveProperty('notes')
     expect(result.appliedProfiles).toContain(profile.id)
   })
 

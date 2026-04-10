@@ -530,6 +530,14 @@ describe('EventGenerationService', () => {
       expect(results.every((r) => Object.prototype.hasOwnProperty.call(r.payload, 'required'))).toBe(true)
     })
 
+    it('excludes optional elements when no override is applied', async () => {
+      const schema = makeSchema([
+        makeElement('opt', { required: false, generationStrategy: { type: 'constant', config: { value: 'v' } } })
+      ])
+      const result = await service.generateEvent(makeInput(), schema, makeProps())
+      expect(result.payload).not.toHaveProperty('opt')
+    })
+
     it('profile require action forces optional element to be included', async () => {
       const profile: Profile = {
         id: 'p1',
@@ -552,6 +560,30 @@ describe('EventGenerationService', () => {
         )
       )
       expect(results.every((r) => Object.prototype.hasOwnProperty.call(r.payload, 'opt'))).toBe(true)
+    })
+
+    it('profile generate action forces optional element to be included with overridden strategy', async () => {
+      const newStrategy: GenerationStrategy = {
+        type: 'constant',
+        config: { value: 'overridden' }
+      }
+      const profile: Profile = {
+        id: 'p1',
+        systemId: 'sys-1',
+        name: 'Generate Profile',
+        overrides: [{ elementPath: 'opt', action: 'generate', generationStrategy: newStrategy }],
+        createdAt: '2024-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-01T00:00:00.000Z'
+      }
+      const schema = makeSchema([
+        makeElement('opt', { required: false, generationStrategy: { type: 'constant', config: { value: 'original' } } })
+      ])
+      const result = await service.generateEvent(
+        makeInput({ profileIds: ['p1'] }),
+        schema,
+        makeProps({ profiles: [profile] })
+      )
+      expect(result.payload.opt).toBe('overridden')
     })
   })
 

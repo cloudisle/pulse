@@ -133,6 +133,11 @@ export class EventGenerationService {
       return profileOverride.value
     }
 
+    // Skip optional fields unless a profile action forces inclusion
+    if (!element.required && profileOverride?.action !== 'require' && profileOverride?.action !== 'generate') {
+      return undefined
+    }
+
     // Resolve effective type and strategy (custom type takes base, then profile 'generate' overrides strategy)
     let effectiveType: BuiltInType = element.dataType.type as BuiltInType
     let effectiveStrategy: GenerationStrategy = element.generationStrategy

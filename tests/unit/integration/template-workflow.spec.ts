@@ -856,7 +856,7 @@ describe('Template field override precedence', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('Quick-send overrides edge cases', () => {
-  it('template with no fields results in empty overrides (full schema generation)', async () => {
+  it('template with no fields results in empty overrides (optional fields not auto-generated)', async () => {
     const system = await systemsApi.create({
       name: 'No Fields System',
       inputs: [],
@@ -907,8 +907,8 @@ describe('Quick-send overrides edge cases', () => {
       overrides
     })
 
-    // Schema's own strategy generates the value
-    expect(generated.payload.auto).toBe('auto-generated')
+    // Optional field without any override is not included in the payload
+    expect(generated.payload).not.toHaveProperty('auto')
   })
 
   it('only fields with omitted=false and a defined value appear in overrides', async () => {
