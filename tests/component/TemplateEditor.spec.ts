@@ -17,7 +17,7 @@ const mockTemplate = {
   schemaId: 'sch-1',
   inputId: 'inp-1',
   profileIds: ['prof-1'],
-  fields: [{ elementPath: 'payload.orderId', value: '123', omitted: false }],
+  fields: [{ elementPath: 'payload.orderId', action: 'set', value: '123' }],
   createdAt: '2024-01-01T00:00:00.000Z',
   updatedAt: '2024-01-01T00:00:00.000Z'
 }
@@ -207,13 +207,28 @@ describe('TemplateEditor component', () => {
     expect(wrapper.find('[data-testid="field-row-0"]').exists()).toBe(false)
   })
 
-  it('omit checkbox disables value input', async () => {
+  it('new field defaults to set action and shows value input', async () => {
     const { wrapper } = mountEditor()
     await wrapper.find('[data-testid="add-field-btn"]').trigger('click')
-    const omitCb = wrapper.find('[data-testid="field-omit-0"]')
-    await omitCb.setValue(true)
-    const valueInput = wrapper.find('[data-testid="field-value-0"]')
-    expect((valueInput.element as HTMLInputElement).disabled).toBe(true)
+    const actionSelect = wrapper.find('[data-testid="field-action-0"]')
+    expect((actionSelect.element as HTMLSelectElement).value).toBe('set')
+    expect(wrapper.find('[data-testid="field-value-0"]').exists()).toBe(true)
+  })
+
+  it('switching field action to omit hides value input', async () => {
+    const { wrapper } = mountEditor()
+    await wrapper.find('[data-testid="add-field-btn"]').trigger('click')
+    await wrapper.find('[data-testid="field-action-0"]').setValue('omit')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('[data-testid="field-value-0"]').exists()).toBe(false)
+  })
+
+  it('switching field action to generate shows strategy selector', async () => {
+    const { wrapper } = mountEditor()
+    await wrapper.find('[data-testid="add-field-btn"]').trigger('click')
+    await wrapper.find('[data-testid="field-action-0"]').setValue('generate')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('[data-testid="field-strategy-type-0"]').exists()).toBe(true)
   })
 
   // ─── Profile ordering ─────────────────────────────────────────────────────────

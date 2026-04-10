@@ -19,8 +19,8 @@ const mockTemplate = {
   inputId: 'inp-1',
   profileIds: ['prof-1'],
   fields: [
-    { elementPath: 'payload.orderId', value: '123', omitted: false },
-    { elementPath: 'payload.status', value: '', omitted: true }
+    { elementPath: 'payload.orderId', action: 'set', value: '123' },
+    { elementPath: 'payload.status', action: 'omit' }
   ],
   createdAt: '2024-01-01T00:00:00.000Z',
   updatedAt: '2024-01-01T00:00:00.000Z'
@@ -301,7 +301,8 @@ describe('TemplateBrowser component', () => {
     await flushPromises()
     expect(wrapper.find('[data-testid="fields-table"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="field-row-0"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="field-omitted-1"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="field-action-1"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="field-action-1"]').text()).toContain('omit')
   })
 
   it('shows action buttons when template is selected', async () => {
@@ -609,18 +610,18 @@ describe('TemplateBrowser component', () => {
     await wrapper.find('[data-testid="send-btn"]').trigger('click')
     await flushPromises()
 
-    // mockTemplate has: orderId preset ('123', omitted:false), status omitted (omitted:true)
+    // mockTemplate has: orderId preset ('123', action:'set'), status omitted (action:'omit')
     expect(generateMock).toHaveBeenCalledWith(
       'sys-1',
       expect.objectContaining({
         schemaId: 'sch-1',
         profileIds: ['prof-1'],
-        overrides: { 'payload.orderId': '123' } // only the non-omitted field
+        adHocOverrides: mockTemplate.fields
       })
     )
-    // Omitted field 'payload.status' must NOT be in overrides
+    // Confirm adHocOverrides contains both fields
     const callArg = generateMock.mock.calls[0][1]
-    expect(callArg.overrides).not.toHaveProperty('payload.status')
+    expect(callArg.adHocOverrides).toHaveLength(2)
   })
 
   it('quick-send passes the correct inputId (template destination) to send', async () => {
@@ -697,10 +698,11 @@ describe('TemplateBrowser component', () => {
     await wrapper.find('[data-testid="preview-btn"]').trigger('click')
     await flushPromises()
 
-    // Only the non-omitted field appears in overrides
+    // Template fields are passed as adHocOverrides
     const callArg = generateMock.mock.calls[0][1]
-    expect(callArg.overrides).toHaveProperty('payload.orderId', '123')
-    expect(callArg.overrides).not.toHaveProperty('payload.status')
+    expect(callArg.adHocOverrides).toHaveLength(2)
+    expect(callArg.adHocOverrides[0]).toMatchObject({ elementPath: 'payload.orderId', action: 'set', value: '123' })
+    expect(callArg.adHocOverrides[1]).toMatchObject({ elementPath: 'payload.status', action: 'omit' })
     expect(sendMock).not.toHaveBeenCalled()
   })
 

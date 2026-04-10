@@ -62,7 +62,7 @@ function makeInput(schemaId: string, overrides: Partial<CreateTemplateInput> = {
     schemaId,
     inputId: 'input-1',
     profileIds: [],
-    fields: [{ elementPath: 'orderId', value: 'order-123', omitted: false }],
+    fields: [{ elementPath: 'orderId', action: 'set', value: 'order-123' }],
     ...overrides
   }
 }
@@ -249,16 +249,16 @@ describe('TemplatesApi — create', () => {
 
     await expect(
       api.create(makeInput(schema.id, { fields: [] }))
-    ).rejects.toThrow('Required field "orderId" must be set or marked as omitted')
+    ).rejects.toThrow('Required field "orderId" must be set or given an explicit action')
   })
 
   it('accepts a required field marked as omitted (value is irrelevant when omitted)', async () => {
     const schema = await seedSchema('schema-1', [requiredElement])
 
-    // When omitted is true the value does not matter — the field is intentionally excluded
+    // When action is 'omit', the field is intentionally excluded
     const tmpl = await api.create(
       makeInput(schema.id, {
-        fields: [{ elementPath: 'orderId', value: null, omitted: true }]
+        fields: [{ elementPath: 'orderId', action: 'omit' }]
       })
     )
 
@@ -285,14 +285,14 @@ describe('TemplatesApi — create', () => {
 
     await expect(
       api.create(makeInput(schema.id, { fields: [] }))
-    ).rejects.toThrow('Required field "address.zip" must be set or marked as omitted')
+    ).rejects.toThrow('Required field "address.zip" must be set or given an explicit action')
   })
 
   it('succeeds when all required fields are set', async () => {
     const schema = await seedSchema('schema-multi', [requiredElement, optionalElement])
     const tmpl = await api.create(
       makeInput(schema.id, {
-        fields: [{ elementPath: 'orderId', value: 'order-abc', omitted: false }]
+        fields: [{ elementPath: 'orderId', action: 'set', value: 'order-abc' }]
       })
     )
 

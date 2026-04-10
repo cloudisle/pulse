@@ -248,7 +248,7 @@ describe('shared models — Profile', () => {
 
 describe('shared models — Template', () => {
   it('TemplateField satisfies interface shape', () => {
-    const field: TemplateField = { elementPath: 'currency', value: 'USD', omitted: false }
+    const field: TemplateField = { elementPath: 'currency', action: 'set', value: 'USD' }
     expectTypeOf(field).toMatchTypeOf<TemplateField>()
   })
 

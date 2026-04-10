@@ -2,17 +2,27 @@ import {defineStore} from 'pinia'
 import {ref, toRaw} from 'vue'
 import type {GeneratedEvent, SendEventResult, ValidationWarning} from '@shared/models/event'
 import type {InputConfig, System} from '@shared/models/system'
+import type {ProfileOverride} from '@shared/models/profile'
+import type {Schema, SchemaElement} from '@shared/models/schema'
 import {resolveCloudSettings} from "@renderer/util/cloud";
 
-export interface Override {
-  elementPath: string
-  value: string
+function flattenElementPaths(elements: SchemaElement[], prefix: string): string[] {
+  const paths: string[] = []
+  for (const el of elements) {
+    const path = prefix ? `${prefix}.${el.name}` : el.name
+    paths.push(path)
+    if (el.children && el.children.length > 0) {
+      paths.push(...flattenElementPaths(el.children, path))
+    }
+  }
+  return paths
 }
 
 export const useEventSenderStore = defineStore('event-sender', () => {
   const selectedSchemaId = ref<string | null>(null)
   const selectedInputId = ref<string | null>(null)
-  const overrides = ref<Override[]>([])
+  const overrides = ref<ProfileOverride[]>([])
+  const schemaElements = ref<string[]>([])
   const inputs = ref<InputConfig[]>([])
   const generatedEvent = ref<GeneratedEvent | null>(null)
   const previewJson = ref<string>('')
@@ -29,8 +39,19 @@ export const useEventSenderStore = defineStore('event-sender', () => {
     inputs.value = system.inputs
   }
 
+  async function loadSchemaElements(systemId: string, schemaId: string): Promise<void> {
+    const api = (window as any).app?.api
+    if (!api) return
+    try {
+      const schema: Schema = await api.schemas.get(systemId, schemaId)
+      schemaElements.value = flattenElementPaths(schema.elements ?? [], '')
+    } catch {
+      schemaElements.value = []
+    }
+  }
+
   function addOverride(): void {
-    overrides.value.push({ elementPath: '', value: '' })
+    overrides.value.push({ elementPath: '', action: 'set', value: '' })
   }
 
   function removeOverride(index: number): void {
@@ -48,15 +69,11 @@ export const useEventSenderStore = defineStore('event-sender', () => {
     errorMessage.value = ''
     sendResult.value = null
     try {
-      const overridesMap: Record<string, any> = {}
-      for (const o of overrides.value) {
-        if (o.elementPath) overridesMap[o.elementPath] = o.value
-      }
       const event: GeneratedEvent = await api.events.generate(toRaw(systemId), {
         schemaId: selectedSchemaId.value,
         environmentId: toRaw(environmentId) ?? undefined,
         profileIds: toRaw(profileIds),
-        overrides: overridesMap
+        adHocOverrides: toRaw(overrides.value)
       })
       generatedEvent.value = event
       previewJson.value = JSON.stringify(event.payload, null, 2)
@@ -152,6 +169,7 @@ export const useEventSenderStore = defineStore('event-sender', () => {
     selectedSchemaId.value = null
     selectedInputId.value = null
     overrides.value = []
+    schemaElements.value = []
     inputs.value = []
     generatedEvent.value = null
     previewJson.value = ''
@@ -166,6 +184,7 @@ export const useEventSenderStore = defineStore('event-sender', () => {
     selectedSchemaId,
     selectedInputId,
     overrides,
+    schemaElements,
     inputs,
     generatedEvent,
     previewJson,
@@ -175,6 +194,7 @@ export const useEventSenderStore = defineStore('event-sender', () => {
     sending,
     errorMessage,
     loadInputs,
+    loadSchemaElements,
     addOverride,
     removeOverride,
     generate,

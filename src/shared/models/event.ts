@@ -1,10 +1,12 @@
 import type { CloudOperationSettings } from './aws'
+import type { ProfileOverride } from './profile'
 
 export interface GenerateEventInput {
   schemaId: string; // FK → Schema
   environmentId?: string; // FK → Environment (for variable replacement)
   profileIds?: string[]; // FK[] → Profile (applied in order)
-  overrides?: Record<string, any>; // ad-hoc field overrides (dot-notation paths)
+  overrides?: Record<string, any>; // legacy ad-hoc field overrides (dot-notation paths → values)
+  adHocOverrides?: ProfileOverride[]; // structured ad-hoc overrides (acts as a temporary profile with higher priority)
 }
 
 export interface ValidationWarning {
