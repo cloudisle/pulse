@@ -12,11 +12,20 @@ import {
   PutRecordCommand,
 } from '@aws-sdk/client-kinesis'
 import { NodeHttpHandler } from '@smithy/node-http-handler'
-import http from 'http'
-import path from 'path'
-import { MINISTACK_ENDPOINT, AWS_CREDENTIALS_FILE, XVFB_DISPLAY_ENV } from '../global-setup'
+import * as http from 'http'
+import * as path from 'path'
+import { promises as fs } from 'fs'
+import {
+  MINISTACK_ENDPOINT,
+  AWS_CREDENTIALS_FILE,
+  AWS_CONFIG_FILE,
+  AWS_CREDENTIAL_PROCESS_STATE,
+  AWS_REFRESH_PROFILE,
+  XVFB_DISPLAY_ENV
+} from '../global-setup'
 
 export const APP_MAIN = path.join(__dirname, '../../../out/main/index.js')
+export const CREDENTIAL_REFRESH_PROFILE = AWS_REFRESH_PROFILE
 
 /** Number of polling attempts when waiting for a Kinesis stream to become ACTIVE. */
 export const STREAM_POLL_ATTEMPTS = 20
@@ -72,6 +81,8 @@ export async function launchApp(
       DISPLAY: display,
       AWS_ENDPOINT_URL: MINISTACK_ENDPOINT,
       AWS_SHARED_CREDENTIALS_FILE: AWS_CREDENTIALS_FILE,
+      AWS_CONFIG_FILE,
+      AWS_SDK_LOAD_CONFIG: '1',
       AWS_DEFAULT_REGION: 'us-east-1',
     },
   })
@@ -82,3 +93,8 @@ export async function launchApp(
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
+
+export async function setRefreshCredentialState(mode: 'expired' | 'valid'): Promise<void> {
+  await fs.writeFile(AWS_CREDENTIAL_PROCESS_STATE, JSON.stringify({ mode }), 'utf-8')
+}
+
