@@ -62,7 +62,8 @@ export class KinesisListener implements Listener {
               message: err.message ?? String(err),
               stack: err.stack ?? '',
               metadata: {
-                shardId: shard.ShardId
+                ShardId: shard.ShardId,
+                StreamName: config.streamName
               },
               recoverable: false
             });
@@ -108,7 +109,10 @@ export class KinesisListener implements Listener {
             message: 'Shard iterator expired, re-acquiring',
             stack: (err as Error).stack ?? '',
             recoverable: true,
-            metadata: { shardId }
+            metadata: {
+              ShardId: shardId,
+              StreamName: this.options.config.streamName
+            }
           });
           shardIterator = await this.getShardIterator(shardId)
         } else {

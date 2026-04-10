@@ -25,15 +25,17 @@ export class SqsPublisher implements Publisher {
     }
 
     async publish(event: any) {
+        const QueueUrl = this.options.config.queueUrl;
         const result = await this.sendWithCredentialRefresh<SendMessageCommandOutput>((client) =>
             client.send(new SendMessageCommand({
-                QueueUrl: this.options.config.queueUrl,
+                QueueUrl,
                 MessageBody: event
             }))
         )
         return {
             id: result.MessageId ?? randomUUID(),
-            MessageId: result.MessageId
+            MessageId: result.MessageId,
+            QueueUrl
         }
     }
 

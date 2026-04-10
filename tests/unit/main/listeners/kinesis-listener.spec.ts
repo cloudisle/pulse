@@ -162,7 +162,10 @@ describe('KinesisListener', () => {
       expect.objectContaining({
         name: 'ExpiredIteratorException',
         recoverable: true,
-        metadata: { shardId: 'shard-002' }
+        metadata: {
+          ShardId: 'shard-002',
+          StreamName: 'orders-stream'
+        }
       })
     )
 
@@ -192,7 +195,10 @@ describe('KinesisListener', () => {
       expect.objectContaining({
         name: 'InternalFailure',
         recoverable: false,
-        metadata: { shardId: 'shard-003' }
+        metadata: {
+          ShardId: 'shard-003',
+          StreamName: 'orders-stream'
+        }
       })
     )
   })

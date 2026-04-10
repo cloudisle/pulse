@@ -356,6 +356,7 @@ async function confirmRenameSession(): Promise<void> {
           <span v-if="event.direction === 'sent'" class="session-view__event-info" :data-testid="`event-info-${event.id}`">
             <span v-if="event.schemaId" class="session-view__info-item">Schema: {{ resolveResourceName(event, event.schemaId) }}</span>
             <span v-if="event.inputId" class="session-view__info-item">Input: {{ resolveResourceName(event, event.inputId) }}</span>
+            <span v-if="event.environmentId" class="session-view__info-item">Environment: {{ resolveResourceName(event, event.environmentId) }}</span>
             <span v-if="event.profileIds && event.profileIds.length > 0" class="session-view__info-item">
               Profiles: {{ displayProfiles(event) }}
             </span>

@@ -375,6 +375,24 @@ describe('EventSenderService', () => {
         expect.objectContaining({ profileIds: ['profile-A', 'profile-B'] })
       )
     })
+
+    it('includes environmentId and environment resource name in the SessionEvent', async () => {
+      mockKinesisPublish.mockResolvedValueOnce({ id: 'evt-env-1', SequenceNumber: 'seq-1', ShardId: 'shard-0' })
+      const input = makeSendEventInput({ environmentId: 'env-1' })
+      const environment = makeEnvironment()
+
+      const result = await service.sendEvent(SYSTEM_ID, input, makeKinesisInputConfig(), environment)
+
+      expect(storage.write).toHaveBeenCalledWith(
+        StoragePaths.sessionEvent(DATA_DIR, SYSTEM_ID, SESSION_ID, result.sessionEventId),
+        expect.objectContaining({
+          environmentId: 'env-1',
+          resources: expect.objectContaining({
+            'env-1': 'dev'
+          })
+        })
+      )
+    })
   })
 
   describe('Variable replacement', () => {

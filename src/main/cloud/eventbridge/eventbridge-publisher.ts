@@ -25,13 +25,16 @@ export class EventBridgePublisher implements Publisher {
     }
 
     async publish(event: any) {
+        const EventBusName = this.options.config.eventBusName;
+        const Source = this.options.config.source;
+        const DetailType = this.options.config.detailType;
         const result = await this.sendWithCredentialRefresh<PutEventsCommandOutput>((client) =>
             client.send(new PutEventsCommand({
                 Entries: [
                     {
-                        EventBusName: this.options.config.eventBusName,
-                        Source: this.options.config.source,
-                        DetailType: this.options.config.detailType,
+                        EventBusName,
+                        Source,
+                        DetailType,
                         Detail: event
                     }
                 ]
@@ -40,7 +43,10 @@ export class EventBridgePublisher implements Publisher {
         const entry = result.Entries?.[0]
         return {
             id: entry?.EventId ?? randomUUID(),
-            EventId: entry?.EventId
+            EventId: entry?.EventId,
+            EventBusName,
+            Source,
+            DetailType
         }
     }
 

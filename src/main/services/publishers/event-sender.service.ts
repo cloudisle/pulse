@@ -67,7 +67,7 @@ export class EventSenderService {
     }
 
     const dataDir = await this.settings.getDataPath()
-    const resourceMap = await this.resolveResourceMap(dataDir, systemId, input, inputConfig)
+    const resourceMap = await this.resolveResourceMap(dataDir, systemId, input, inputConfig, environment)
 
     // 4. Record the session event
     const sessionEvent: SessionEvent = {
@@ -76,6 +76,7 @@ export class EventSenderService {
       direction: 'sent',
       timestamp,
       inputId: input.inputId,
+      environmentId: input.environmentId,
       schemaId: input.event.schemaId,
       profileIds: input.event.appliedProfiles,
       resources: resourceMap,
@@ -127,10 +128,15 @@ export class EventSenderService {
     dataDir: string,
     systemId: string,
     input: SendEventInput,
-    inputConfig: InputConfig
+    inputConfig: InputConfig,
+    environment?: Environment
   ): Promise<Record<string, string>> {
     const resourceMap: Record<string, string> = {
       [input.inputId]: inputConfig.name,
+    }
+
+    if (input.environmentId) {
+      resourceMap[input.environmentId] = environment?.name ?? input.environmentId
     }
 
     const schema = await this.storage.read<Schema>(

@@ -9,6 +9,7 @@ export interface SessionEvent {
   direction: EventDirection;
   timestamp: string; // ISO 8601
   inputId?: string; // FK → InputConfig (for sent events)
+  environmentId?: string; // FK → Environment (for sent events)
   outputId?: string; // FK → OutputConfig (for received events)
   listenerId?: string; // FK → active listener (for received events)
   schemaId?: string; // FK → Schema (for sent events)

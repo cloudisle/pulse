@@ -18,10 +18,12 @@ function makeSentEvent(overrides: Partial<SessionEvent> = {}): SessionEvent {
     timestamp: '2026-01-01T10:00:00.000Z',
     schemaId: 'sch-1',
     inputId: 'inp-1',
+    environmentId: 'env-1',
     profileIds: ['prof-1'],
     resources: {
       'sch-1': 'OrderCreated',
       'inp-1': 'Primary Input',
+      'env-1': 'Development',
       'prof-1': 'Default Profile'
     },
     payload: JSON.stringify({ key: 'value' }),
@@ -260,7 +262,7 @@ describe('SessionView component', () => {
     expect(wrapper.find('[data-testid="status-badge-evt-rcv-1"]').text()).toBe('failed')
   })
 
-  it('shows schema, input and profile names for sent events', async () => {
+  it('shows schema, input, environment and profile names for sent events', async () => {
     const pinia = createPinia()
     const { wrapper } = mountComponent(pinia)
     const sessionStore = useSessionStore()
@@ -270,6 +272,7 @@ describe('SessionView component', () => {
     const info = wrapper.find('[data-testid="event-info-evt-sent-1"]').text()
     expect(info).toContain('OrderCreated')
     expect(info).toContain('Primary Input')
+    expect(info).toContain('Development')
     expect(info).toContain('Default Profile')
   })
 

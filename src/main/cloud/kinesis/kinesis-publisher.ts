@@ -26,15 +26,17 @@ export class KinesisPublisher implements Publisher {
 
     async publish(event: any) {
         const id = randomUUID();
+        const StreamName = this.options.config.streamName;
         const result = await this.sendWithCredentialRefresh<PutRecordCommandOutput>((client) =>
             client.send(new PutRecordCommand({
-                StreamName: this.options.config.streamName,
+                StreamName,
                 Data: Buffer.from(event),
                 PartitionKey: id
             }))
         );
         return {
             id,
+            StreamName,
             SequenceNumber: result.SequenceNumber,
             ShardId: result.ShardId
         }
