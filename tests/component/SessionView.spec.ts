@@ -5,7 +5,7 @@ import SessionView from '@renderer/components/SessionView/SessionView.vue'
 import { useSessionStore } from '@renderer/stores/session.store'
 import { useSystemStore } from '@renderer/stores/system'
 import { useUiStore } from '@renderer/stores/ui'
-import {SessionDetail, SessionEvent} from "../../src/shared/models";
+import {SessionDetail, SessionEvent} from "@shared/models";
 
 const SESSION_ID = 'sess-1'
 const SYSTEM_ID = 'sys-1'

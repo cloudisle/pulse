@@ -1,7 +1,7 @@
-import {Publisher} from "../../services/publishers/publisher";
+import {Publisher} from "@main/services/publishers/publisher";
 import {randomUUID} from "crypto";
 import {fromIni} from "@aws-sdk/credential-providers";
-import {SqsConfig} from "../../../shared/models";
+import {SqsConfig} from "@shared/models";
 import {SendMessageCommand, SQSClient} from "@aws-sdk/client-sqs";
 import {NodeHttpHandler} from "@smithy/node-http-handler";
 import http from "http";

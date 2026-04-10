@@ -1,5 +1,5 @@
-import {KinesisConfig} from "../../../shared/models";
-import {Publisher} from "../../services/publishers/publisher";
+import {KinesisConfig} from "@shared/models";
+import {Publisher} from "@main/services/publishers/publisher";
 import {randomUUID} from "crypto";
 import {KinesisClient, PutRecordCommand} from "@aws-sdk/client-kinesis";
 import {fromIni} from "@aws-sdk/credential-providers";

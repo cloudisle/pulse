@@ -1,5 +1,5 @@
-import {ContentType} from "../../../shared/models";
-import {Message, MessageConverter, RawMessage} from "./listener";
+import {ContentType} from "@shared/models";
+import {Message, MessageConverter, RawMessage} from "@main/services/listeners/listener";
 
 export class JsonMessageConverter implements MessageConverter {
 

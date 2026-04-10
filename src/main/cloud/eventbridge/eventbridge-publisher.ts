@@ -1,8 +1,8 @@
-import {Publisher} from "../../services/publishers/publisher";
+import {Publisher} from "@main/services/publishers/publisher";
 import {randomUUID} from "crypto";
 import {fromIni} from "@aws-sdk/credential-providers";
 import {EventBridgeClient, PutEventsCommand} from "@aws-sdk/client-eventbridge";
-import {EventBridgeConfig} from "../../../shared/models";
+import {EventBridgeConfig} from "@shared/models";
 import {NodeHttpHandler} from "@smithy/node-http-handler";
 import http from "http";
 

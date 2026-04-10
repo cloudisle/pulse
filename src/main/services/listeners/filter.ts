@@ -4,9 +4,9 @@ import {
     ListenerFilter,
     RegexFilterConfig,
     SessionCorrelationFilterConfig
-} from "../../../shared/models";
-import {evaluateJsonPath} from "../../util/json";
-import {Message, MessageFilter} from "./listener";
+} from "@shared/models";
+import {evaluateJsonPath} from "@main/util/json";
+import {Message, MessageFilter} from "@main/services/listeners/listener";
 import { SessionSentValueIndexService } from './session-sent-value-index.service';
 
 export class JsonMessageFilter implements MessageFilter {

@@ -4,11 +4,11 @@ import {
     type KinesisConfig,
     ListenerConfig,
     OutputConfig
-} from "../../../shared/models";
-import {KinesisListener} from "../../cloud/kinesis/kinesis-listener";
-import {ConverterFactory} from "./converter";
-import {AggregateFilter, FilterFactory} from "./filter";
-import {DefaultListenerLifecycle, DefaultMessageHandler, Listener, ListenerLifecycle} from "./listener";
+} from "@shared/models";
+import {KinesisListener} from "@main/cloud/kinesis/kinesis-listener";
+import {ConverterFactory} from "@main/services/listeners/converter";
+import {AggregateFilter, FilterFactory} from "@main/services/listeners/filter";
+import {DefaultListenerLifecycle, DefaultMessageHandler, Listener, ListenerLifecycle} from "@main/services/listeners/listener";
 
 export class ListenerFactory {
 

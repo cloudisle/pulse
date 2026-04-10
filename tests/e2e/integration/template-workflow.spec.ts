@@ -10,8 +10,8 @@
 import { test, expect, type ElectronApplication, type Page } from '@playwright/test'
 import { type KinesisClient } from '@aws-sdk/client-kinesis'
 import { promises as fs } from 'fs'
-import os from 'os'
-import path from 'path'
+import * as os from 'os'
+import * as path from 'path'
 import { makeKinesisClient, createStream, launchApp } from './helpers'
 
 let userDataDir: string
@@ -93,6 +93,8 @@ test('template quick-send: create prerequisites → folder hierarchy → templat
     name: 'staging',
     variables: [{ key: 'env', value: 'staging', sensitive: false }],
   })
+
+  expect(environment.id).toBeTruthy()
 
   // Step 4: Create a profile that overrides `amount`
   const profile = await page.evaluate(async (input) => {
@@ -420,7 +422,7 @@ test('profile set action applies when template omits the field', async () => {
 // QUICK-SEND OVERRIDES — edge cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test('template with no fields results in empty overrides (full schema generation)', async () => {
+test('template with no fields results in empty overrides (optional fields are not auto-generated)', async () => {
   const system = await page.evaluate(async (input) => {
     return (window as any).app.api.systems.create(input)
   }, { name: 'E2E No Fields System', inputs: [], outputs: [] })
@@ -469,7 +471,7 @@ test('template with no fields results in empty overrides (full schema generation
     })
   }, { systemId: system.id, schemaId: template.schemaId, overrides })
 
-  expect(generated.payload.auto).toBe('auto-generated')
+  expect(generated.payload).not.toHaveProperty('auto')
 })
 
 test('only non-omitted fields with defined values appear in overrides', async () => {

@@ -1,7 +1,7 @@
-import {ListenerConfig, ListenerLifecycleState, SessionEvent} from "../../../shared/models";
+import {ListenerConfig, ListenerLifecycleState, SessionEvent} from "@shared/models";
 import {randomUUID} from "crypto";
-import App from "../../../app";
-import {logger} from "../../util/log";
+import App from "@app";
+import {logger} from "@main/util/log";
 
 export interface RawMessage {
     data: string;
