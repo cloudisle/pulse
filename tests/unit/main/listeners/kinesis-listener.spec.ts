@@ -5,6 +5,7 @@ import type { MessageHandler } from '@main/services/listeners/listener'
 const mockSend = vi.hoisted(() => vi.fn())
 const mockFromIni = vi.hoisted(() => vi.fn().mockReturnValue({ provider: 'ini' }))
 const mockRandomUUID = vi.hoisted(() => vi.fn(() => 'listener-fixed-id'))
+const mockDeaggregateSync = vi.hoisted(() => vi.fn())
 
 vi.mock('@aws-sdk/client-kinesis', () => ({
   /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -31,6 +32,10 @@ vi.mock('crypto', () => ({
   randomUUID: mockRandomUUID
 }))
 
+vi.mock('aws-kinesis-agg', () => ({
+  deaggregateSync: mockDeaggregateSync
+}))
+
 function createHandler(): MessageHandler {
   return {
     handle: vi.fn(),
@@ -52,6 +57,9 @@ function createListener() {
 describe('KinesisListener', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockDeaggregateSync.mockImplementation((record: unknown, _: boolean, callback: (err: Error | null, userRecords?: unknown[]) => void) => {
+      callback(null, [record])
+    })
   })
 
   it('builds the client with region and fromIni profile credentials', () => {
@@ -187,5 +195,95 @@ describe('KinesisListener', () => {
         metadata: { shardId: 'shard-003' }
       })
     )
+  })
+
+  it('deaggregates KPL records before forwarding to handler.handle', async () => {
+    mockDeaggregateSync.mockImplementation((_: unknown, __: boolean, callback: (err: Error | null, userRecords?: unknown[]) => void) => {
+      callback(null, [
+        {
+          Data: Buffer.from('{"kind":"created"}', 'utf-8').toString('base64'),
+          SequenceNumber: 'seq-agg-1',
+          PartitionKey: 'pk-agg-1'
+        },
+        {
+          Data: Buffer.from('{"kind":"updated"}', 'utf-8').toString('base64'),
+          SequenceNumber: 'seq-agg-2',
+          PartitionKey: 'pk-agg-2'
+        }
+      ])
+    })
+
+    mockSend
+      .mockResolvedValueOnce({ StreamDescription: { Shards: [{ ShardId: 'shard-004' }] } })
+      .mockResolvedValueOnce({ ShardIterator: 'iter-1' })
+      .mockResolvedValueOnce({
+        Records: [
+          {
+            Data: Buffer.from('f3899ac2', 'hex'),
+            SequenceNumber: 'seq-envelope',
+            PartitionKey: 'pk-envelope'
+          }
+        ],
+        NextShardIterator: 'iter-2'
+      })
+      .mockResolvedValue({ Records: [], NextShardIterator: 'iter-3' })
+
+    const listener = createListener()
+    const handler = createHandler()
+
+    await listener.start(handler)
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    await listener.stop()
+
+    expect(handler.handle).toHaveBeenNthCalledWith(1, 'listener-fixed-id', {
+      data: '{"kind":"created"}',
+      metadata: {
+        sequenceNumber: 'seq-agg-1',
+        partitionKey: 'pk-agg-1'
+      }
+    })
+    expect(handler.handle).toHaveBeenNthCalledWith(2, 'listener-fixed-id', {
+      data: '{"kind":"updated"}',
+      metadata: {
+        sequenceNumber: 'seq-agg-2',
+        partitionKey: 'pk-agg-2'
+      }
+    })
+  })
+
+  it('falls back to original record when deaggregation fails', async () => {
+    mockDeaggregateSync.mockImplementation((_: unknown, __: boolean, callback: (err: Error | null) => void) => {
+      callback(new Error('deaggregation failed'))
+    })
+
+    mockSend
+      .mockResolvedValueOnce({ StreamDescription: { Shards: [{ ShardId: 'shard-005' }] } })
+      .mockResolvedValueOnce({ ShardIterator: 'iter-1' })
+      .mockResolvedValueOnce({
+        Records: [
+          {
+            Data: Buffer.from('{"kind":"raw"}', 'utf-8'),
+            SequenceNumber: 'seq-raw',
+            PartitionKey: 'pk-raw'
+          }
+        ],
+        NextShardIterator: 'iter-2'
+      })
+      .mockResolvedValue({ Records: [], NextShardIterator: 'iter-3' })
+
+    const listener = createListener()
+    const handler = createHandler()
+
+    await listener.start(handler)
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    await listener.stop()
+
+    expect(handler.handle).toHaveBeenCalledWith('listener-fixed-id', {
+      data: '{"kind":"raw"}',
+      metadata: {
+        sequenceNumber: 'seq-raw',
+        partitionKey: 'pk-raw'
+      }
+    })
   })
 })

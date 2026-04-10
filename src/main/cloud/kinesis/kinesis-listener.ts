@@ -11,6 +11,13 @@ import type { KinesisConfig } from '@shared/models'
 import {randomUUID} from "crypto";
 import {Listener, MessageHandler} from "@main/services/listeners/listener";
 import { buildAwsClientConfig, isAwsSessionExpiredError } from '@main/cloud/aws-client'
+import { deaggregateSync } from 'aws-kinesis-agg'
+
+type KinesisRecord = {
+  Data?: Uint8Array | string
+  SequenceNumber?: string
+  PartitionKey?: string
+}
 
 export interface KinesisListenerOptions {
   config: KinesisConfig
@@ -83,7 +90,9 @@ export class KinesisListener implements Listener {
         )
 
         for (const record of result.Records ?? []) {
-          await this.processRecord(record, handler)
+          for (const userRecord of this.deaggregateRecord(record as KinesisRecord)) {
+            await this.processRecord(userRecord, handler)
+          }
         }
 
         shardIterator = result.NextShardIterator ?? shardIterator
@@ -125,14 +134,34 @@ export class KinesisListener implements Listener {
     return result.ShardIterator
   }
 
-  private async processRecord(record: {
-    Data?: Uint8Array
-    SequenceNumber?: string
-    PartitionKey?: string
-  }, handler: MessageHandler): Promise<void> {
+  private deaggregateRecord(record: KinesisRecord): KinesisRecord[] {
+    let deaggregationError: Error | null = null
+    let deaggregatedRecords: KinesisRecord[] | undefined
+
+    deaggregateSync(record as never, false, (err, userRecords) => {
+      if (err) {
+        deaggregationError = err
+        return
+      }
+
+      deaggregatedRecords = (userRecords as unknown as KinesisRecord[]) ?? [record]
+    })
+
+    if (deaggregationError || !deaggregatedRecords || deaggregatedRecords.length === 0) {
+      return [record]
+    }
+
+    return deaggregatedRecords
+  }
+
+  private async processRecord(record: KinesisRecord, handler: MessageHandler): Promise<void> {
     if (!record.Data) return
 
-    const message = Buffer.from(record.Data).toString('utf-8')
+    const dataBuffer =
+      typeof record.Data === 'string'
+        ? Buffer.from(record.Data, 'base64')
+        : Buffer.from(record.Data)
+    const message = dataBuffer.toString('utf-8')
 
     await handler.handle(this.id, {
       data: message,
