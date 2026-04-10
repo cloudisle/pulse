@@ -291,7 +291,7 @@ describe('EventSender component', () => {
     const systemStore = useSystemStore()
     systemStore.selectedSystemId = 'sys-1'
     store.selectedSchemaId = 'sch-1'
-    store.overrides = [{ elementPath: 'orderId', value: 'custom-123' }]
+    store.overrides = [{ elementPath: 'orderId', action: 'set', value: 'custom-123' }]
     await wrapper.vm.$nextTick()
 
     await wrapper.find('[data-testid="generate-btn"]').trigger('click')
@@ -299,7 +299,7 @@ describe('EventSender component', () => {
 
     expect(generateMock).toHaveBeenCalledWith("sys-1",
       expect.objectContaining({
-        overrides: { orderId: 'custom-123' }
+        adHocOverrides: [{ elementPath: 'orderId', action: 'set', value: 'custom-123' }]
       })
     )
   })

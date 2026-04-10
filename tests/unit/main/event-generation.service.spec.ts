@@ -637,6 +637,142 @@ describe('EventGenerationService', () => {
       expect(result.payload.address.city).toBe('Paris')
     })
 
+  // ── Ad-hoc overrides (structured) ────────────────────────────────────────────
+
+  describe('structured ad-hoc overrides (adHocOverrides)', () => {
+    it('set action takes precedence over generated value', async () => {
+      const schema = makeSchema([
+        makeElement('name', {
+          generationStrategy: { type: 'constant', config: { value: 'generated' } }
+        })
+      ])
+      const result = await service.generateEvent(
+        makeInput({ adHocOverrides: [{ elementPath: 'name', action: 'set', value: 'adhoc-value' }] }),
+        schema,
+        makeProps()
+      )
+      expect(result.payload.name).toBe('adhoc-value')
+    })
+
+    it('set action takes precedence over profile set override', async () => {
+      const profile: Profile = {
+        id: 'p1',
+        systemId: 'sys-1',
+        name: 'Profile',
+        overrides: [{ elementPath: 'name', action: 'set', value: 'profile-value' }],
+        createdAt: '2024-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-01T00:00:00.000Z'
+      }
+      const schema = makeSchema([makeElement('name')])
+      const result = await service.generateEvent(
+        makeInput({ profileIds: ['p1'], adHocOverrides: [{ elementPath: 'name', action: 'set', value: 'adhoc-value' }] }),
+        schema,
+        makeProps({ profiles: [profile] })
+      )
+      expect(result.payload.name).toBe('adhoc-value')
+    })
+
+    it('omit action excludes required field from payload', async () => {
+      const schema = makeSchema([makeElement('name')])
+      const result = await service.generateEvent(
+        makeInput({ adHocOverrides: [{ elementPath: 'name', action: 'omit' }] }),
+        schema,
+        makeProps()
+      )
+      expect(result.payload).not.toHaveProperty('name')
+    })
+
+    it('omit action takes precedence over profile set', async () => {
+      const profile: Profile = {
+        id: 'p1',
+        systemId: 'sys-1',
+        name: 'Profile',
+        overrides: [{ elementPath: 'name', action: 'set', value: 'profile-value' }],
+        createdAt: '2024-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-01T00:00:00.000Z'
+      }
+      const schema = makeSchema([makeElement('name')])
+      const result = await service.generateEvent(
+        makeInput({ profileIds: ['p1'], adHocOverrides: [{ elementPath: 'name', action: 'omit' }] }),
+        schema,
+        makeProps({ profiles: [profile] })
+      )
+      expect(result.payload).not.toHaveProperty('name')
+    })
+
+    it('nullify action sets field to null', async () => {
+      const schema = makeSchema([makeElement('name')])
+      const result = await service.generateEvent(
+        makeInput({ adHocOverrides: [{ elementPath: 'name', action: 'nullify' }] }),
+        schema,
+        makeProps()
+      )
+      expect(result.payload.name).toBeNull()
+    })
+
+    it('require action forces optional field to be included', async () => {
+      const schema = makeSchema([
+        makeElement('optional', {
+          required: false,
+          generationStrategy: { type: 'constant', config: { value: 'value' } }
+        })
+      ])
+      const results = await Promise.all(
+        Array.from({ length: 20 }, () =>
+          service.generateEvent(
+            makeInput({ adHocOverrides: [{ elementPath: 'optional', action: 'require' }] }),
+            schema,
+            makeProps()
+          )
+        )
+      )
+      expect(results.every((r) => r.payload.optional === 'value')).toBe(true)
+    })
+
+    it('generate action uses override strategy', async () => {
+      const newStrategy: GenerationStrategy = { type: 'constant', config: { value: 'override-constant' } }
+      const schema = makeSchema([
+        makeElement('field', {
+          generationStrategy: { type: 'constant', config: { value: 'original' } }
+        })
+      ])
+      const result = await service.generateEvent(
+        makeInput({ adHocOverrides: [{ elementPath: 'field', action: 'generate', generationStrategy: newStrategy }] }),
+        schema,
+        makeProps()
+      )
+      expect(result.payload.field).toBe('override-constant')
+    })
+
+    it('generate action without strategy uses schema default', async () => {
+      const schema = makeSchema([makeElement('name')])
+      const result = await service.generateEvent(
+        makeInput({ adHocOverrides: [{ elementPath: 'name', action: 'generate' }] }),
+        schema,
+        makeProps()
+      )
+      expect(result.payload).toHaveProperty('name')
+    })
+
+    it('generate action without strategy allows profile set to apply', async () => {
+      const profile: Profile = {
+        id: 'p1',
+        systemId: 'sys-1',
+        name: 'Profile',
+        overrides: [{ elementPath: 'name', action: 'set', value: 'profile-value' }],
+        createdAt: '2024-01-01T00:00:00.000Z',
+        updatedAt: '2024-01-01T00:00:00.000Z'
+      }
+      const schema = makeSchema([makeElement('name')])
+      const result = await service.generateEvent(
+        makeInput({ profileIds: ['p1'], adHocOverrides: [{ elementPath: 'name', action: 'generate' }] }),
+        schema,
+        makeProps({ profiles: [profile] })
+      )
+      expect(result.payload.name).toBe('profile-value')
+    })
+  })
+
     it('applies ad-hoc overrides to nested elements using dot-notation path', async () => {
       const schema = makeSchema([
         makeElement('address', {

@@ -125,9 +125,9 @@ test('template quick-send: create prerequisites → folder hierarchy → templat
   expect(tree.folders[0].children[0].folder.id).toBe(childFolder.id)
 
   // Step 6: Create template in child folder
-  //   • orderId → omitted: true
+  //   • orderId → action: 'generate' (let schema/profile handle it)
   //   • status  → preset: 'confirmed' (wins over schema constant 'pending')
-  //   • amount  → omitted: true (profile override of 500 will apply)
+  //   • amount  → action: 'generate' (profile override of 500 will apply)
   const template = await page.evaluate(async (input) => {
     return (window as any).app.api.templates.create(input)
   }, {
@@ -139,9 +139,9 @@ test('template quick-send: create prerequisites → folder hierarchy → templat
     inputId,
     profileIds: [profile.id],
     fields: [
-      { elementPath: 'orderId', value: null, omitted: true },
-      { elementPath: 'status', value: 'confirmed', omitted: false },
-      { elementPath: 'amount', value: null, omitted: true },
+      { elementPath: 'orderId', action: 'generate' },
+      { elementPath: 'status', action: 'set', value: 'confirmed' },
+      { elementPath: 'amount', action: 'generate' },
     ],
   })
 
@@ -162,25 +162,19 @@ test('template quick-send: create prerequisites → folder hierarchy → templat
     return (window as any).app.api.sessions.create(systemId)
   }, system.id)
 
-  // Step 8: Build overrides from non-omitted template fields
-  const overrides: Record<string, any> = {}
-  for (const field of template.fields) {
-    if (!field.omitted && field.value !== undefined) {
-      overrides[field.elementPath] = field.value
-    }
-  }
+  // Step 8: Use template fields as ad-hoc overrides
+  const adHocOverrides = template.fields
 
-  expect(Object.keys(overrides)).toEqual(['status'])
-  expect(overrides.status).toBe('confirmed')
+  expect(adHocOverrides.find((f: any) => f.elementPath === 'status')?.value).toBe('confirmed')
 
   // Step 9: Generate event using template settings
   const generated = await page.evaluate(async (args) => {
     return (window as any).app.api.events.generate(args.systemId, {
       schemaId: args.schemaId,
       profileIds: args.profileIds,
-      overrides: args.overrides,
+      adHocOverrides: args.adHocOverrides,
     })
-  }, { systemId: system.id, schemaId: template.schemaId, profileIds: template.profileIds, overrides })
+  }, { systemId: system.id, schemaId: template.schemaId, profileIds: template.profileIds, adHocOverrides })
 
   // status preset wins over schema constant
   expect(generated.payload.status).toBe('confirmed')
@@ -267,25 +261,18 @@ test('generate preview produces payload without sending the event', async () => 
     inputId: system.inputs[0].id,
     profileIds: [],
     fields: [
-      { elementPath: 'eventId', value: null, omitted: true },
-      { elementPath: 'type', value: 'preview', omitted: false },
+      { elementPath: 'eventId', action: 'generate' },
+      { elementPath: 'type', action: 'set', value: 'preview' },
     ],
   })
-
-  const overrides: Record<string, any> = {}
-  for (const field of template.fields) {
-    if (!field.omitted && field.value !== undefined) {
-      overrides[field.elementPath] = field.value
-    }
-  }
 
   const generated = await page.evaluate(async (args) => {
     return (window as any).app.api.events.generate(args.systemId, {
       schemaId: args.schemaId,
       profileIds: [],
-      overrides: args.overrides,
+      adHocOverrides: args.adHocOverrides,
     })
-  }, { systemId: system.id, schemaId: template.schemaId, overrides })
+  }, { systemId: system.id, schemaId: template.schemaId, adHocOverrides: template.fields })
 
   expect(generated.payload.eventId).toBe('preview-id')
   expect(generated.payload.type).toBe('preview')
@@ -334,23 +321,16 @@ test('template preset field takes precedence over profile set action', async () 
     inputId: 'input-placeholder',
     profileIds: [profile.id],
     // Template preset wins over profile
-    fields: [{ elementPath: 'value', value: 'template-value', omitted: false }],
+    fields: [{ elementPath: 'value', action: 'set', value: 'template-value' }],
   })
-
-  const overrides: Record<string, any> = {}
-  for (const field of template.fields) {
-    if (!field.omitted && field.value !== undefined) {
-      overrides[field.elementPath] = field.value
-    }
-  }
 
   const generated = await page.evaluate(async (args) => {
     return (window as any).app.api.events.generate(args.systemId, {
       schemaId: args.schemaId,
       profileIds: args.profileIds,
-      overrides: args.overrides,
+      adHocOverrides: args.adHocOverrides,
     })
-  }, { systemId: system.id, schemaId: template.schemaId, profileIds: template.profileIds, overrides })
+  }, { systemId: system.id, schemaId: template.schemaId, profileIds: template.profileIds, adHocOverrides: template.fields })
 
   expect(generated.payload.value).toBe('template-value')
   expect(generated.appliedProfiles).toContain(profile.id)
@@ -393,26 +373,17 @@ test('profile set action applies when template omits the field', async () => {
     schemaId: schema.id,
     inputId: 'input-placeholder',
     profileIds: [profile.id],
-    // score is omitted → profile applies
-    fields: [{ elementPath: 'score', value: null, omitted: true }],
+    // score uses generate action — profile set (99) applies
+    fields: [{ elementPath: 'score', action: 'generate' }],
   })
-
-  const overrides: Record<string, any> = {}
-  for (const field of template.fields) {
-    if (!field.omitted && field.value !== undefined) {
-      overrides[field.elementPath] = field.value
-    }
-  }
-
-  expect(Object.keys(overrides)).toHaveLength(0)
 
   const generated = await page.evaluate(async (args) => {
     return (window as any).app.api.events.generate(args.systemId, {
       schemaId: args.schemaId,
       profileIds: args.profileIds,
-      overrides: args.overrides,
+      adHocOverrides: args.adHocOverrides,
     })
-  }, { systemId: system.id, schemaId: template.schemaId, profileIds: template.profileIds, overrides })
+  }, { systemId: system.id, schemaId: template.schemaId, profileIds: template.profileIds, adHocOverrides: template.fields })
 
   expect(generated.payload.score).toBe(99)
   expect(generated.appliedProfiles).toContain(profile.id)
@@ -454,50 +425,54 @@ test('template with no fields results in empty overrides (optional fields are no
     fields: [],
   })
 
-  const overrides: Record<string, any> = {}
-  for (const field of template.fields) {
-    if (!field.omitted && field.value !== undefined) {
-      overrides[field.elementPath] = field.value
-    }
-  }
+  const generated = await page.evaluate(async (args) => {
+    return (window as any).app.api.events.generate(args.systemId, {
+      schemaId: args.schemaId,
+      profileIds: [],
+      adHocOverrides: args.adHocOverrides,
+    })
+  }, { systemId: system.id, schemaId: template.schemaId, adHocOverrides: template.fields })
 
-  expect(Object.keys(overrides)).toHaveLength(0)
+  expect(generated.payload).not.toHaveProperty('auto')
+})
+
+test('ad-hoc override actions are applied correctly during generation', async () => {
+  const system = await page.evaluate(async (input) => {
+    return (window as any).app.api.systems.create(input)
+  }, { name: 'E2E Override Actions System', inputs: [], outputs: [] })
+
+  const schema = await page.evaluate(async (input) => {
+    return (window as any).app.api.schemas.create(input)
+  }, {
+    systemId: system.id,
+    name: 'OverrideActionsEvent',
+    elements: [
+      { name: 'a', required: true, dataType: { type: 'string' }, generationStrategy: { type: 'constant', config: { value: 'schema-a' } } },
+      { name: 'b', required: true, dataType: { type: 'string' }, generationStrategy: { type: 'constant', config: { value: 'schema-b' } } },
+      { name: 'c', required: true, dataType: { type: 'string' }, generationStrategy: { type: 'constant', config: { value: 'schema-c' } } },
+    ],
+  })
+
+  // a → set 'hello'
+  // b → omit (excluded from payload)
+  // c → generate (generate with schema strategy)
+  const adHocOverrides = [
+    { elementPath: 'a', action: 'set', value: 'hello' },
+    { elementPath: 'b', action: 'omit' },
+    { elementPath: 'c', action: 'generate' },
+  ]
 
   const generated = await page.evaluate(async (args) => {
     return (window as any).app.api.events.generate(args.systemId, {
       schemaId: args.schemaId,
       profileIds: [],
-      overrides: args.overrides,
+      adHocOverrides: args.adHocOverrides,
     })
-  }, { systemId: system.id, schemaId: template.schemaId, overrides })
+  }, { systemId: system.id, schemaId: schema.id, adHocOverrides })
 
-  expect(generated.payload).not.toHaveProperty('auto')
-})
-
-test('only non-omitted fields with defined values appear in overrides', async () => {
-  type TemplateField = { elementPath: string; value: any; omitted: boolean }
-  const fields: TemplateField[] = [
-    { elementPath: 'a', value: 'hello', omitted: false },     // included
-    { elementPath: 'b', value: null, omitted: true },          // excluded (omitted)
-    { elementPath: 'c', value: undefined, omitted: false },    // excluded (value undefined)
-    { elementPath: 'd', value: 0, omitted: false },            // included (falsy but defined)
-    { elementPath: 'e', value: false, omitted: false },        // included (falsy but defined)
-    { elementPath: 'f', value: '', omitted: false },           // included (empty string)
-  ]
-
-  const overrides: Record<string, any> = {}
-  for (const field of fields) {
-    if (!field.omitted && field.value !== undefined) {
-      overrides[field.elementPath] = field.value
-    }
-  }
-
-  expect(overrides).toHaveProperty('a', 'hello')
-  expect(overrides).not.toHaveProperty('b')
-  expect(overrides).not.toHaveProperty('c')
-  expect(overrides).toHaveProperty('d', 0)
-  expect(overrides).toHaveProperty('e', false)
-  expect(overrides).toHaveProperty('f', '')
+  expect(generated.payload.a).toBe('hello')
+  expect(generated.payload).not.toHaveProperty('b')
+  expect(generated.payload.c).toBe('schema-c')
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -544,27 +519,20 @@ test('send failure via template returns success=false and records failed event',
     schemaId: schema.id,
     inputId: system.inputs[0].id,
     profileIds: [],
-    fields: [{ elementPath: 'id', value: 'fail-id', omitted: false }],
+    fields: [{ elementPath: 'id', action: 'set', value: 'fail-id' }],
   })
 
   const session = await page.evaluate(async (systemId) => {
     return (window as any).app.api.sessions.create(systemId)
   }, system.id)
 
-  const overrides: Record<string, any> = {}
-  for (const field of template.fields) {
-    if (!field.omitted && field.value !== undefined) {
-      overrides[field.elementPath] = field.value
-    }
-  }
-
   const generated = await page.evaluate(async (args) => {
     return (window as any).app.api.events.generate(args.systemId, {
       schemaId: args.schemaId,
       profileIds: [],
-      overrides: args.overrides,
+      adHocOverrides: args.adHocOverrides,
     })
-  }, { systemId: system.id, schemaId: template.schemaId, overrides })
+  }, { systemId: system.id, schemaId: template.schemaId, adHocOverrides: template.fields })
 
   const result = await page.evaluate(async (args) => {
     return (window as any).app.api.events.send(args.systemId, {

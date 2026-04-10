@@ -1008,7 +1008,7 @@ describe('SystemsApi — export → import round-trip', () => {
       schemaId: 'schema-rt',
       inputId,
       profileIds: ['profile-rt'],
-      fields: [{ elementPath: 'currency', value: 'USD', omitted: false }],
+      fields: [{ elementPath: 'currency', action: 'set', value: 'USD' }],
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-01T00:00:00.000Z'
     }

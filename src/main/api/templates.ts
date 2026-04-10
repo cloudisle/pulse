@@ -236,9 +236,9 @@ export class TemplatesApi {
 
     for (const reqPath of requiredPaths) {
       const field = data.fields.find((f) => f.elementPath === reqPath)
-      // A required field is satisfied if it is explicitly omitted (omitted: true) —
-      // in that case the value is irrelevant — or if it has a defined value set.
-      if (!field || (!field.omitted && field.value === undefined)) {
+      // A required field is satisfied if it has an explicit entry with any action.
+      // For 'set' action, a defined value is also required.
+      if (!field || (field.action === 'set' && field.value === undefined)) {
         throw new Error(`Required field "${reqPath}" must be set or marked as omitted`)
       }
     }

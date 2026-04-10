@@ -6,6 +6,8 @@ import { useSchemaStore } from '@renderer/stores/schema.store'
 import { useProfileStore } from '@renderer/stores/profile'
 import { useTemplateStore } from '@renderer/stores/template.store'
 import type { Template, TemplateField } from '@shared/models/template'
+import type { OverrideAction } from '@shared/models/profile'
+import type { GenerationStrategy, StrategyType } from '@shared/models/generation'
 import type { Schema, SchemaElement } from '@shared/models/schema'
 import type { InputConfig } from '@shared/models/system'
 
@@ -37,6 +39,16 @@ const errorMessage = ref('')
 const saving = ref(false)
 const inputs = ref<InputConfig[]>([])
 const schemaElements = ref<{ path: string; required: boolean }[]>([])
+
+const STRATEGY_TYPES: StrategyType[] = [
+  'random',
+  'faker',
+  'enum',
+  'pattern',
+  'range',
+  'constant',
+  'template'
+]
 
 // ─── Load helpers ─────────────────────────────────────────────────────────────
 
@@ -78,7 +90,7 @@ async function loadSchemaElements(): Promise<void> {
     // Populate required fields that don't yet have a row
     for (const el of schemaElements.value) {
       if (el.required && !fields.find((f) => f.elementPath === el.path)) {
-        fields.push({ elementPath: el.path, value: '', omitted: false })
+        fields.push({ elementPath: el.path, action: 'set', value: '' })
       }
     }
   } catch {
@@ -122,11 +134,66 @@ onMounted(async () => {
 // ─── Field management ─────────────────────────────────────────────────────────
 
 function addField(): void {
-  fields.push({ elementPath: '', value: '', omitted: false })
+  fields.push({ elementPath: '', action: 'set', value: '' })
 }
 
 function removeField(index: number): void {
   fields.splice(index, 1)
+}
+
+function onFieldActionChange(field: TemplateField, action: OverrideAction): void {
+  field.action = action
+  if (action === 'set') {
+    field.value = ''
+    delete field.generationStrategy
+  } else if (action === 'generate') {
+    field.generationStrategy = defaultFieldStrategy('random')
+    delete field.value
+  } else {
+    delete field.value
+    delete field.generationStrategy
+  }
+}
+
+function defaultFieldStrategy(type: StrategyType = 'random'): GenerationStrategy {
+  switch (type) {
+    case 'faker':
+      return { type: 'faker', config: { method: '', locale: '' } }
+    case 'enum':
+      return { type: 'enum', config: { values: [] } }
+    case 'pattern':
+      return { type: 'pattern', config: { pattern: '' } }
+    case 'range':
+      return { type: 'range', config: { min: 0, max: 100, step: 1, decimals: 0 } }
+    case 'constant':
+      return { type: 'constant', config: { value: '' } }
+    case 'template':
+      return { type: 'template', config: { template: '' } }
+    default:
+      return { type: 'random', config: {} }
+  }
+}
+
+function onFieldStrategyTypeChange(field: TemplateField, type: StrategyType): void {
+  field.generationStrategy = defaultFieldStrategy(type)
+}
+
+function addFieldEnumValue(field: TemplateField, event: KeyboardEvent): void {
+  const input = event.target as HTMLInputElement
+  const val = input.value.trim()
+  if (!val) return
+  const config = field.generationStrategy?.config as { values: any[] }
+  if (config?.values) {
+    config.values.push(val)
+    input.value = ''
+  }
+}
+
+function removeFieldEnumValue(field: TemplateField, vi: number): void {
+  const config = field.generationStrategy?.config as { values: any[] }
+  if (config?.values) {
+    config.values.splice(vi, 1)
+  }
 }
 
 // ─── Profile ordering ─────────────────────────────────────────────────────────
@@ -420,64 +487,190 @@ function cancel(): void {
           No fields defined. Fields from the selected schema will appear automatically.
         </div>
 
-        <table
+        <div
           v-else
-          class="te__fields-table"
+          class="te__fields-list"
           data-testid="fields-table"
         >
-          <thead>
-            <tr>
-              <th class="te__th">Path</th>
-              <th class="te__th">Value</th>
-              <th class="te__th te__th--center">Omit</th>
-              <th class="te__th" />
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="(field, idx) in fields"
-              :key="idx"
-              :data-testid="`field-row-${idx}`"
-            >
-              <td class="te__td">
+          <div
+            v-for="(field, idx) in fields"
+            :key="idx"
+            class="te__field-block"
+            :data-testid="`field-row-${idx}`"
+          >
+            <!-- Path + Action row -->
+            <div class="te__field-path-row">
+              <input
+                class="te__input te__input--path"
+                :value="field.elementPath"
+                placeholder="element.path"
+                :list="`field-path-suggestions-${idx}`"
+                :data-testid="`field-path-${idx}`"
+                @input="field.elementPath = ($event.target as HTMLInputElement).value"
+              />
+              <datalist :id="`field-path-suggestions-${idx}`">
+                <option v-for="el in schemaElements" :key="el.path" :value="el.path" />
+              </datalist>
+              <select
+                class="te__action-select"
+                :class="`te__action--${field.action}`"
+                :value="field.action"
+                :data-testid="`field-action-${idx}`"
+                @change="onFieldActionChange(field, ($event.target as HTMLSelectElement).value as OverrideAction)"
+              >
+                <option value="set">set</option>
+                <option value="generate">generate</option>
+                <option value="omit">omit</option>
+                <option value="require">require</option>
+                <option value="nullify">nullify</option>
+              </select>
+              <button
+                class="te__btn te__btn--ghost te__btn--danger"
+                :data-testid="`field-remove-${idx}`"
+                @click="removeField(idx)"
+              >
+                ×
+              </button>
+            </div>
+
+            <!-- Value / Config -->
+            <div class="te__field-config">
+              <!-- set -->
+              <template v-if="field.action === 'set'">
                 <input
-                  class="te__input te__input--path"
-                  :value="field.elementPath"
-                  placeholder="element.path"
-                  :data-testid="`field-path-${idx}`"
-                  @input="field.elementPath = ($event.target as HTMLInputElement).value"
-                />
-              </td>
-              <td class="te__td">
-                <input
+                  v-model="field.value"
                   class="te__input"
-                  :value="field.value ?? ''"
-                  :disabled="field.omitted"
-                  placeholder="value"
+                  type="text"
+                  placeholder='Value (e.g. "active", 42, true)'
                   :data-testid="`field-value-${idx}`"
-                  @input="field.value = ($event.target as HTMLInputElement).value"
                 />
-              </td>
-              <td class="te__td te__td--center">
-                <input
-                  type="checkbox"
-                  :checked="field.omitted"
-                  :data-testid="`field-omit-${idx}`"
-                  @change="field.omitted = ($event.target as HTMLInputElement).checked"
-                />
-              </td>
-              <td class="te__td te__td--center">
-                <button
-                  class="te__btn te__btn--ghost te__btn--danger"
-                  :data-testid="`field-remove-${idx}`"
-                  @click="removeField(idx)"
-                >
-                  ×
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              </template>
+
+              <!-- generate -->
+              <template v-else-if="field.action === 'generate'">
+                <div class="te__strategy">
+                  <select
+                    class="te__strategy-select"
+                    :value="field.generationStrategy?.type ?? 'random'"
+                    :data-testid="`field-strategy-type-${idx}`"
+                    @change="onFieldStrategyTypeChange(field, ($event.target as HTMLSelectElement).value as StrategyType)"
+                  >
+                    <option v-for="st in STRATEGY_TYPES" :key="st" :value="st">{{ st }}</option>
+                  </select>
+
+                  <!-- faker -->
+                  <template v-if="field.generationStrategy?.type === 'faker'">
+                    <input
+                      v-model="(field.generationStrategy.config as any).method"
+                      class="te__strategy-input"
+                      type="text"
+                      placeholder="faker method (e.g. person.firstName)"
+                      :data-testid="`field-faker-method-${idx}`"
+                    />
+                    <input
+                      v-model="(field.generationStrategy.config as any).locale"
+                      class="te__strategy-input"
+                      type="text"
+                      placeholder="locale (optional)"
+                      :data-testid="`field-faker-locale-${idx}`"
+                    />
+                  </template>
+
+                  <!-- enum -->
+                  <template v-else-if="field.generationStrategy?.type === 'enum'">
+                    <div class="te__enum-values">
+                      <span
+                        v-for="(val, vi) in (field.generationStrategy.config as any).values"
+                        :key="vi"
+                        class="te__enum-chip"
+                      >
+                        {{ val }}
+                        <button
+                          class="te__enum-remove"
+                          :data-testid="`field-enum-remove-${idx}-${vi}`"
+                          @click="removeFieldEnumValue(field, vi)"
+                        >✕</button>
+                      </span>
+                      <input
+                        class="te__strategy-input"
+                        type="text"
+                        placeholder="Add value + Enter"
+                        :data-testid="`field-enum-input-${idx}`"
+                        @keydown.enter="addFieldEnumValue(field, $event)"
+                      />
+                    </div>
+                  </template>
+
+                  <!-- pattern -->
+                  <template v-else-if="field.generationStrategy?.type === 'pattern'">
+                    <input
+                      v-model="(field.generationStrategy.config as any).pattern"
+                      class="te__strategy-input"
+                      type="text"
+                      placeholder="regex pattern"
+                      :data-testid="`field-pattern-${idx}`"
+                    />
+                  </template>
+
+                  <!-- range -->
+                  <template v-else-if="field.generationStrategy?.type === 'range'">
+                    <input
+                      v-model.number="(field.generationStrategy.config as any).min"
+                      class="te__strategy-input te__strategy-input--sm"
+                      type="number"
+                      placeholder="min"
+                      :data-testid="`field-range-min-${idx}`"
+                    />
+                    <input
+                      v-model.number="(field.generationStrategy.config as any).max"
+                      class="te__strategy-input te__strategy-input--sm"
+                      type="number"
+                      placeholder="max"
+                      :data-testid="`field-range-max-${idx}`"
+                    />
+                  </template>
+
+                  <!-- constant -->
+                  <template v-else-if="field.generationStrategy?.type === 'constant'">
+                    <input
+                      v-model="(field.generationStrategy.config as any).value"
+                      class="te__strategy-input"
+                      type="text"
+                      placeholder="constant value"
+                      :data-testid="`field-constant-${idx}`"
+                    />
+                  </template>
+
+                  <!-- template -->
+                  <template v-else-if="field.generationStrategy?.type === 'template'">
+                    <input
+                      v-model="(field.generationStrategy.config as any).template"
+                      class="te__strategy-input"
+                      type="text"
+                      placeholder="template string"
+                      :data-testid="`field-template-string-${idx}`"
+                    />
+                  </template>
+                </div>
+              </template>
+
+              <!-- omit -->
+              <template v-else-if="field.action === 'omit'">
+                <span class="te__hint">(field excluded from generated event)</span>
+              </template>
+
+              <!-- require -->
+              <template v-else-if="field.action === 'require'">
+                <span class="te__hint">(forces inclusion of optional field)</span>
+              </template>
+
+              <!-- nullify -->
+              <template v-else-if="field.action === 'nullify'">
+                <span class="te__hint">(field set to null)</span>
+              </template>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -843,5 +1036,134 @@ function cancel(): void {
 .te__btn--danger:hover:not(:disabled) {
   background: #2a1520;
   color: #f38ba8;
+}
+
+/* ── Field blocks ────────────────────────────────────────────────────────── */
+
+.te__fields-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.te__field-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  background: #1e1e2e;
+  border: 1px solid #313244;
+  border-radius: 4px;
+}
+
+.te__field-path-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.te__field-config {
+  padding-left: 2px;
+}
+
+.te__action-select {
+  padding: 4px 6px;
+  background: #313244;
+  color: #cdd6f4;
+  border: 1px solid #45475a;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  outline: none;
+  flex-shrink: 0;
+}
+
+.te__action-select:focus {
+  border-color: #89b4fa;
+}
+
+.te__action--set { color: #a6e3a1; }
+.te__action--generate { color: #89b4fa; }
+.te__action--omit { color: #f38ba8; }
+.te__action--require { color: #fab387; }
+.te__action--nullify { color: #cba6f7; }
+
+.te__strategy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.te__strategy-select {
+  padding: 4px 6px;
+  background: #313244;
+  color: #cdd6f4;
+  border: 1px solid #45475a;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  outline: none;
+}
+
+.te__strategy-input {
+  padding: 4px 8px;
+  background: #313244;
+  color: #cdd6f4;
+  border: 1px solid #45475a;
+  border-radius: 4px;
+  font-size: 11px;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.te__strategy-input:focus {
+  border-color: #89b4fa;
+}
+
+.te__strategy-input--sm {
+  width: 80px;
+  flex: none;
+}
+
+.te__enum-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.te__enum-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: #313244;
+  border: 1px solid #45475a;
+  border-radius: 10px;
+  font-size: 11px;
+  color: #cdd6f4;
+}
+
+.te__enum-remove {
+  background: none;
+  border: none;
+  color: #585b70;
+  cursor: pointer;
+  padding: 0;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.te__enum-remove:hover {
+  color: #f38ba8;
+}
+
+.te__hint {
+  font-size: 11px;
+  color: #585b70;
+  font-style: italic;
 }
 </style>

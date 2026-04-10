@@ -1,7 +1,11 @@
+import type { OverrideAction } from './profile'
+import type { GenerationStrategy } from './generation'
+
 export interface TemplateField {
   elementPath: string; // dot-notation path (e.g. "payload.orderId")
-  value: any; // the preset value
-  omitted: boolean; // true = purposefully excluded (even if required)
+  action: OverrideAction; // how to handle this field: set | generate | omit | require | nullify
+  value?: any; // the override value (when action is 'set')
+  generationStrategy?: GenerationStrategy; // override generation strategy (when action is 'generate')
 }
 
 export interface Template {

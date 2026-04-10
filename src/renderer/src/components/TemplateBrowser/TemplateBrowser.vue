@@ -239,17 +239,10 @@ async function generatePreview(): Promise<void> {
   previewJson.value = null
 
   try {
-    const overrides: Record<string, any> = {}
-    for (const field of selectedTemplate.value.fields ?? []) {
-      if (!field.omitted && field.value !== undefined) {
-        overrides[field.elementPath] = field.value
-      }
-    }
-
     const event = await api.events.generate(toRaw(systemId), {
       schemaId: toRaw(selectedTemplate.value.schemaId),
       profileIds: toRaw(selectedTemplate.value.profileIds),
-      overrides
+      adHocOverrides: toRaw(selectedTemplate.value.fields ?? [])
     })
 
     previewJson.value = JSON.stringify(event.payload, null, 2)
@@ -274,18 +267,11 @@ async function quickSend(): Promise<void> {
   sendResult.value = null
 
   try {
-    const overrides: Record<string, any> = {}
-    for (const field of selectedTemplate.value.fields ?? []) {
-      if (!field.omitted && field.value !== undefined) {
-        overrides[field.elementPath] = field.value
-      }
-    }
-
-    // Generate the event
+    // Generate the event using template fields as ad-hoc overrides
     const event = await api.events.generate(toRaw(systemId), {
       schemaId: toRaw(selectedTemplate.value.schemaId),
       profileIds: toRaw(selectedTemplate.value.profileIds),
-      overrides
+      adHocOverrides: toRaw(selectedTemplate.value.fields ?? [])
     })
 
     previewJson.value = JSON.stringify(event.payload, null, 2)
@@ -790,8 +776,8 @@ onBeforeUnmount(() => {
               <thead>
                 <tr>
                   <th class="tb__th">Path</th>
-                  <th class="tb__th">Value</th>
-                  <th class="tb__th">Omitted</th>
+                  <th class="tb__th">Action</th>
+                  <th class="tb__th">Value / Config</th>
                 </tr>
               </thead>
               <tbody>
@@ -802,17 +788,22 @@ onBeforeUnmount(() => {
                 >
                   <td class="tb__td tb__td--path">{{ field.elementPath }}</td>
                   <td class="tb__td">
-                    <span v-if="field.omitted" class="tb__detail-none">—</span>
-                    <span v-else>{{ field.value ?? '' }}</span>
-                  </td>
-                  <td class="tb__td tb__td--center">
                     <span
-                      v-if="field.omitted"
-                      class="tb__omit-badge"
-                      :data-testid="`field-omitted-${idx}`"
-                    >
-                      omit
-                    </span>
+                      class="tb__action-badge"
+                      :class="`tb__action-badge--${field.action}`"
+                      :data-testid="`field-action-${idx}`"
+                    >{{ field.action }}</span>
+                  </td>
+                  <td class="tb__td">
+                    <template v-if="field.action === 'set'">
+                      <span>{{ field.value ?? '' }}</span>
+                    </template>
+                    <template v-else-if="field.action === 'generate'">
+                      <span class="tb__detail-none">{{ field.generationStrategy?.type ?? 'random' }}</span>
+                    </template>
+                    <template v-else>
+                      <span class="tb__detail-none">—</span>
+                    </template>
                   </td>
                 </tr>
               </tbody>
@@ -1336,6 +1327,45 @@ onBeforeUnmount(() => {
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.tb__action-badge {
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.tb__action-badge--set {
+  background: #1a2a1a;
+  color: #a6e3a1;
+  border: 1px solid #a6e3a144;
+}
+
+.tb__action-badge--generate {
+  background: #1a2030;
+  color: #89b4fa;
+  border: 1px solid #89b4fa44;
+}
+
+.tb__action-badge--omit {
+  background: #2a1520;
+  color: #f38ba8;
+  border: 1px solid #f38ba844;
+}
+
+.tb__action-badge--require {
+  background: #2a1e14;
+  color: #fab387;
+  border: 1px solid #fab38744;
+}
+
+.tb__action-badge--nullify {
+  background: #1e1a2a;
+  color: #cba6f7;
+  border: 1px solid #cba6f744;
 }
 
 /* ── Error / send result ─────────────────────────────────────────────────── */

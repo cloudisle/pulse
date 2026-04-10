@@ -45,7 +45,15 @@ export class EventGenerationService {
       props.profiles ?? []
     )
 
-    const adHocOverrides = input.overrides ?? {}
+    // Structured ad-hoc overrides act as a higher-priority temporary profile
+    const adHocOverrideMap = new Map<string, ProfileOverride>()
+    for (const override of input.adHocOverrides ?? []) {
+      if (override.elementPath) {
+        adHocOverrideMap.set(override.elementPath, override)
+      }
+    }
+
+    const legacyOverrides = input.overrides ?? {}
     const warnings: ValidationWarning[] = []
     const payload: Record<string, any> = {}
 
@@ -53,8 +61,9 @@ export class EventGenerationService {
       const result = this.generateElement(
         element,
         element.name,
-        adHocOverrides,
+        legacyOverrides,
         profileOverrides,
+        adHocOverrideMap,
         props.customTypes ?? [],
         warnings
       )
@@ -108,11 +117,23 @@ export class EventGenerationService {
   private generateElement(
     element: SchemaElement,
     path: string,
-    adHocOverrides: Record<string, any>,
+    legacyOverrides: Record<string, any>,
     profileOverrides: Map<string, ProfileOverride>,
+    adHocOverrides: Map<string, ProfileOverride>,
     customTypes: CustomDataType[],
     warnings: ValidationWarning[]
   ): any {
+    // Structured ad-hoc overrides take highest priority (like a temporary top-level profile)
+    const adHocOverride = adHocOverrides.get(path)
+
+    if (adHocOverride?.action === 'omit') {
+      return undefined
+    }
+
+    if (adHocOverride?.action === 'nullify') {
+      return null
+    }
+
     const profileOverride = profileOverrides.get(path)
 
     if (profileOverride?.action === 'omit') {
@@ -123,22 +144,33 @@ export class EventGenerationService {
       return null
     }
 
-    const hasAdHocOverride = Object.prototype.hasOwnProperty.call(adHocOverrides, path)
+    // Legacy simple ad-hoc overrides (plain key-value map)
+    const hasLegacyOverride = Object.prototype.hasOwnProperty.call(legacyOverrides, path)
 
-    if (hasAdHocOverride) {
-      return adHocOverrides[path]
+    if (hasLegacyOverride) {
+      return legacyOverrides[path]
+    }
+
+    if (adHocOverride?.action === 'set') {
+      return adHocOverride.value
     }
 
     if (profileOverride?.action === 'set') {
       return profileOverride.value
     }
 
-    // Skip optional fields unless a profile action forces inclusion
-    if (!element.required && profileOverride?.action !== 'require' && profileOverride?.action !== 'generate') {
+    // Skip optional fields unless a profile or ad-hoc action forces inclusion
+    if (
+      !element.required &&
+      adHocOverride?.action !== 'require' &&
+      adHocOverride?.action !== 'generate' &&
+      profileOverride?.action !== 'require' &&
+      profileOverride?.action !== 'generate'
+    ) {
       return undefined
     }
 
-    // Resolve effective type and strategy (custom type takes base, then profile 'generate' overrides strategy)
+    // Resolve effective type and strategy (custom type takes base, then profile/ad-hoc 'generate' overrides strategy)
     let effectiveType: BuiltInType = element.dataType.type as BuiltInType
     let effectiveStrategy: GenerationStrategy = element.generationStrategy
 
@@ -150,7 +182,10 @@ export class EventGenerationService {
       }
     }
 
-    if (profileOverride?.action === 'generate' && profileOverride.generationStrategy) {
+    // Ad-hoc 'generate' takes priority over profile 'generate'
+    if (adHocOverride?.action === 'generate' && adHocOverride.generationStrategy) {
+      effectiveStrategy = adHocOverride.generationStrategy
+    } else if (profileOverride?.action === 'generate' && profileOverride.generationStrategy) {
       effectiveStrategy = profileOverride.generationStrategy
     }
 
@@ -161,8 +196,9 @@ export class EventGenerationService {
         const result = this.generateElement(
           child,
           childPath,
-          adHocOverrides,
+          legacyOverrides,
           profileOverrides,
+          adHocOverrides,
           customTypes,
           warnings
         )
@@ -183,8 +219,9 @@ export class EventGenerationService {
           const result = this.generateElement(
             child,
             childPath,
-            adHocOverrides,
+            legacyOverrides,
             profileOverrides,
+            adHocOverrides,
             customTypes,
             warnings
           )
